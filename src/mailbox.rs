@@ -179,14 +179,19 @@ mod tests {
     use super::*;
     use crate::service::ServiceProcess;
     use futures::Stream;
-    use futures::task::{Context, Poll, RawWaker, RawWakerVTable};
+    use futures::task::{Context, Poll};
     use std::pin::Pin;
     use crate::mailbox::tests::MsgB::ItemB;
+    use dummy_waker::dummy_context;
+    use assert_matches::assert_matches;
 
+
+    #[derive(Debug)]
     enum MsgA {
         ItemA(MsgB),
     }
 
+    #[derive(Debug)]
     enum MsgB {
         ItemB(i32)
     }
@@ -208,7 +213,7 @@ mod tests {
     impl Stream for MyServiceProcess {
         type Item = i32;
 
-        fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
             Poll::Ready(Some(1))
         }
     }
@@ -221,11 +226,14 @@ mod tests {
 
     #[test]
     fn test_mailbox() {
+        let ctx = dummy_context();
         let (mb, rx) = Mailbox::<MsgA>::new();
         let mut mapped = mb.map(|msgb| MsgA::ItemA(msgb) );
         let service = MyService {};
         mapped.spawn(service, |x| ItemB(x));
-        if let Ok(subs) = rx.services.recv() {
+        if let Ok(mut subs) = rx.services.recv() {
+            let polled = Pin::new(&mut subs).poll_next(&mut ctx.context());
+            assert_matches!(polled, Poll::Ready(Some(MsgA::ItemA(MsgB::ItemB(1)))));
         } else {
             panic!();
         }
