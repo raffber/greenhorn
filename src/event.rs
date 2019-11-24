@@ -1,0 +1,112 @@
+use std::any::Any;
+use std::marker::PhantomData;
+
+use crate::Id;
+use std::sync::Arc;
+
+pub(crate) struct Emission {
+    pub(crate) event_id: Id,
+    pub(crate) data: Box<dyn Any>,
+}
+
+pub trait SubscriptionMap<T> {
+    fn call(&self, value: Box<dyn Any>) -> T;
+    fn id(&self) -> Id;
+}
+
+struct SubscriptionMapImpl<U, T> {
+    mapper: Arc<dyn Fn(U) -> T>,
+    child: Subscription<U>,
+}
+
+impl<U: 'static, T: 'static> SubscriptionMap<T> for SubscriptionMapImpl<U, T> {
+    fn call(&self, value: Box<dyn Any>) -> T {
+        let ret = self.child.call(value);
+        (self.mapper)(ret)
+    }
+
+    fn id(&self) -> Id {
+        self.child.id()
+    }
+}
+
+pub trait SubscriptionHandler<T> {
+    fn call(&self, value: Box<dyn Any>) -> T;
+}
+
+struct SubscriptionHandlerImpl<T, V, F: Fn(V) -> T> {
+    handler: F,
+    a: std::marker::PhantomData<T>,
+    b: std::marker::PhantomData<V>,
+}
+
+impl<T: 'static, V: 'static, F: Fn(V) -> T> SubscriptionHandler<T>
+    for SubscriptionHandlerImpl<T, V, F>
+{
+    fn call(&self, value: Box<dyn Any>) -> T {
+        let v = value.downcast::<V>().unwrap();
+        (self.handler)(*v)
+    }
+}
+
+pub enum Subscription<T> {
+    Mapper(Box<dyn SubscriptionMap<T>>),
+    Handler(Id, Box<dyn SubscriptionHandler<T>>),
+}
+
+impl<T: 'static> Subscription<T> {
+    pub(crate) fn map<U: 'static>(self, fun: Arc<dyn Fn(T) -> U>) -> Subscription<U> {
+        Subscription::Mapper(Box::new(SubscriptionMapImpl {
+            mapper: fun,
+            child: self,
+        }))
+    }
+
+    pub(crate) fn call(&self, value: Box<dyn Any>) -> T {
+        match self {
+            Subscription::Mapper(map) => map.call(value),
+            Subscription::Handler(_, fun) => fun.call(value),
+        }
+    }
+
+    fn id(&self) -> Id {
+        match self {
+            Subscription::Mapper(map) => map.id(),
+            Subscription::Handler(id, _) => id.clone(),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Event<T: Any> {
+    id: Id,
+    marker: PhantomData<T>,
+}
+
+impl<T: Any> Event<T> {
+    pub fn new() -> Event<T> {
+        Event {
+            id: Id::new(),
+            marker: PhantomData,
+        }
+    }
+
+    pub(crate) fn emit<V: Any>(&self, value: V) -> Emission {
+        let data = Box::new(value);
+        Emission {
+            event_id: self.id.clone(),
+            data,
+        }
+    }
+
+    pub fn subscribe<M: 'static, F: 'static + Fn(T) -> M>(&self, fun: F) -> Subscription<M> {
+        Subscription::Handler(
+            self.id.clone(),
+            Box::new(SubscriptionHandlerImpl {
+                handler: fun,
+                a: PhantomData,
+                b: PhantomData,
+            }),
+        )
+    }
+}

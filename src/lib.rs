@@ -1,46 +1,77 @@
-mod component;
+#![allow(dead_code)]
 
-//
-//
-//
-//struct MyApp {
-//    btn: Component<Button>,
-//}
-//
-//impl App for MyApp {
-//    type Message = ();
-//
-//    fn render(&self) -> _ {
-//        let template = template! {
-//             <h1 class=foo />
-//             <div>
-//                { btn }
-//             </div>
-//        };
-//        template.render(self)
-//    }
-//
-//    fn update(&mut self, msg: _) -> Update {
-//        unimplemented!()
-//    }
-//}
-//
-//
-//struct Button {
-//
-//}
-//
-//impl Component for Button {
-//    type Message = ();
-//
-//    fn update(&mut self, msg: _) -> Update {
-//        unimplemented!()
-//    }
-//
-//    fn render(&self) -> Node<_> {
-//        unimplemented!()
-//    }
-//}
-//
-//
-//
+use std::cmp::Eq;
+use std::convert::From;
+use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+mod component;
+mod dom_event;
+mod event;
+mod mailbox;
+mod node_builder;
+mod pipe;
+mod runtime;
+mod service;
+mod vdom;
+mod websocket_pipe;
+
+pub mod prelude {
+    pub use crate::component::{App, Component, Node, Render, Updated};
+    pub use crate::dom_event::DomEvent;
+    pub use crate::event::Event;
+    pub use crate::mailbox::Mailbox;
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Id {
+    id: u64,
+}
+
+static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+impl Id {
+    pub fn new() -> Id {
+        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
+        Id { id }
+    }
+
+    pub fn data(&self) -> u64 {
+        self.id
+    }
+}
+
+impl From<u64> for Id {
+    fn from(id: u64) -> Self {
+        Id { id }
+    }
+}
+
+impl fmt::Display for Id {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Id({})", self.id)
+    }
+}
+
+impl PartialEq for Id {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for Id {}
+
+impl Hash for Id {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state)
+    }
+}
+
+#[macro_export]
+macro_rules! trait_alias {
+    ($name:ident = $($trait_bound:tt)*) => {
+        pub trait $name: $($trait_bound)* {}
+        impl<T: $($trait_bound)*> $name for T {}
+    }
+}
