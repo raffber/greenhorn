@@ -173,3 +173,61 @@ impl<T: 'static> Mailbox<T> {
             .unwrap();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::service::ServiceProcess;
+    use futures::Stream;
+    use futures::task::{Context, Poll, RawWaker, RawWakerVTable};
+    use std::pin::Pin;
+    use crate::mailbox::tests::MsgB::ItemB;
+
+    enum MsgA {
+        ItemA(MsgB),
+    }
+
+    enum MsgB {
+        ItemB(i32)
+    }
+
+    struct MyService {}
+
+    impl Service for MyService {
+        type Data = i32;
+        type Output = MyServiceProcess;
+
+        fn start(self) -> Self::Output {
+            MyServiceProcess {}
+        }
+    }
+
+    struct MyServiceProcess {
+    }
+
+    impl Stream for MyServiceProcess {
+        type Item = i32;
+
+        fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            Poll::Ready(Some(1))
+        }
+    }
+
+    impl ServiceProcess<i32> for MyServiceProcess {
+        fn stop(self) {
+        }
+    }
+
+
+    #[test]
+    fn test_mailbox() {
+        let (mb, rx) = Mailbox::<MsgA>::new();
+        let mut mapped = mb.map(|msgb| MsgA::ItemA(msgb) );
+        let service = MyService {};
+        mapped.spawn(service, |x| ItemB(x));
+        if let Ok(subs) = rx.services.recv() {
+        } else {
+            panic!();
+        }
+    }
+}
