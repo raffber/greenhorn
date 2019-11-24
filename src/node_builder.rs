@@ -235,4 +235,51 @@ mod tests {
             panic!()
         }
     }
+
+    #[test]
+    fn test_listener() {
+        let node = builder().elem("div")
+            .attr("test", "foo")
+            .listener("click", |_| Msg::Clicked)
+            .prevent_default()
+            .no_propagate()
+            .build()
+            .attr("foo", "bar")
+            .build();
+        if let Node::Element(elem) = node {
+            let attrs= elem.attrs.as_ref().unwrap();
+            assert_eq!(attrs.len(), 2);
+            assert_eq!(attrs[0].key, "test");
+            assert_eq!(attrs[0].value, "foo");
+            assert_eq!(attrs[1].key, "foo");
+            assert_eq!(attrs[1].value, "bar");
+            let listeners = elem.listeners.as_ref().unwrap();
+            assert_eq!(listeners.len(), 1);
+            assert_eq!(listeners[0].event_name, "click");
+            assert!(listeners[0].no_propagate);
+            assert!(listeners[0].prevent_default);
+            assert_eq!(listeners[0].node_id, elem.id);
+        } else {
+            panic!()
+        }
+    }
+
+    #[test]
+    fn test_children() {
+        let node = builder().elem("div")
+            .add(builder().elem("pre"))
+            .build();
+        if let Node::Element(elem) = node {
+            assert_eq!(elem.tag.unwrap(), "div");
+            assert_eq!(elem.children.as_ref().unwrap().len(), 1);
+            let child_node = &elem.children.as_ref().unwrap()[0];
+            if let Node::Element(elem) = child_node {
+                assert_eq!(elem.tag.as_ref().unwrap(), "pre");
+            } else {
+                panic!();
+            }
+        } else {
+            panic!();
+        }
+    }
 }
