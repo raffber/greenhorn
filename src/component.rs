@@ -8,6 +8,7 @@ use crate::event::Subscription;
 use crate::mailbox::Mailbox;
 use crate::node_builder::NodeBuilder;
 use crate::Id;
+use crate::vdom::Attr;
 
 pub struct Updated {
     should_render: bool,
@@ -53,12 +54,6 @@ pub struct NodeElement<T> {
     pub listeners: Option<Vec<Listener<T>>>,
     pub children: Option<Vec<Node<T>>>,
     pub namespace: Option<String>,
-}
-
-#[derive(Clone)]
-pub struct Attr {
-    pub key: String,
-    pub value: String,
 }
 
 pub trait ElementMap<T> {

@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 mod serialize;
-use crate::component::Attr;
 pub use serialize::serialize as patch_serialize;
 use std::hash::{Hash, Hasher};
 use crate::vdom::PatchItem::ChangeNamespace;
@@ -11,7 +10,22 @@ use crate::vdom::PatchItem::ChangeNamespace;
 
 // TODO: use lifetimes instead of RC
 
-#[derive(Clone, Eq)]
+#[derive(Debug, Clone)]
+pub struct Attr {
+    pub key: String,
+    pub value: String,
+}
+
+impl Attr {
+   fn new<K: Into<String>, V: Into<String>>(key: K, value: V) -> Self {
+       Attr {
+           key: key.into(),
+           value: value.into(),
+       }
+   }
+}
+
+#[derive(Debug, Clone, Eq)]
 pub struct EventHandler {
     pub name: String,
     pub no_propagate: bool,
@@ -30,7 +44,7 @@ impl Hash for EventHandler {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct VElement {
     pub(crate) id: Id,
     pub(crate) tag: String,
@@ -40,12 +54,13 @@ pub struct VElement {
     pub(crate) namespace: Option<String>,
 }
 
+#[derive(Debug, Clone)]
 pub struct VText {
     pub id: Id,
     pub data: String,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum VNode {
     Element(Rc<VElement>),
     Text(Rc<VText>),
@@ -64,11 +79,12 @@ impl VNode {
     }
 }
 
+#[derive(Debug)]
 pub enum PatchItem {
     AppendChild(VNode),
     Replace(VNode),
     ChangeText(Rc<VText>),
-    TranslateId(Id),
+    Ascend(),
     Descend(),
     RemoveChildren(),
     TruncateChildren(),
@@ -126,9 +142,13 @@ impl VNode {
     }
 }
 
-pub fn diff(old: VNode, new: VNode) -> Patch {
+pub fn diff(old: Option<VNode>, new: VNode) -> Patch {
     let mut patch = Patch::new();
-    diff_recursive(old, new, &mut patch);
+    if let Some(old) = old {
+        diff_recursive(old, new, &mut patch);
+    } else {
+        patch.push(PatchItem::AppendChild(new))
+    }
     patch
 }
 
@@ -196,6 +216,8 @@ fn diff_children(old: Rc<VElement>, new: Rc<VElement>, patch: &mut Patch) {
             patch.push(PatchItem::AppendChild(new_node.clone()))
         }
     }
+
+    patch.push(PatchItem::Ascend())
 }
 
 fn diff_events(old: Rc<VElement>, new: Rc<VElement>, patch: &mut Patch) {
@@ -242,3 +264,6 @@ fn diff_recursive(old: VNode, new: VNode, patch: &mut Patch) {
         (_, new) => patch.push(PatchItem::Replace(new)),
     }
 }
+
+#[cfg(test)]
+mod tests;

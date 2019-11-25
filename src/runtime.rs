@@ -315,7 +315,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
 
         // create a patch
         let mut patch = if let Some(old_dom) = old_dom {
-            diff(old_dom, new_dom.clone())
+            diff(Some(old_dom), new_dom.clone())
         } else {
             Patch::from_dom(new_dom.clone())
         };

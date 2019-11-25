@@ -1,5 +1,6 @@
 use crate::component::Component;
-use crate::component::{Attr, Listener, Node, NodeElement, Render};
+use crate::component::{Listener, Node, NodeElement, Render};
+use crate::vdom::Attr;
 use crate::dom_event::DomEvent;
 use crate::Id;
 use std::marker::PhantomData;

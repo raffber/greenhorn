@@ -87,9 +87,8 @@ pub fn serialize(patch: Patch) -> Vec<u8> {
                 text.id.serialize(&mut output);
                 text.data.serialize(&mut output);
             }
-            PatchItem::TranslateId(new_id) => {
+            PatchItem::Ascend() => {
                 output.push(5);
-                new_id.serialize(&mut output);
             }
             PatchItem::Descend() => {
                 output.push(6);
