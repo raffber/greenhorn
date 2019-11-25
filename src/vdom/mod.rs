@@ -210,7 +210,7 @@ fn diff_children(old: Rc<VElement>, new: Rc<VElement>, patch: &mut Patch) {
         patch.push(PatchItem::TruncateChildren());
         
     } else if n_new > n_old {
-        let range = (n_new - n_old)..n_new;
+        let range = (n_new - n_old - 1)..n_new;
         for k in range {
             let new_node = new.children.get(k).unwrap();
             patch.push(PatchItem::AppendChild(new_node.clone()))
