@@ -2,11 +2,20 @@
 <html>
   <head>
     <title>Hello Webpack</title>
+    <script src="./bundle.js"></script>
+    <script>
+        window.onload = function() {
+            var request = new XMLHttpRequest();
+            request.open('GET', '/test_patch.bin', /* async = */ false);
+            request.send();
+            var patch = new greenhorn.Patch(request.response);
+            patch.apply();
+        }
+    </script>
   </head>
   <body>
     <div>
       <h1>Hello Webpack</h1>
     </div>
-    <script src="./bundle.js"></script>
   </body>
 </html>

@@ -15,7 +15,9 @@ module.exports = {
     output: {
       path: __dirname + '/dist',
       publicPath: '/',
-      filename: 'bundle.js'
+      filename: 'bundle.js',
+      libraryTarget: 'var',
+      library: 'greenhorn'
     },
     devServer: {
       contentBase: './dist'

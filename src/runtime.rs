@@ -200,7 +200,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
 
     fn handle_msg(&mut self, msg: RuntimeMsg) -> bool {
         match msg {
-            RuntimeMsg::Cancel => true,
+            RuntimeMsg::Cancel => false,
         }
     }
 
