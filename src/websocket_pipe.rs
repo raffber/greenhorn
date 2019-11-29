@@ -12,7 +12,7 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use tungstenite::protocol::Message;
 
-struct WebsocketPipeBuilder {
+pub struct WebsocketPipeBuilder {
     addr: SocketAddr,
     req_tx: UnboundedSender<Message>,
     req_rx: UnboundedReceiver<Message>,
@@ -20,13 +20,13 @@ struct WebsocketPipeBuilder {
     resp_rx: UnboundedReceiver<Message>,
 }
 
-struct WebsocketPipe {
+pub struct WebsocketPipe {
     resp_rx: UnboundedReceiver<Message>,
     req_tx: UnboundedSender<Message>,
 }
 
 impl WebsocketPipe {
-    fn new(addr: SocketAddr) -> WebsocketPipeBuilder {
+    pub fn new(addr: SocketAddr) -> WebsocketPipeBuilder {
         let (req_tx, req_rx) = unbounded();
         let (resp_tx, resp_rx) = unbounded();
         WebsocketPipeBuilder {
@@ -102,16 +102,20 @@ impl ConnectionHandler {
 }
 
 impl WebsocketPipeBuilder {
-    fn listen(self) -> WebsocketPipe {
+    pub fn listen(self) -> WebsocketPipe {
         let resp_tx = self.resp_tx;
         let req_rx = self.req_rx;
         let addr = self.addr;
         task::spawn(async move {
+            println!("binding");
             let try_socket = TcpListener::bind(&addr).await;
+            println!("successfully bound");
             let listener = try_socket.expect("Failed to bind");
-            info!("Listening on: {}", addr);
+            println!("Listening on: {}", addr);
             if let Ok((stream, _)) = listener.accept().await {
+                println!("Connected!");
                 let ws = accept_async(stream).await.expect("Error during handshake");
+                println!("Handshake success!");
                 let mut handler = ConnectionHandler {
                     ws,
                     resp_tx,
@@ -129,7 +133,7 @@ impl WebsocketPipeBuilder {
     }
 }
 
-struct WebsocketSender {
+pub struct WebsocketSender {
     req_tx: UnboundedSender<Message>,
 }
 
@@ -152,7 +156,7 @@ impl Sender for WebsocketSender {
     }
 }
 
-struct WebsocketReceiver {
+pub struct WebsocketReceiver {
     resp_rx: UnboundedReceiver<Message>,
 }
 

@@ -1,8 +1,7 @@
 use ::greenhorn::prelude::*;
-
-struct Main {
-    btn: Component<Button>,
-}
+use std::net::SocketAddr;
+use std::str::FromStr;
+use async_std::task;
 
 enum ButtonMsg {
     CLicked(DomEvent),
@@ -11,6 +10,15 @@ enum ButtonMsg {
 struct Button {
     click_count: i32,
     clicked: Event<i32>,
+}
+
+impl Button {
+    fn new() -> Self {
+        Button {
+            click_count: 0,
+            clicked: Event::new(),
+        }
+    }
 }
 
 impl App for Button {
@@ -35,6 +43,18 @@ impl Render for Button {
             .on("click", ButtonMsg::CLicked)
             .text("foo")
             .build()
+    }
+}
+
+struct Main {
+    btn: Component<Button>,
+}
+
+impl Main {
+    fn new() -> Self {
+        Main {
+            btn: Component::new(Button::new())
+        }
     }
 }
 
@@ -79,5 +99,8 @@ impl App for Main {
 }
 
 fn main() {
-    println!("Hello, world!");
+    let addr = SocketAddr::from_str("127.0.0.1:44123").unwrap();
+    let pipe = WebsocketPipe::new(addr).listen();
+    let (rt, _control) = Runtime::new(Main::new(), pipe);
+    task::block_on(rt.run());
 }

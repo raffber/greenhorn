@@ -29,6 +29,7 @@ pub struct Runtime<A: 'static + App, P: Pipe> {
     rendered: RenderedState<A::Message>,
     next_frame: Option<Frame<A::Message>>,
     services: Vec<ServiceSubscription<A::Message>>,
+    dirty: bool,
 }
 
 pub struct RuntimeControl {
@@ -134,7 +135,8 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             event_queue: VecDeque::new(),
             rendered: RenderedState::new(),
             services: Vec::new(),
-            next_frame: None
+            next_frame: None,
+            dirty: true,
         };
         let control = RuntimeControl { tx };
         (runtime, control)
@@ -150,19 +152,19 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                 msg = self.receiver.next().fuse() => {
                     if let Some(msg) = msg {
                         if !self.handle_pipe_msg(msg).await {
-                            return;
+                            break;
                         }
                     } else {
-                        return;
+                        break;
                     }
                 },
                 msg = self.rx.next().fuse() => {
                     if let Some(msg) = msg {
                         if !self.handle_msg(msg) {
-                            return;
+                            break;
                         }
                     } else {
-                        return;
+                        break;
                     }
                 }
             }
@@ -205,6 +207,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     }
 
     fn update(&mut self, msg: A::Message) {
+        self.dirty = true;
         let (mailbox, receiver) = Mailbox::<A::Message>::new();
         self.app.update(msg, mailbox);
         while let Ok(e) = receiver.emissions.try_recv() {
@@ -304,6 +307,9 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     }
 
     fn render_dom(&mut self) {
+        if (!self.dirty) {
+            return;
+        }
         let old_dom = self.rendered.vdom.take();
         let dom = self.app.render();
 
@@ -321,12 +327,17 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             Patch::from_dom(new_dom.clone())
         };
         frame.translations.append(&mut patch.translations);
+        self.dirty = false;
+        println!("{:?}", patch);
+        if patch.is_empty() {
+            self.rendered.apply(frame);
+        } else {
+            // schedule next frame
+            self.next_frame = Some(frame);
 
-        // schedule next frame
-        self.next_frame = Some(frame);
-
-        // serialize the patch and send it to the client
-        let serialized = patch_serialize(patch);
-        self.sender.send(TxMsg::Patch(serialized));
+            // serialize the patch and send it to the client
+            let serialized = patch_serialize(patch);
+            self.sender.send(TxMsg::Patch(serialized));
+        }
     }
 }

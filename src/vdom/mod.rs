@@ -97,6 +97,7 @@ pub enum PatchItem {
     ChangeNamespace(Option<String>),
 }
 
+#[derive(Debug)]
 pub struct Patch {
     pub items: Vec<PatchItem>,
     pub translations: Vec<(Id, Id)>,
@@ -122,6 +123,10 @@ impl Patch {
 
     fn translate(&mut self, from: Id, to: Id) {
         self.translations.push((from, to));
+    }
+
+    pub fn is_empty(&self) -> bool {
+        return self.items.len() == 0;
     }
 }
 

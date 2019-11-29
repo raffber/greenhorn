@@ -22,6 +22,8 @@ pub mod prelude {
     pub use crate::dom_event::DomEvent;
     pub use crate::event::Event;
     pub use crate::mailbox::Mailbox;
+    pub use crate::websocket_pipe::WebsocketPipe;
+    pub use crate::runtime::{Runtime, RuntimeControl};
 }
 
 #[derive(Copy, Clone, Debug)]

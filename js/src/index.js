@@ -1,3 +1,4 @@
+"use strict";
 
 const decoder = new TextDecoder();
 
@@ -75,6 +76,70 @@ function id_from_dataview(data_view, offset) {
     return new Id(lo,hi);
 }
 
+export class Pipe {
+    constructor(url) {
+        this.socket = new WebSocket(url);
+        let self = this;
+        this.socket.onopen = (e) => {
+            self.onOpen(e);
+        };
+
+        this.socket.onmessage = (e) => {
+            self.onMessage(e);
+        };
+
+        this.socket.onerror = (e) => {
+            self.onError(e);
+        };
+
+        this.socket.onclose = (e) => {
+            self.onClose(e);
+        };
+
+        this.onPatch = (patch_data) => {};
+    }
+
+    onOpen(event) {
+        console.log("onOpen");
+    }
+
+    onMessage(event) {
+        console.log("onMessage");
+    }
+
+    onClose(event) {
+        console.log("onClose");
+    }
+
+    onError(event) {
+        console.log("onError");
+    }
+
+    sendEvent(evt) {
+        console.log("sendEvent");
+    }
+
+    close() {
+        this.socket.close();
+    }
+}
+
+export class Application {
+    constructor(url, root_element) {
+        this.pipe = new Pipe(url);
+        this.pipe.onPatch = this.onPatch;
+        this.root_element = root_element;
+    }
+
+    onPatch(patch_data) {
+        let patch = new Patch(patch_data, this.root_element);
+        patch.apply();
+    }
+
+    close() {
+        this.pipe.close();
+    }
+}
 
 export class Patch {
     constructor(patch, element) {

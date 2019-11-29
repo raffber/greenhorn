@@ -14,6 +14,8 @@
                 patch.apply();
             };
             request.send();
+
+            let app = new greenhorn.Application("ws://127.0.0.1:44123", document.body);
         }
     </script>
   </head>
