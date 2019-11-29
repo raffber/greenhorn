@@ -118,7 +118,7 @@ pub fn serialize(patch: Patch) -> Vec<u8> {
             }
             PatchItem::RemoveEvent(evt) => {
                 output.push(13);
-                evt.serialize(&mut output);
+                evt.name.serialize(&mut output);
             }
             PatchItem::AddEvent(evt) => {
                 output.push(14);

@@ -6,10 +6,14 @@
     <script>
         window.onload = function() {
             var request = new XMLHttpRequest();
-            request.open('GET', '/test_patch.bin', /* async = */ false);
+            request.open('GET', '/test_patch.bin');
+            request.responseType = "arraybuffer";
+            request.onload = function(evt) {
+                var response = request.response;
+                var patch = new greenhorn.Patch(request.response, document.body);
+                patch.apply();
+            };
             request.send();
-            var patch = new greenhorn.Patch(request.response);
-            patch.apply();
         }
     </script>
   </head>
