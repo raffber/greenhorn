@@ -13,7 +13,7 @@ class Element {
         this.children = children;
     }
 
-    create() {
+    create(app) {
         let elem = document.createElement(this.tag);
         elem.setAttribute("__id__", this.id.toString())
         for (var k = 0; k < this.attrs.length; ++k) {
@@ -21,9 +21,13 @@ class Element {
             elem.setAttribute(attr[0], attr[1]);
         }
         for (var k = 0; k < this.events.length; ++k) {
+            let evt = this.events[k];
+            elem.addEventListener(evt.name, function(e) {
+                app.sendEvent(this.id, e);
+            })
         }
         for (var k = 0; k < this.children.length; ++k) {
-            let child = this.children[k].create();
+            let child = this.children[k].create(app);
             elem.appendChild(child);
         }
         return elem;
@@ -36,7 +40,7 @@ class Text {
         this.text = text;
     }
 
-    create() {
+    create(app) {
         return document.createTextNode(this.text);
     }
 }
@@ -107,14 +111,11 @@ export class Pipe {
     }
 
     onMessage(event) {
-        console.log(event.data);
-        
         // let data = new Uint8Array(event.data);
         // console.log(data);
         // let msg = CBOR.decode(event.data);
         let msg = JSON.parse(event.data);
         let data = new Uint8Array(msg.Patch);
-        console.log(data);
         this.onPatch(data.buffer);
         
         console.log("onMessage");
@@ -128,7 +129,7 @@ export class Pipe {
         console.log("onError");
     }
 
-    sendEvent(evt) {
+    sendEvent(evt, id) {
         console.log("sendEvent");
     }
 
@@ -148,22 +149,26 @@ export class Application {
     }
 
     onPatch(patch_data) {
-        console.log(this.root_element);
-        let patch = new Patch(patch_data, this.root_element);
+        let patch = new Patch(patch_data, this.root_element, this);
         patch.apply();
     }
 
     close() {
         this.pipe.close();
     }
+
+    sendEvent(id, evt) {
+        this.pipe.sendEvent(id, evt)
+    }
 }
 
 export class Patch {
-    constructor(patch, element) {
+    constructor(patch, element, app) {
         this.buffer = patch;
         this.patch = new DataView(patch);
         this.offset = 0;
         this.element = element;
+        this.app = app;
         this.child_idx = [0];
         this.patch_funs = {
             1: Patch.prototype.appendChild,
@@ -211,14 +216,14 @@ export class Patch {
     appendChild() {
         console.log("appendChild");
         let node = this.deserializeNode();
-        this.element.appendChild(node.create());
+        this.element.appendChild(node.create(this.app));
     }
 
 
     replace() {
         console.log("replace");
         let node = this.deserializeNode();
-        this.element.parentNode.replaceChild(node.create(), this.element);
+        this.element.parentNode.replaceChild(node.create(this.app), this.element);
     }
 
     changeText() {
