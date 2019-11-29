@@ -5,6 +5,7 @@ use std::convert::From;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
+use serde::{Serialize, Deserialize};
 
 mod component;
 mod dom_event;
@@ -26,7 +27,7 @@ pub mod prelude {
     pub use crate::runtime::{Runtime, RuntimeControl};
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Id {
     id: u64,
 }

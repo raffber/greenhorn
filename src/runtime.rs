@@ -174,9 +174,9 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     async fn handle_pipe_msg(&mut self, msg: RxMsg) -> bool {
         match msg {
             RxMsg::Event(evt) => {
-                let evt_id = evt.id();
+                let target_id = evt.target();
                 // attempt to remap event first if it is coming from an old, "patched" node
-                let new_id = self.rendered.translations.get(&evt_id).unwrap_or(&evt_id);
+                let new_id = self.rendered.translations.get(&target_id).unwrap_or(&target_id);
                 // search in listeners and get a message
                 let msg = self
                     .rendered
