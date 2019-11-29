@@ -147,8 +147,10 @@ impl Clone for WebsocketSender {
 
 impl Sender for WebsocketSender {
     fn send(&self, msg: TxMsg) {
-        let msg = serde_cbor::to_vec(&msg).unwrap();
-        self.req_tx.unbounded_send(Message::Binary(msg)).unwrap();
+        // let msg = serde_cbor::to_vec(&msg).unwrap();
+        // self.req_tx.unbounded_send(Message::Binary(msg)).unwrap();
+        let msg = serde_json::to_string(&msg).unwrap();
+        self.req_tx.unbounded_send(Message::Text(msg)).unwrap();
     }
 
     fn close(&self) {

@@ -1,5 +1,7 @@
 "use strict";
 
+const CBOR = require('cbor');
+
 const decoder = new TextDecoder();
 
 class Element {
@@ -79,6 +81,7 @@ function id_from_dataview(data_view, offset) {
 export class Pipe {
     constructor(url) {
         this.socket = new WebSocket(url);
+        this.socket.binaryType = "arraybuffer";
         let self = this;
         this.socket.onopen = (e) => {
             self.onOpen(e);
@@ -104,6 +107,16 @@ export class Pipe {
     }
 
     onMessage(event) {
+        console.log(event.data);
+        
+        // let data = new Uint8Array(event.data);
+        // console.log(data);
+        // let msg = CBOR.decode(event.data);
+        let msg = JSON.parse(event.data);
+        let data = new Uint8Array(msg.Patch);
+        console.log(data);
+        this.onPatch(data.buffer);
+        
         console.log("onMessage");
     }
 
@@ -127,11 +140,15 @@ export class Pipe {
 export class Application {
     constructor(url, root_element) {
         this.pipe = new Pipe(url);
-        this.pipe.onPatch = this.onPatch;
+        let self = this;
+        this.pipe.onPatch = (e) => {
+            self.onPatch(e);
+        }
         this.root_element = root_element;
     }
 
     onPatch(patch_data) {
+        console.log(this.root_element);
         let patch = new Patch(patch_data, this.root_element);
         patch.apply();
     }

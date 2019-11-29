@@ -5,22 +5,12 @@
     <script src="./bundle.js"></script>
     <script>
         window.onload = function() {
-            var request = new XMLHttpRequest();
-            request.open('GET', '/test_patch.bin');
-            request.responseType = "arraybuffer";
-            request.onload = function(evt) {
-                var response = request.response;
-                var patch = new greenhorn.Patch(request.response, document.body);
-                patch.apply();
-            };
-            request.send();
-
-            let app = new greenhorn.Application("ws://127.0.0.1:44123", document.body);
+            let app = new greenhorn.Application("ws://127.0.0.1:44123", document.getElementById("startup-dummy"));
         }
     </script>
   </head>
   <body>
-    <div>
+    <div id="startup-dummy">
       <h1>Hello Webpack</h1>
     </div>
   </body>

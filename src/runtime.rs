@@ -307,7 +307,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     }
 
     fn render_dom(&mut self) {
-        if (!self.dirty) {
+        if !self.dirty {
             return;
         }
         let old_dom = self.rendered.vdom.take();

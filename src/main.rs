@@ -99,8 +99,10 @@ impl App for Main {
 }
 
 fn main() {
-    let addr = SocketAddr::from_str("127.0.0.1:44123").unwrap();
-    let pipe = WebsocketPipe::new(addr).listen();
-    let (rt, _control) = Runtime::new(Main::new(), pipe);
-    task::block_on(rt.run());
+    loop {
+        let addr = SocketAddr::from_str("127.0.0.1:44123").unwrap();
+        let pipe = WebsocketPipe::new(addr).listen();
+        let (rt, _control) = Runtime::new(Main::new(), pipe);
+        task::block_on(rt.run());
+    }
 }
