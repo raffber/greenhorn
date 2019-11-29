@@ -3,13 +3,15 @@ use futures::Stream;
 use crate::dom_event::DomEvent;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum TxMsg {
+    Ping(),
     Patch(Vec<u8>),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum RxMsg {
+    Ping(),
     Event(DomEvent),
     FrameApplied(),
 }

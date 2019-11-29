@@ -193,6 +193,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                     self.rendered.apply(frame);
                 }
             }
+            RxMsg::Ping() => {}
         };
         true
     }

@@ -1,7 +1,7 @@
 use crate::Id;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum DomEvent {
     Empty(),
     RawEvent(),

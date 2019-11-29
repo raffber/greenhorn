@@ -203,6 +203,7 @@ mod tests {
     use super::*;
     use std::str::FromStr;
     use async_tungstenite::connect_async;
+    use assert_matches::assert_matches;
     use url::Url;
 
     #[test]
@@ -230,5 +231,67 @@ mod tests {
             }
         });
         task::block_on(handle);
+    }
+
+    #[test]
+    fn test_close_client() {
+        let addr = SocketAddr::from_str("127.0.0.1:5904").unwrap();
+        let pipe = WebsocketPipe::new(addr).listen();
+        let client = task::spawn(async move {
+            let url = Url::parse("ws://127.0.0.1:5904").unwrap();
+            let (mut stream, _) = connect_async(url).await.expect("Failed to connect!");
+            while let Some(msg) = stream.next().await {
+                // receive one message, then terminate
+                match msg.unwrap() {
+                    Message::Binary(data) => {
+                        let msg: TxMsg = serde_cbor::from_slice(data.as_slice()).unwrap();
+                        assert_matches!(msg, TxMsg::Ping());
+                        break
+                    },
+                    _ => panic!(),
+                }
+            }
+            stream.close(None).await.unwrap();
+        });
+        let (tx, mut rx) = pipe.split();
+        tx.send(TxMsg::Ping());
+        task::block_on(async move {
+            while let Some(_) = rx.next().await {
+                // we are not expecting any message, but the stream
+                // should terminate immediately
+                panic!()
+            }
+        });
+        task::block_on(client);
+    }
+
+    #[test]
+    fn test_close_server() {
+        let addr = SocketAddr::from_str("127.0.0.1:5905").unwrap();
+        let pipe = WebsocketPipe::new(addr).listen();
+        let client = task::spawn(async move {
+            let url = Url::parse("ws://127.0.0.1:5905").unwrap();
+            let (mut stream, _) = connect_async(url).await.expect("Failed to connect!");
+            while let Some(msg) = stream.next().await {
+                // receive one message, then terminate
+                match msg.unwrap() {
+                    Message::Close(None) => {
+                        stream.close(None).await.unwrap();
+                        break;
+                    },
+                    _ => panic!(),
+                }
+            }
+        });
+        let (tx, mut rx) = pipe.split();
+        tx.close();
+        task::block_on(async move {
+            while let Some(_) = rx.next().await {
+                // we are not expecting any message, but the stream
+                // should terminate immediately
+                panic!()
+            }
+        });
+        task::block_on(client);
     }
 }
