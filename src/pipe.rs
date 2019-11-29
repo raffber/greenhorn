@@ -16,6 +16,7 @@ pub enum RxMsg {
 
 pub trait Sender: Clone {
     fn send(&self, msg: TxMsg);
+    fn close(&self);
 }
 
 pub trait Receiver: Stream<Item = RxMsg> + Unpin + Send + 'static {}

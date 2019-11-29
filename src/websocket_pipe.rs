@@ -47,15 +47,17 @@ struct ConnectionHandler {
 
 impl ConnectionHandler {
     async fn run(&mut self) {
-        select! {
-            msg = self.req_rx.next().fuse() => {
-                if !self.tx_msg(msg).await {
-                    return;
-                }
-            },
-            msg = self.ws.next().fuse() => {
-                if !self.rx_msg(msg).await {
-                    return;
+        loop {
+            select! {
+                msg = self.req_rx.next().fuse() => {
+                    if !self.tx_msg(msg).await {
+                        return;
+                    }
+                },
+                msg = self.ws.next().fuse() => {
+                    if !self.rx_msg(msg).await {
+                        return;
+                    }
                 }
             }
         }
@@ -143,6 +145,10 @@ impl Sender for WebsocketSender {
     fn send(&self, msg: TxMsg) {
         let msg = serde_cbor::to_vec(&msg).unwrap();
         self.req_tx.unbounded_send(Message::Binary(msg)).unwrap();
+    }
+
+    fn close(&self) {
+        self.req_tx.close_channel();
     }
 }
 
