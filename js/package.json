@@ -22,5 +22,8 @@
     "presets": [
       "@babel/preset-env"
     ]
+  },
+  "dependencies": {
+    "cbor": "^5.0.1"
   }
 }
