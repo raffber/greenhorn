@@ -197,3 +197,38 @@ impl Stream for WebsocketReceiver {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+    use async_tungstenite::connect_async;
+    use url::Url;
+
+    #[test]
+    fn test_accept() {
+        let addr = SocketAddr::from_str("127.0.0.1:5903").unwrap();
+        let mut pipe = WebsocketPipe::new(addr).listen();
+        let handle = task::spawn(async move {
+            let url = Url::parse("ws://127.0.0.1:5903").unwrap();
+            let (mut stream, _) = connect_async(url).await.expect("Failed to connect!");
+            if let Some(msg) = stream.next().await {
+                match msg.unwrap() {
+                    Message::Text(txt) => assert_eq!(txt, "Hello, World".to_string()),
+                    _ => panic!()
+                }
+            }
+            stream.close(None).await.unwrap();
+        });
+        task::block_on(async move {
+            pipe.req_tx.unbounded_send(Message::Text("Hello, World".into())).unwrap();
+            let msg = pipe.resp_rx.next().await;
+            match msg {
+                None => pipe.req_tx.close_channel(),
+                Some(Message::Close(_)) => pipe.req_tx.close_channel(),
+                _  => panic!(),
+            }
+        });
+        task::block_on(handle);
+    }
+}
