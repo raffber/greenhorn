@@ -1,6 +1,7 @@
 use super::*;
 
 use assert_matches::assert_matches;
+use std::fs;
 
 #[test]
 fn test_remove_attr() {
@@ -214,4 +215,38 @@ fn test_add_child() {
     } else {
         panic!()
     }
+}
+
+#[test]
+fn test_output_patch() {
+    use crate::vdom::serialize::serialize;
+
+    let elem_b = VNode::element(VElement {
+        id: Id::new(),
+        tag: "div".into(),
+        attr: vec![Attr::new("class", "foo"), Attr::new("id", "bar")],
+        events: vec![EventHandler {
+            name: "click".to_string(),
+            no_propagate: false,
+            prevent_default: false
+        },EventHandler {
+            name: "mouseenter".to_string(),
+            no_propagate: false,
+            prevent_default: false
+        }
+        ],
+        children: vec![VNode::element(VElement {
+            id: Id::new(),
+            tag: "span".into(),
+            attr: vec![],
+            events: vec![],
+            children: vec![VNode::text("Hello, World", Id::new())],
+            namespace: None
+        })],
+        namespace: None
+    });
+
+    let patch = diff(None, elem_b.clone());
+    let serialized = serialize(patch);
+    fs::write("test_patch.bin", serialized).expect("Unable to write file!");
 }
