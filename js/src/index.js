@@ -4,6 +4,75 @@ const CBOR = require('cbor');
 
 const decoder = new TextDecoder();
 
+function serializeModifierState(evt) {
+    return {
+        "alt_key": evt.altKey,
+        "ctrl_key": evt.ctrlKey,
+        "meta_key": evt.metaKey,
+        "shift_key": evt.shiftKey,
+    };
+}
+
+function serializePoint(x,y) {
+    return {
+        "x": x,
+        "y": y
+    };
+}
+
+function serializeEvent(id, evt) {
+    if (evt instanceof MouseEvent) {
+        return {
+            "Mouse": [
+                id.serialize(),
+                {
+                    "modifier_state": serializeModifierState(evt),
+                    "button": evt.button,
+                    "buttons": evt.buttons,
+                    "client": serializePoint(evt.clientX, evt.clientY),
+                    "movement": serializePoint(evt.movementX, evt.movementY),
+                    "offset": serializePoint(evt.offsetX, evt.offsetY),
+                    "page": serializePoint(evt.pageX, evt.pageY),
+                    "screen": serializePoint(evt.screenX, evt.screenY),
+                }
+            ]
+        }
+    } else if (evt instanceof KeyboardEvent) {
+        return {
+            "Keyboard": [
+                id.serialize(),
+                {
+                    "modifier_state": serializeModifierState(evt),
+                    "code": evt.code,
+                    "key": evt.key,
+                    "location": evt.location,
+                    "repeat": evt.repeat,
+                }
+            ]
+        }
+    } else if (evt instanceof WheelEvent) {
+        return {
+            "Wheel": [
+                id.serialize(),
+                {
+                    "delta_x": evt.deltaX,
+                    "delta_y": evt.deltaY,
+                    "delta_z": evt.deltaZ,
+                    "delta_mode": evt.deltaMode,
+                }
+            ]
+        }
+    } else if (evt instanceof FocusEvent) {
+        return {
+            "Focus": id.serialize()
+        }
+    } else {
+        return {
+            "Base": id.serialize()
+        }
+    }
+}
+
 class Element {
     constructor(id, tag, attrs=[], events=[], children=[]) {
         this.id = id;
@@ -15,6 +84,7 @@ class Element {
 
     create(app) {
         let elem = document.createElement(this.tag);
+        let id = this.id;
         elem.setAttribute("__id__", this.id.toString())
         for (var k = 0; k < this.attrs.length; ++k) {
             let attr = this.attrs[k];
@@ -22,8 +92,11 @@ class Element {
         }
         for (var k = 0; k < this.events.length; ++k) {
             let evt = this.events[k];
+            // TODO: also set passive = true if !preventDefault
+            // TODO: also support once
+            // TODO: also support useCapture
             elem.addEventListener(evt.name, function(e) {
-                app.sendEvent(this.id, e);
+                app.sendEvent(id, e);
             })
         }
         for (var k = 0; k < this.children.length; ++k) {
@@ -55,8 +128,14 @@ class Id {
         return this.lo == other.lo && this.hi == other.hi;
     }
 
-    toString() {
+    stringify() {
         return this.hi.toString(16) + "-" + this.lo.toString(16);
+    }
+
+    serialize() {
+        return {
+            "id": this.lo + (this.hi * 2**32)
+        };
     }
 }
 
@@ -111,13 +190,13 @@ export class Pipe {
     }
 
     onMessage(event) {
-        // let data = new Uint8Array(event.data);
-        // console.log(data);
-        // let msg = CBOR.decode(event.data);
         let msg = JSON.parse(event.data);
         let data = new Uint8Array(msg.Patch);
         this.onPatch(data.buffer);
-        
+        let reply = JSON.stringify({
+            "FrameApplied": []
+        });
+        this.socket.send(reply);
         console.log("onMessage");
     }
 
@@ -129,8 +208,14 @@ export class Pipe {
         console.log("onError");
     }
 
-    sendEvent(evt, id) {
-        console.log("sendEvent");
+    sendEvent(id, evt) {
+        let serialized = serializeEvent(id, evt);
+        let msg = {
+            "Event": serialized
+        };
+        let data = JSON.stringify(msg);
+        this.socket.send(data);
+        console.log("sendEvent = " + data);
     }
 
     close() {

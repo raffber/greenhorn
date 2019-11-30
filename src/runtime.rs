@@ -326,6 +326,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         } else {
             Patch::from_dom(new_dom.clone())
         };
+        println!("Translations: {:?}", patch.translations);
         frame.translations.append(&mut patch.translations);
         self.dirty = false;
         println!("{:?}", patch);

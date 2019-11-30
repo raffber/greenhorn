@@ -51,7 +51,7 @@ pub enum DomEvent {
     Base(Id),
     Focus(Id),
     Keyboard(Id, KeyboardEvent),
-    Mouse(Id, KeyboardEvent),
+    Mouse(Id, MouseEvent),
     Wheel(Id, WheelEvent),
 }
 

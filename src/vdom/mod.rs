@@ -5,7 +5,6 @@ use std::rc::Rc;
 mod serialize;
 pub use serialize::serialize as patch_serialize;
 use std::hash::{Hash, Hasher};
-use crate::vdom::PatchItem::ChangeNamespace;
 
 
 // TODO: use lifetimes instead of RC
@@ -97,6 +96,17 @@ pub enum PatchItem {
     ChangeNamespace(Option<String>),
 }
 
+impl PatchItem {
+    fn is_move(&self) -> bool {
+        match self {
+            PatchItem::Ascend() => true,
+            PatchItem::Descend() => true,
+            PatchItem::NextNode() => true,
+            _ => false
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Patch {
     pub items: Vec<PatchItem>,
@@ -151,9 +161,43 @@ pub fn diff(old: Option<VNode>, new: VNode) -> Patch {
     let mut patch = Patch::new();
     if let Some(old) = old {
         diff_recursive(old, new, &mut patch);
+        patch = optimize_patch(patch);
     } else {
         patch.push(PatchItem::AppendChild(new))
     }
+    patch
+}
+
+fn optimize_patch(mut patch: Patch) -> Patch {
+    // optimize all moves
+    let mut all_moves = true;
+    for x in &patch.items {
+        all_moves |= x.is_move();
+    }
+    if all_moves {
+        patch.items.clear();
+        return patch;
+    }
+
+    // optimize Descend(), Ascend() pairs to no-op
+    let mut new_items = Vec::new();
+    let mut last_descend = false;
+    for x in patch.items.drain(..) {
+        match x {
+            PatchItem::Descend() => {
+                last_descend = true;
+            }
+            PatchItem::Ascend() => {
+                if last_descend {
+                    new_items.pop();
+                    continue;
+                }
+            }
+            _ => ()
+        };
+        new_items.push(x);
+    }
+    patch.items = new_items;
     patch
 }
 
@@ -258,13 +302,15 @@ fn diff_recursive(old: VNode, new: VNode, patch: &mut Patch) {
                 let _new_id = (*elem_new).id.clone();
                 diff_children(elem_old.clone(), elem_new.clone(), patch);
                 if elem_old.namespace != elem_new.namespace {
-                    patch.push(ChangeNamespace(elem_new.namespace.clone()))
+                    patch.push(PatchItem::ChangeNamespace(elem_new.namespace.clone()))
                 }
-                patch.translate(elem_new.id, elem_old.id);
+                patch.translate(elem_old.id, elem_new.id);
             }
         }
-        (VNode::Text(_), VNode::Text(elem_new)) => {
-            patch.push(PatchItem::ChangeText(elem_new))
+        (VNode::Text(elem_old), VNode::Text(elem_new)) => {
+            if elem_old.data != elem_new.data {
+                patch.push(PatchItem::ChangeText(elem_new))
+            }
         }
         (_, new) => patch.push(PatchItem::Replace(new)),
     }
