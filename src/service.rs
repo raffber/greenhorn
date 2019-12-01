@@ -8,30 +8,26 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use std::sync::Arc;
 
-pub trait ServiceProcess<T>: Stream<Item = T> {
-    fn stop(self);
-    fn setup(&mut self, _mailbox: ServiceMailbox) {}
-}
 
-pub trait Service {
+pub trait Service : Stream<Item = <Self as Service>::Data> {
     type Data: 'static + Send;
-    type Output: ServiceProcess<Self::Data> + Unpin + 'static + Send;
 
-    fn start(self) -> Self::Output;
+    fn start(&mut self, mailbox: ServiceMailbox);
+    fn stop(self);
 }
 
 pub struct ServiceSubscription<T: 'static> {
-    inner: Box<dyn ServiceProcessMap<T>>,
+    inner: Box<dyn ServiceMap<T>>,
 }
 
 impl<T: 'static + Send> ServiceSubscription<T> {
-    pub fn start<S: Service, Mapper: 'static + Fn(S::Data) -> T + Send>(
-        service: S,
-        mapper: Mapper,
-    ) -> Self {
-        let process = service.start();
-        let ret = ServiceProcessMapDirect {
-            process,
+    pub fn new<S, Mapper>(service: S, mapper: Mapper) -> Self
+    where
+        S: Unpin + Service + Send + 'static,
+        Mapper: 'static + Fn(S::Data) -> T + Send
+    {
+        let ret = ServiceMapDirect {
+            service,
             mapper,
             id: Id::new(),
             phantom_data: PhantomData,
@@ -42,11 +38,15 @@ impl<T: 'static + Send> ServiceSubscription<T> {
         }
     }
 
+    pub fn start(&mut self, mailbox: ServiceMailbox) {
+        self.inner.start(mailbox);
+    }
+
     pub fn map<U: 'static, Mapper: 'static + Fn(T) -> U + Send + Sync>(
         self,
         mapper: Arc<Mapper>,
     ) -> ServiceSubscription<U> {
-        let ret = ServiceProcessMapped {
+        let ret = ServiceMapped {
             inner: self.inner,
             mapper,
         };
@@ -62,10 +62,6 @@ impl<T: 'static + Send> ServiceSubscription<T> {
     pub fn id(&self) -> Id {
         self.inner.id()
     }
-
-    pub fn setup(&mut self, mailbox: ServiceMailbox) {
-        self.inner.setup(mailbox)
-    }
 }
 
 impl<T: 'static> Stream for ServiceSubscription<T> {
@@ -80,41 +76,43 @@ impl<T: 'static> Stream for ServiceSubscription<T> {
     }
 }
 
-trait ServiceProcessMap<T>: Send {
+trait ServiceMap<T> : Send {
+    fn start(&mut self, mailbox: ServiceMailbox);
     fn stop(self: Box<Self>);
     fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<T>>;
     fn size_hint(&self) -> (usize, Option<usize>);
     fn id(&self) -> Id;
-    fn setup(&mut self, mailbox: ServiceMailbox);
 }
 
-struct ServiceProcessMapDirect<
-    Data,
-    T,
-    Mapper: Fn(Data) -> T,
-    Process: ServiceProcess<Data> + Unpin,
+struct ServiceMapDirect<
+    T: Send,
+    Mapper: Fn(S::Data) -> T + Send,
+    S: Service + Unpin + Send,
 > {
-    process: Process,
+    service: S,
     mapper: Mapper,
     id: Id,
-    phantom_data: std::marker::PhantomData<Data>,
+    phantom_data: std::marker::PhantomData<S::Data>,
     phantom_t: std::marker::PhantomData<T>,
 }
 
-impl<Data, T, Mapper, Process> ServiceProcessMap<T>
-    for ServiceProcessMapDirect<Data, T, Mapper, Process>
+impl<T, Mapper, S> ServiceMap<T>
+    for ServiceMapDirect<T, Mapper, S>
 where
     T: Send,
-    Data: Send,
-    Mapper: Fn(Data) -> T + Send,
-    Process: ServiceProcess<Data> + Unpin + Send,
+    S: Service + Unpin + Send,
+    Mapper: Fn(S::Data) -> T + Send,
 {
+    fn start(&mut self, mailbox: ServiceMailbox) {
+        self.service.start(mailbox);
+    }
+
     fn stop(self: Box<Self>) {
-        self.process.stop();
+        self.service.stop();
     }
 
     fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<T>> {
-        let ret = self.process.poll_next_unpin(cx);
+        let ret = self.service.poll_next_unpin(cx);
         match ret {
             Poll::Ready(Some(data)) => Poll::Ready(Some((self.mapper)(data))),
             Poll::Ready(None) => Poll::Ready(None),
@@ -123,26 +121,26 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.process.size_hint()
+        self.service.size_hint()
     }
 
     fn id(&self) -> Id {
         self.id
     }
-
-    fn setup(&mut self, mailbox: ServiceMailbox) {
-        self.process.setup(mailbox);
-    }
 }
 
-struct ServiceProcessMapped<T, U, Mapper: Fn(T) -> U> {
-    inner: Box<dyn ServiceProcessMap<T>>,
+struct ServiceMapped<T, U, Mapper: Fn(T) -> U> {
+    inner: Box<dyn ServiceMap<T>>,
     mapper: Arc<Mapper>,
 }
 
-impl<T, U, Mapper: Fn(T) -> U + Send + Sync> ServiceProcessMap<U>
-    for ServiceProcessMapped<T, U, Mapper>
+impl<T, U, Mapper: Fn(T) -> U + Send + Sync> ServiceMap<U>
+    for ServiceMapped<T, U, Mapper>
 {
+    fn start(&mut self, mailbox: ServiceMailbox) {
+        self.inner.start(mailbox);
+    }
+
     fn stop(self: Box<Self>) {
         self.inner.stop();
     }
@@ -162,10 +160,6 @@ impl<T, U, Mapper: Fn(T) -> U + Send + Sync> ServiceProcessMap<U>
 
     fn id(&self) -> Id {
         self.inner.id()
-    }
-
-    fn setup(&mut self, mailbox: ServiceMailbox) {
-        self.inner.setup(mailbox)
     }
 }
 

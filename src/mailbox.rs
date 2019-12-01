@@ -125,11 +125,11 @@ impl<T: 'static> Mailbox<T> {
 
     pub fn spawn<S, F>(&mut self, service: S, fun: F)
     where
-        S: Service,
+        S: Service + Send + Unpin + 'static,
         T: Send,
         F: 'static + Fn(S::Data) -> T + Send,
     {
-        let subs = ServiceSubscription::start(service, fun);
+        let subs = ServiceSubscription::new(service, fun);
         self.services.send(subs);
     }
 
@@ -182,12 +182,12 @@ impl<T: 'static> Mailbox<T> {
 mod tests {
     use super::*;
     use crate::mailbox::tests::MsgB::ItemB;
-    use crate::service::ServiceProcess;
     use assert_matches::assert_matches;
     use dummy_waker::dummy_context;
     use futures::task::{Context, Poll};
     use futures::Stream;
     use std::pin::Pin;
+    use crate::service::ServiceMailbox;
 
     #[derive(Debug)]
     enum MsgA {
@@ -203,25 +203,22 @@ mod tests {
 
     impl Service for MyService {
         type Data = i32;
-        type Output = MyServiceProcess;
 
-        fn start(self) -> Self::Output {
-            MyServiceProcess {}
+        fn start(&mut self, mailbox: ServiceMailbox) {
+            unimplemented!()
+        }
+
+        fn stop(self) {
+            unimplemented!()
         }
     }
 
-    struct MyServiceProcess {}
-
-    impl Stream for MyServiceProcess {
+    impl Stream for MyService {
         type Item = i32;
 
         fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
             Poll::Ready(Some(1))
         }
-    }
-
-    impl ServiceProcess<i32> for MyServiceProcess {
-        fn stop(self) {}
     }
 
     #[test]

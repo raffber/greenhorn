@@ -119,7 +119,7 @@ impl<Msg: Send> ServiceRunner<Msg> {
     pub(crate) fn run(self) -> task::JoinHandle<()> {
         let mut runner = self;
         task::spawn(async {
-            runner.service.setup(runner.mailbox);
+            runner.service.start(runner.mailbox);
             let id = runner.service.id();
             loop {
                 select! {
