@@ -179,6 +179,6 @@ pub enum RxServiceMessage {
 }
 
 pub struct ServiceMailbox {
-    rx: UnboundedReceiver<TxServiceMessage>,
-    tx: UnboundedSender<RxServiceMessage>,
+    pub rx: UnboundedReceiver<RxServiceMessage>,
+    pub tx: UnboundedSender<TxServiceMessage>,
 }

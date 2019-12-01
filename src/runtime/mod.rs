@@ -3,13 +3,14 @@ use crate::event::{Emission, Subscription};
 use crate::mailbox::Mailbox;
 use crate::pipe::Sender;
 use crate::pipe::{Pipe, RxMsg, TxMsg};
-use crate::service::ServiceSubscription;
 use crate::vdom::{diff, patch_serialize, Patch, VElement, VNode, EventHandler};
 use crate::Id;
 use async_timer::Interval;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::{select, FutureExt, StreamExt};
 use std::collections::{HashMap, VecDeque};
+use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
+
 mod service_runner;
 
 enum PendingEvent {
@@ -29,7 +30,7 @@ pub struct Runtime<A: 'static + App, P: Pipe> {
     event_queue: VecDeque<PendingEvent>,
     rendered: RenderedState<A::Message>,
     next_frame: Option<Frame<A::Message>>,
-    services: Vec<ServiceSubscription<A::Message>>,
+    services: ServiceCollection<A::Message>,
     dirty: bool,
 }
 
@@ -138,7 +139,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             receiver,
             event_queue: VecDeque::new(),
             rendered: RenderedState::new(),
-            services: Vec::new(),
+            services: ServiceCollection::new(),
             next_frame: None,
             dirty: true,
         };
@@ -170,9 +171,23 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                     } else {
                         break;
                     }
+                },
+                msg = self.services.next().fuse() => {
+                    if let Some(msg) = msg {
+                        self.handle_service_msg(msg);
+                    }
                 }
             }
         }
+    }
+
+    fn handle_service_msg(&mut self, msg: ServiceMessage<A::Message>) {
+        match msg {
+            ServiceMessage::Update(msg) => self.update(msg),
+            ServiceMessage::Tx(id, msg) => self.sender.send(TxMsg::Service(id, msg)),
+            ServiceMessage::Stopped() => {},
+        }
+
     }
 
     async fn handle_pipe_msg(&mut self, msg: RxMsg) -> bool {
@@ -198,6 +213,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                 }
             }
             RxMsg::Ping() => {}
+            _ => {}
         };
         true
     }
@@ -216,7 +232,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             self.event_queue.push_back(PendingEvent::Component(e));
         }
         while let Ok(service) = receiver.services.try_recv() {
-            self.services.push(service);
+            self.services.spawn(service);
         }
     }
 

@@ -42,7 +42,7 @@ impl<T: 'static> NodeBuilder<T> {
 
     pub fn mount<ChildMsg, R, Mapper>(&self, comp: &Component<R>, mapper: Mapper) -> Node<T>
     where
-        ChildMsg: 'static,
+        ChildMsg: 'static + Send,
         R: 'static + Render<Message = ChildMsg>,
         Mapper: 'static + Fn(ChildMsg) -> T,
     {

@@ -366,7 +366,7 @@ impl<T: 'static + Render> Component<T> {
 }
 
 pub trait Render {
-    type Message: 'static;
+    type Message: 'static + Send;
     fn render(&self) -> Node<Self::Message>;
 
     fn html(&self) -> NodeBuilder<Self::Message> {
