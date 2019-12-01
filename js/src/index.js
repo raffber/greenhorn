@@ -85,7 +85,6 @@ class Element {
     create(app) {
         let elem = document.createElement(this.tag);
         let id = this.id;
-        elem.setAttribute("__id__", this.id.toString())
         for (var k = 0; k < this.attrs.length; ++k) {
             let attr = this.attrs[k];
             elem.setAttribute(attr[0], attr[1]);
@@ -108,8 +107,7 @@ class Element {
 }
 
 class Text {
-    constructor(id, text) {
-        this.id = id;
+    constructor(text) {
         this.text = text;
     }
 
@@ -413,9 +411,8 @@ export class Patch {
 
     deserializeText() {
         console.log("deserializeText");
-        let id = this.deserializeId();
         let text = this.deserializeString();
-        return new Text(id, text); 
+        return new Text(text); 
     }
 
     deserializeOption(deserializer) {
@@ -429,6 +426,10 @@ export class Patch {
 
     deserializeId() {
         console.log("deserializeId");
+        let available = this.popU8() > 0;
+        if (!available) {
+            return null;
+        }
         let ret = id_from_dataview(this.patch, this.offset);
         this.offset += 8;
         return ret;

@@ -271,7 +271,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                 result.components.push(comp);
                 self.render_recursive(result, rendered)
             }
-            Node::Text(id, text) => Some(VNode::text(text, id)),
+            Node::Text(text) => Some(VNode::text(text)),
             Node::Element(mut elem) => {
                 let mut children = Vec::new();
                 for child in elem.children.take().unwrap().drain(..) {

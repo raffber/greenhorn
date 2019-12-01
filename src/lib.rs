@@ -32,7 +32,7 @@ pub struct Id {
     id: u64,
 }
 
-static COUNTER: AtomicU64 = AtomicU64::new(0);
+static COUNTER: AtomicU64 = AtomicU64::new(1);
 
 impl Id {
     pub fn new() -> Id {
@@ -42,6 +42,14 @@ impl Id {
 
     pub fn data(&self) -> u64 {
         self.id
+    }
+
+    pub fn empty() -> Self {
+        Self { id: 0 }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.id == 0
     }
 }
 

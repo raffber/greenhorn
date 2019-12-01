@@ -28,8 +28,7 @@ impl PatchSerialize for VNode {
             }
             VNode::Text(elem) => {
                 output.push(1);
-                elem.id.serialize(output);
-                elem.data.serialize(output);
+                elem.serialize(output);
             }
         }
     }
@@ -37,7 +36,12 @@ impl PatchSerialize for VNode {
 
 impl PatchSerialize for Id {
     fn serialize(&self, output: &mut Vec<u8>) {
-        output.extend_from_slice(&self.id.to_le_bytes());
+        if self.is_empty() {
+            output.push(0);
+        } else {
+            output.push(1);
+            output.extend_from_slice(&self.id.to_le_bytes());
+        }
     }
 }
 
@@ -84,8 +88,7 @@ pub fn serialize(patch: Patch) -> Vec<u8> {
             }
             PatchItem::ChangeText(text) => {
                 output.push(4);
-                text.id.serialize(&mut output);
-                text.data.serialize(&mut output);
+                text.serialize(&mut output);
             }
             PatchItem::Ascend() => {
                 output.push(5);

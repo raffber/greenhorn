@@ -57,7 +57,7 @@ pub struct TextBuilder<T> {
 
 impl<T> TextBuilder<T> {
     fn build(self) -> Node<T> {
-        Node::Text(Id::new(), self.text)
+        Node::Text(self.text)
     }
 }
 
@@ -79,7 +79,7 @@ pub struct ElementBuilder<T> {
 impl<T: 'static> ElementBuilder<T> {
     fn new(tag: String, namespace: Option<String>) -> ElementBuilder<T> {
         ElementBuilder {
-            id: Id::new(),
+            id: Id::empty(),
             tag,
             attrs: Vec::new(),
             listeners: Vec::new(),
@@ -89,6 +89,9 @@ impl<T: 'static> ElementBuilder<T> {
     }
 
     pub fn on<S: Into<String>, F: 'static + Fn(DomEvent) -> T>(mut self, name: S, fun: F) -> Self {
+        if self.id.is_empty() {
+            self.id = Id::new();
+        }
         self.listeners.push(Listener {
             event_name: name.into(),
             node_id: self.id.clone(),
@@ -127,7 +130,7 @@ impl<T: 'static> ElementBuilder<T> {
     }
 
     pub fn text<S: Into<String>>(mut self, text: S) -> Self {
-        self.children.push(Node::Text(Id::new(), text.into()));
+        self.children.push(Node::Text(text.into()));
         self
     }
 

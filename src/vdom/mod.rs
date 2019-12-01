@@ -54,23 +54,14 @@ pub struct VElement {
 }
 
 #[derive(Debug, Clone)]
-pub struct VText {
-    pub id: Id,
-    pub data: String,
-}
-
-#[derive(Debug, Clone)]
 pub enum VNode {
     Element(Rc<VElement>),
-    Text(Rc<VText>),
+    Text(Rc<String>),
 }
 
 impl VNode {
-    pub fn text<T: Into<String>>(data: T, id: Id) -> VNode {
-        VNode::Text(Rc::new(VText {
-            id,
-            data: data.into(),
-        }))
+    pub fn text<T: Into<String>>(data: T) -> VNode {
+        VNode::Text(Rc::new(data.into()))
     }
 
     pub fn element(elem: VElement) -> VNode {
@@ -82,7 +73,7 @@ impl VNode {
 pub enum PatchItem {
     AppendChild(VNode),
     Replace(VNode),
-    ChangeText(Rc<VText>),
+    ChangeText(Rc<String>),
     Ascend(),
     Descend(),
     RemoveChildren(),
@@ -141,18 +132,15 @@ impl Patch {
 }
 
 impl VNode {
-    pub fn from_string<T: Into<String>>(id: Id, s: T) -> VNode {
-        let text = Rc::new(VText {
-            id: id.clone(),
-            data: s.into(),
-        });
+    pub fn from_string<T: Into<String>>(s: T) -> VNode {
+        let text = Rc::new(s.into());
         VNode::Text(text)
     }
 
     fn id(&self) -> Id {
         match self {
             VNode::Element(e) => e.id.clone(),
-            VNode::Text(e) => e.id.clone(),
+            VNode::Text(_) => Id::empty(),
         }
     }
 }
@@ -304,11 +292,13 @@ fn diff_recursive(old: VNode, new: VNode, patch: &mut Patch) {
                 if elem_old.namespace != elem_new.namespace {
                     patch.push(PatchItem::ChangeNamespace(elem_new.namespace.clone()))
                 }
-                patch.translate(elem_old.id, elem_new.id);
+                if !elem_old.id.is_empty() {
+                    patch.translate(elem_old.id, elem_new.id);
+                }
             }
         }
         (VNode::Text(elem_old), VNode::Text(elem_new)) => {
-            if elem_old.data != elem_new.data {
+            if elem_old != elem_new {
                 patch.push(PatchItem::ChangeText(elem_new))
             }
         }

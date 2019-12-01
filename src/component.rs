@@ -223,7 +223,7 @@ impl<T: 'static, U: 'static> ComponentMap<U> for ComponentRemap<T, U> {
 pub enum Node<T> {
     ElementMap(Box<dyn ElementMap<T>>),
     Component(Box<dyn ComponentMap<T>>),
-    Text(Id, String),
+    Text(String),
     Element(NodeElement<T>),
     EventSubscription(Id, Subscription<T>),
 }
@@ -241,7 +241,7 @@ impl<T: 'static> Node<T> {
                 Node::ElementMap(ret)
             }
             Node::Component(inner) => Node::Component(ComponentRemap::new(fun, inner)),
-            Node::Text(id, text) => Node::Text(id, text),
+            Node::Text(text) => Node::Text(text),
             Node::Element(elem) => Node::ElementMap(ElementMapDirect::new(fun, elem)),
             Node::EventSubscription(id, evt) => Node::EventSubscription(id.clone(), evt.map(fun)),
         }
@@ -251,7 +251,7 @@ impl<T: 'static> Node<T> {
         match self {
             Node::ElementMap(inner) => inner.id(),
             Node::Component(inner) => inner.id(),
-            Node::Text(id, _) => id.clone(),
+            Node::Text(_) => Id::empty(),
             Node::Element(elem) => elem.id,
             Node::EventSubscription(id, _) => id.clone(),
         }
@@ -260,13 +260,13 @@ impl<T: 'static> Node<T> {
 
 impl<T: 'static> From<String> for Node<T> {
     fn from(value: String) -> Self {
-        Node::Text(Id::new(), value)
+        Node::Text(value)
     }
 }
 
 impl<T: 'static> From<&str> for Node<T> {
     fn from(value: &str) -> Self {
-        Node::Text(Id::new(), value.into())
+        Node::Text(value.into())
     }
 }
 
