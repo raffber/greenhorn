@@ -9,6 +9,7 @@ use async_timer::Interval;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::{select, FutureExt, StreamExt};
 use std::collections::{HashMap, VecDeque};
+use async_std::task;
 use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
 
 mod service_runner;
@@ -31,6 +32,8 @@ pub struct Runtime<A: 'static + App, P: Pipe> {
     rendered: RenderedState<A::Message>,
     next_frame: Option<Frame<A::Message>>,
     services: ServiceCollection<A::Message>,
+    render_tx: UnboundedSender<()>,
+    render_rx: UnboundedReceiver<()>,
     dirty: bool,
 }
 
@@ -131,6 +134,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     pub fn new(app: A, pipe: P) -> (Runtime<A, P>, RuntimeControl) {
         let (tx, rx) = unbounded::<RuntimeMsg>();
         let (sender, receiver) = pipe.split();
+        let (render_tx, render_rx) = unbounded();
         let runtime = Runtime {
             tx: tx.clone(),
             rx,
@@ -140,18 +144,21 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             event_queue: VecDeque::new(),
             rendered: RenderedState::new(),
             services: ServiceCollection::new(),
+            render_tx,
+            render_rx,
             next_frame: None,
-            dirty: true,
+            dirty: false
         };
         let control = RuntimeControl { tx };
         (runtime, control)
     }
 
     pub async fn run(mut self) {
-        let mut interval = Interval::platform_new(core::time::Duration::from_millis(30));
+        self.schedule_render();
         loop {
             select! {
-                _ = interval.as_mut().fuse() => {
+                _ = self.render_rx.next().fuse() => {
+                    self.dirty = false;
                     self.render_dom()
                 },
                 msg = self.receiver.next().fuse() => {
@@ -224,8 +231,22 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         }
     }
 
-    fn update(&mut self, msg: A::Message) {
+    fn schedule_render(&mut self) {
+        if self.dirty {
+            return;
+        }
+        let render_tx = self.render_tx.clone();
+        task::spawn(async move {
+            let mut timer = Interval::platform_new(core::time::Duration::from_millis(30));
+            timer.as_mut().await;
+            timer.cancel();
+            let _ = render_tx.unbounded_send(());
+        });
         self.dirty = true;
+    }
+
+    fn update(&mut self, msg: A::Message) {
+        self.schedule_render();
         let (mailbox, receiver) = Mailbox::<A::Message>::new();
         self.app.update(msg, mailbox);
         while let Ok(e) = receiver.emissions.try_recv() {
@@ -325,9 +346,6 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     }
 
     fn render_dom(&mut self) {
-        if !self.dirty {
-            return;
-        }
         let old_dom = self.rendered.vdom.take();
         let dom = self.app.render();
 
