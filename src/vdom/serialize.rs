@@ -59,6 +59,13 @@ impl PatchSerialize for String {
     }
 }
 
+impl PatchSerialize for &str {
+    fn serialize(&self, output: &mut Vec<u8>) {
+        (self.len() as u32).serialize(output);
+        output.extend_from_slice(self.as_bytes());
+    }
+}
+
 impl PatchSerialize for EventHandler {
     fn serialize(&self, output: &mut Vec<u8>) {
         output.push(self.no_propagate.into());
@@ -126,10 +133,6 @@ pub fn serialize(patch: Patch) -> Vec<u8> {
             PatchItem::AddEvent(evt) => {
                 output.push(14);
                 evt.serialize(&mut output);
-            }
-            PatchItem::ChangeNamespace(ns) => {
-                output.push(15);
-                ns.serialize(&mut output);
             }
         }
     }

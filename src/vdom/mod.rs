@@ -55,40 +55,39 @@ pub struct VElement {
 
 #[derive(Debug, Clone)]
 pub enum VNode {
-    Element(Rc<VElement>),
-    Text(Rc<String>),
+    Element(VElement),
+    Text(String),
 }
 
 impl VNode {
     pub fn text<T: Into<String>>(data: T) -> VNode {
-        VNode::Text(Rc::new(data.into()))
+        VNode::Text(data.into())
     }
 
     pub fn element(elem: VElement) -> VNode {
-        VNode::Element(Rc::new(elem))
+        VNode::Element(elem)
     }
 }
 
 #[derive(Debug)]
-pub enum PatchItem {
-    AppendChild(VNode),
-    Replace(VNode),
-    ChangeText(Rc<String>),
+pub enum PatchItem<'a> {
+    AppendChild(&'a VNode),
+    Replace(&'a VNode),
+    ChangeText(&'a str),
     Ascend(),
     Descend(),
     RemoveChildren(),
     TruncateChildren(),
     NextNode(),
-    RemoveAttribute(String),
-    AddAtrribute(String, String),
-    ReplaceAttribute(String, String),
-    RemoveEvent(EventHandler),
-    AddEvent(EventHandler),
-    ChangeNamespace(Option<String>),
+    RemoveAttribute(&'a str),
+    AddAtrribute(&'a str, &'a str),
+    ReplaceAttribute(&'a str, &'a str),
+    RemoveEvent(&'a EventHandler),
+    AddEvent(&'a EventHandler),
 }
 
-impl PatchItem {
-    fn is_move(&self) -> bool {
+impl<'a> PatchItem<'a> {
+    fn is_move(&'a self) -> bool {
         match self {
             PatchItem::Ascend() => true,
             PatchItem::Descend() => true,
@@ -99,12 +98,12 @@ impl PatchItem {
 }
 
 #[derive(Debug)]
-pub struct Patch {
-    pub items: Vec<PatchItem>,
+pub struct Patch<'a> {
+    pub items: Vec<PatchItem<'a>>,
     pub translations: Vec<(Id, Id)>,
 }
 
-impl Patch {
+impl<'a> Patch<'a> {
     fn new() -> Self {
         Patch {
             items: vec![],
@@ -112,13 +111,13 @@ impl Patch {
         }
     }
 
-    pub fn from_dom(vnode: VNode) -> Self {
+    pub fn from_dom(vnode: &'a VNode) -> Self {
         let mut patch = Patch::new();
         patch.push(PatchItem::Replace(vnode));
         patch
     }
 
-    fn push(&mut self, item: PatchItem) {
+    fn push(&mut self, item: PatchItem<'a>) {
         self.items.push(item)
     }
 
@@ -133,8 +132,7 @@ impl Patch {
 
 impl VNode {
     pub fn from_string<T: Into<String>>(s: T) -> VNode {
-        let text = Rc::new(s.into());
-        VNode::Text(text)
+        VNode::Text(s.into())
     }
 
     fn id(&self) -> Id {
@@ -145,18 +143,18 @@ impl VNode {
     }
 }
 
-pub fn diff(old: Option<VNode>, new: VNode) -> Patch {
+pub fn diff<'a>(old: Option<&'a VNode>, new: &'a VNode) -> Patch<'a> {
     let mut patch = Patch::new();
     if let Some(old) = old {
         diff_recursive(old, new, &mut patch);
-        patch = optimize_patch(patch);
+        optimize_patch(&mut patch);
     } else {
         patch.push(PatchItem::AppendChild(new))
     }
     patch
 }
 
-fn optimize_patch(mut patch: Patch) -> Patch {
+fn optimize_patch(patch: &mut Patch) {
     // optimize all moves
     let mut all_moves = true;
     for x in &patch.items {
@@ -164,7 +162,6 @@ fn optimize_patch(mut patch: Patch) -> Patch {
     }
     if all_moves {
         patch.items.clear();
-        return patch;
     }
 
     // optimize Descend(), Ascend() pairs to no-op
@@ -186,10 +183,9 @@ fn optimize_patch(mut patch: Patch) -> Patch {
         new_items.push(x);
     }
     patch.items = new_items;
-    patch
 }
 
-fn diff_attrs(old: Rc<VElement>, new: Rc<VElement>, patch: &mut Patch) {
+fn diff_attrs<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) {
     let mut old_kv = HashMap::new();
     for attr in old.attr.iter() {
         old_kv.insert(&attr.key, &attr.value);
@@ -202,24 +198,24 @@ fn diff_attrs(old: Rc<VElement>, new: Rc<VElement>, patch: &mut Patch) {
     for attr in new.attr.iter() {
         if let Some(&old_v) = old_kv.get(&attr.key) {
             if old_v != &attr.value {
-                let p = PatchItem::ReplaceAttribute(attr.key.clone(), attr.value.clone());
+                let p = PatchItem::ReplaceAttribute(&attr.key, &attr.value);
                 patch.push(p);
             }
         } else {
-            let p = PatchItem::AddAtrribute(attr.key.clone(), attr.value.clone());
+            let p = PatchItem::AddAtrribute(&attr.key, &attr.value);
             patch.push(p);
         }
     }
 
     for attr in old.attr.iter() {
         if !new_kv.contains_key(&attr.key) {
-            let p = PatchItem::RemoveAttribute(attr.key.clone());
+            let p = PatchItem::RemoveAttribute(&attr.key);
             patch.push(p);
         }
     }
 }
 
-fn diff_children(old: Rc<VElement>, new: Rc<VElement>, patch: &mut Patch) {
+fn diff_children<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) {
     if old.children.is_empty() && new.children.is_empty() {
         return;
     }
@@ -239,7 +235,7 @@ fn diff_children(old: Rc<VElement>, new: Rc<VElement>, patch: &mut Patch) {
     for k in range {
         let old_node = old.children.get(k).unwrap();
         let new_node = new.children.get(k).unwrap();
-        diff_recursive(old_node.clone(), new_node.clone(), patch);
+        diff_recursive(old_node, new_node, patch);
         patch.push(PatchItem::NextNode());
     }
 
@@ -250,14 +246,14 @@ fn diff_children(old: Rc<VElement>, new: Rc<VElement>, patch: &mut Patch) {
         let range = (n_new - n_old - 1)..n_new;
         for k in range {
             let new_node = new.children.get(k).unwrap();
-            patch.push(PatchItem::AppendChild(new_node.clone()))
+            patch.push(PatchItem::AppendChild(new_node))
         }
     }
 
     patch.push(PatchItem::Ascend())
 }
 
-fn diff_events(old: Rc<VElement>, new: Rc<VElement>, patch: &mut Patch) {
+fn diff_events<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) {
     let mut old_evts = HashSet::new();
     for evt in &old.events {
         old_evts.insert(evt);
@@ -269,29 +265,26 @@ fn diff_events(old: Rc<VElement>, new: Rc<VElement>, patch: &mut Patch) {
     for evt in old_evts.iter() {
         let evt = *evt;
         if !new_evts.contains(evt) {
-            patch.push(PatchItem::RemoveEvent(evt.clone()));
+            patch.push(PatchItem::RemoveEvent(&evt));
         }
     }
     for evt in new_evts {
         if !old_evts.contains(evt) {
-            patch.push(PatchItem::AddEvent(evt.clone()));
+            patch.push(PatchItem::AddEvent(&evt));
         }
     }
 }
 
-fn diff_recursive(old: VNode, new: VNode, patch: &mut Patch) {
+fn diff_recursive<'a>(old: &'a VNode, new: &'a VNode, patch: &mut Patch<'a>) {
     match (old, new) {
         (VNode::Element(elem_old), VNode::Element(elem_new)) => {
-            if elem_old.tag != elem_new.tag {
-                patch.push(PatchItem::Replace(VNode::Element(elem_new)))
+            if elem_old.tag != elem_new.tag || elem_old.namespace != elem_new.namespace {
+                patch.push(PatchItem::Replace(new))
             } else {
-                diff_attrs(elem_old.clone(), elem_new.clone(), patch);
-                diff_events(elem_old.clone(), elem_new.clone(), patch);
+                diff_attrs(elem_old, elem_new, patch);
+                diff_events(elem_old, elem_new, patch);
                 let _new_id = (*elem_new).id.clone();
-                diff_children(elem_old.clone(), elem_new.clone(), patch);
-                if elem_old.namespace != elem_new.namespace {
-                    patch.push(PatchItem::ChangeNamespace(elem_new.namespace.clone()))
-                }
+                diff_children(elem_old, elem_new, patch);
                 if !elem_old.id.is_empty() {
                     patch.translate(elem_new.id, elem_old.id);
                 }

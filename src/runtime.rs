@@ -321,10 +321,10 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         let new_dom = frame.vdom.as_mut().expect("Expected an actual DOM to render.");
 
         // create a patch
-        let mut patch = if let Some(old_dom) = old_dom {
-            diff(Some(old_dom), new_dom.clone())
+        let mut patch = if let Some(old_dom) = &old_dom {
+            diff(Some(&old_dom), &new_dom)
         } else {
-            Patch::from_dom(new_dom.clone())
+            Patch::from_dom(&new_dom)
         };
         println!("Translations: {:?}", patch.translations);
         frame.translations.append(&mut patch.translations);
@@ -333,11 +333,12 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         if patch.is_empty() {
             self.rendered.apply(frame);
         } else {
+            let serialized = patch_serialize(patch);
+
             // schedule next frame
             self.next_frame = Some(frame);
 
             // serialize the patch and send it to the client
-            let serialized = patch_serialize(patch);
             self.sender.send(TxMsg::Patch(serialized));
         }
     }

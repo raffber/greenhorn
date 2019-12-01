@@ -267,7 +267,6 @@ export class Patch {
             12: Patch.prototype.replaceAttribute,
             13: Patch.prototype.removeEvent,
             14: Patch.prototype.addEvent,
-            15: Patch.prototype.changeNamespace,
         }
     }
 
@@ -373,12 +372,6 @@ export class Patch {
         console.log("addEvent")
         let evt = this.deserializeEventHandler();
         // TODO: ...
-    }
-
-    changeNamespace() {
-        console.log("changeNamespace")
-        let ns = this.deserializeOption(this.deserializeString);
-        // TOOD: ...
     }
 
     deserializeElement() {
