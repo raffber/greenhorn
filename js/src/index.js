@@ -338,8 +338,7 @@ export class Patch {
 
     nextNode() {
         console.log("nextNode");
-        let idx = this.element.parent.childNodes.indexOf(this.element);
-        this.element = this.element.childNodes[idx+1];
+        this.element = this.element.nextSibling;
     }
 
     removeAttribute() {

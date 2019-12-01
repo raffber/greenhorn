@@ -26,7 +26,7 @@ fn test_remove_attr() {
         namespace: None
     });
 
-    let patch = diff(Some(elem_a), elem_b);
+    let patch = diff(Some(&elem_a), &elem_b);
     assert_eq!(patch.translations.len(), 1);
     assert_eq!(patch.translations[0], (id_b, id_a));
     assert_eq!(patch.items.len(), 1);
@@ -60,7 +60,7 @@ fn test_add_attr() {
         namespace: None
     });
 
-    let patch = diff(Some(elem_a), elem_b);
+    let patch = diff(Some(&elem_a), &elem_b);
     assert_eq!(patch.translations.len(), 1);
     assert_eq!(patch.translations[0], (id_b, id_a));
     assert_eq!(patch.items.len(), 1);
@@ -95,7 +95,7 @@ fn test_change_attr() {
         namespace: None
     });
 
-    let patch = diff(Some(elem_a), elem_b);
+    let patch = diff(Some(&elem_a), &elem_b);
     assert_eq!(patch.translations.len(), 1);
     assert_eq!(patch.translations[0], (id_b, id_a));
     assert_eq!(patch.items.len(), 1);
@@ -128,7 +128,7 @@ fn test_change_tag() {
         namespace: None
     });
 
-    let patch = diff(Some(elem_a), elem_b.clone());
+    let patch = diff(Some(&elem_a), &elem_b);
     assert_eq!(patch.translations.len(), 0);
     assert_eq!(patch.items.len(), 1);
     if let PatchItem::Replace(VNode::Element(node)) = &patch.items[0] {
@@ -164,7 +164,7 @@ fn test_add_event() {
         namespace: None
     });
 
-    let patch = diff(Some(elem_a), elem_b.clone());
+    let patch = diff(Some(&elem_a), &elem_b);
     assert_eq!(patch.translations.len(), 1);
     assert_eq!(patch.items.len(), 1);
     if let PatchItem::AddEvent(handler) = &patch.items[0] {
@@ -205,7 +205,7 @@ fn test_add_child() {
         namespace: None
     });
 
-    let patch = diff(Some(elem_a), elem_b.clone());
+    let patch = diff(Some(&elem_a), &elem_b);
     assert_eq!(patch.translations.len(), 1);
     assert_eq!(patch.items.len(), 3);
     assert_matches!(&patch.items[0], PatchItem::Descend());
@@ -240,13 +240,13 @@ fn test_output_patch() {
             tag: "span".into(),
             attr: vec![],
             events: vec![],
-            children: vec![VNode::text("Hello, World", Id::new())],
+            children: vec![VNode::text("Hello, World")],
             namespace: None
         })],
         namespace: None
     });
 
-    let patch = diff(None, elem_b.clone());
+    let patch = diff(None, &elem_b);
     let serialized = serialize(patch);
     fs::write("test_patch.bin", serialized).expect("Unable to write file!");
 }

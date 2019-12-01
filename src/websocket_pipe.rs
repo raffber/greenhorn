@@ -107,15 +107,10 @@ impl WebsocketPipeBuilder {
         let req_rx = self.req_rx;
         let addr = self.addr;
         task::spawn(async move {
-            println!("binding");
             let try_socket = TcpListener::bind(&addr).await;
-            println!("successfully bound");
             let listener = try_socket.expect("Failed to bind");
-            println!("Listening on: {}", addr);
             if let Ok((stream, _)) = listener.accept().await {
-                println!("Connected!");
                 let ws = accept_async(stream).await.expect("Error during handshake");
-                println!("Handshake success!");
                 let mut handler = ConnectionHandler {
                     ws,
                     resp_tx,
@@ -258,6 +253,11 @@ mod tests {
                         assert_matches!(msg, TxMsg::Ping());
                         break
                     },
+                    Message::Text(data) => {
+                        let msg: TxMsg = serde_json::from_str(&data).unwrap();
+                        assert_matches!(msg, TxMsg::Ping());
+                        break
+                    }
                     _ => panic!(),
                 }
             }

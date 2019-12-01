@@ -170,13 +170,16 @@ fn optimize_patch(patch: &mut Patch) {
     // optimize all moves
     let mut all_moves = true;
     for x in &patch.items {
-        all_moves |= x.is_move();
+        all_moves &= x.is_move();
     }
     if all_moves {
         patch.items.clear();
     }
 
+    // TODO: ignore NextNode before Ascend
+
     // optimize Descend(), Ascend() pairs to no-op
+    // TODO: this is a bit overly primitive ;)
     let mut new_items = Vec::new();
     let mut last_descend = false;
     for x in patch.items.drain(..) {
@@ -187,10 +190,14 @@ fn optimize_patch(patch: &mut Patch) {
             PatchItem::Ascend() => {
                 if last_descend {
                     new_items.pop();
+                    last_descend = false;
                     continue;
                 }
+                last_descend = false;
             }
-            _ => ()
+            _ => {
+                last_descend = false;
+            }
         };
         new_items.push(x);
     }
@@ -245,10 +252,12 @@ fn diff_children<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>
     let common_len = n_old.min(n_new);
     let range = 0..common_len;
     for k in range {
+        if k != 0 {
+            patch.push(PatchItem::NextNode());
+        }
         let old_node = old.children.get(k).unwrap();
         let new_node = new.children.get(k).unwrap();
         diff_recursive(old_node, new_node, patch);
-        patch.push(PatchItem::NextNode());
     }
 
     if n_old > n_new {
