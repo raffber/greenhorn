@@ -10,6 +10,7 @@ use async_timer::Interval;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::{select, FutureExt, StreamExt};
 use std::collections::{HashMap, VecDeque};
+mod service_runner;
 
 enum PendingEvent {
     Component(Emission),

@@ -126,13 +126,14 @@ impl<T: 'static> Mailbox<T> {
     pub fn spawn<S, F>(&mut self, service: S, fun: F)
     where
         S: Service,
-        F: 'static + Fn(S::Data) -> T,
+        T: Send,
+        F: 'static + Fn(S::Data) -> T + Send,
     {
         let subs = ServiceSubscription::start(service, fun);
         self.services.send(subs);
     }
 
-    pub fn map<U: 'static, F: 'static + Fn(U) -> T>(&self, fun: F) -> Mailbox<U> {
+    pub fn map<U: Send + 'static, F: 'static + Send + Sync + Fn(U) -> T>(&self, fun: F) -> Mailbox<U> {
         let mapper = Arc::new(fun);
         let new_sender = self.services.clone();
         let mapped = new_sender.map(move |subs: ServiceSubscription<U>| subs.map(mapper.clone()));

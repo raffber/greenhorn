@@ -165,12 +165,8 @@ fn test_add_event() {
     });
 
     let patch = diff(Some(&elem_a), &elem_b);
-    assert_eq!(patch.translations.len(), 1);
     assert_eq!(patch.items.len(), 1);
-    if let PatchItem::AddEvent(handler) = &patch.items[0] {
-        assert!(handler.no_propagate);
-        assert!(!handler.prevent_default);
-        assert_eq!(handler.name, "click");
+    if let PatchItem::Replace(_) = patch.items[0] {
     } else {
         panic!()
     }
