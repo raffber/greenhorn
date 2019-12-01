@@ -228,11 +228,13 @@ export class Application {
         this.pipe.onPatch = (e) => {
             self.onPatch(e);
         }
+        let elem = document.createElement("div");
+        root_element.appendChild(elem);
         this.root_element = root_element;
     }
 
     onPatch(patch_data) {
-        let patch = new Patch(patch_data, this.root_element, this);
+        let patch = new Patch(patch_data, this.root_element.firstChild, this);
         patch.apply();
     }
 
@@ -311,7 +313,7 @@ export class Patch {
     changeText() {
         console.log("changeText")
         let text = this.deserializeText();
-        this.element.innerText = text.text;
+        this.element.nodeValue = text.text;
     }
 
     ascend() {

@@ -5,13 +5,10 @@
     <script src="./bundle.js"></script>
     <script>
         window.onload = function() {
-            let app = new greenhorn.Application("ws://127.0.0.1:44123", document.getElementById("startup-dummy"));
+            let app = new greenhorn.Application("ws://127.0.0.1:44123", document.body);
         }
     </script>
   </head>
   <body>
-    <div id="startup-dummy">
-      <h1>Hello Webpack</h1>
-    </div>
   </body>
 </html>
