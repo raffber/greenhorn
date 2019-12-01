@@ -69,7 +69,7 @@ impl<T: 'static> Subscription<T> {
         }
     }
 
-    fn id(&self) -> Id {
+    pub(crate) fn id(&self) -> Id {
         match self {
             Subscription::Mapper(map) => map.id(),
             Subscription::Handler(id, _) => id.clone(),

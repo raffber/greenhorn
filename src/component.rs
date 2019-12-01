@@ -272,7 +272,7 @@ impl<T: 'static> From<&str> for Node<T> {
 
 impl<T: 'static> From<Subscription<T>> for Node<T> {
     fn from(value: Subscription<T>) -> Self {
-        Node::EventSubscription(Id::new(), value)
+        Node::EventSubscription(value.id(), value)
     }
 }
 

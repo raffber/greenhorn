@@ -7,7 +7,7 @@ use futures::prelude::*;
 use futures::select;
 use futures::task::{Context, Poll};
 use futures::Stream;
-use log::{error, info};
+use log::error;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use tungstenite::protocol::Message;

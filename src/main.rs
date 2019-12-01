@@ -4,7 +4,7 @@ use std::str::FromStr;
 use async_std::task;
 
 enum ButtonMsg {
-    CLicked(DomEvent),
+    Clicked(DomEvent),
 }
 
 struct Button {
@@ -24,7 +24,7 @@ impl Button {
 impl App for Button {
     fn update(&mut self, msg: Self::Message, mailbox: Mailbox<Self::Message>) -> Updated {
         match msg {
-            ButtonMsg::CLicked(_msg) => {
+            ButtonMsg::Clicked(_msg) => {
                 self.click_count += 1;
                 mailbox.emit(self.clicked, self.click_count);
             }
@@ -40,8 +40,8 @@ impl Render for Button {
         self.html()
             .elem("div")
             .attr("class", "button")
-            .on("click", ButtonMsg::CLicked)
-            .text("foo")
+            .on("click", ButtonMsg::Clicked)
+            .text(format!("Clicked {} times!", self.click_count))
             .build()
     }
 }
@@ -71,13 +71,8 @@ impl Render for Main {
             .elem("div")
             .attr("class", "Main")
             .text("Hello, World!")
-            .add(self.html().mount(self.btn.clone(), MainMsg::Btn))
-            .add(
-                self.btn
-                    .borrow()
-                    .clicked
-                    .subscribe(MainMsg::Clicked),
-            )
+            .add(self.html().mount(&self.btn, MainMsg::Btn))
+            .add(self.btn.borrow().clicked.subscribe(MainMsg::Clicked))
             .build()
     }
 }
@@ -86,9 +81,7 @@ impl App for Main {
     fn update(&mut self, msg: Self::Message, mailbox: Mailbox<Self::Message>) -> Updated {
         match msg {
             MainMsg::Btn(msg) => {
-                self.btn
-                    .borrow_mut()
-                    .update(msg, mailbox.map(MainMsg::Btn));
+                self.btn.borrow_mut().update(msg, mailbox.map(MainMsg::Btn));
             }
             MainMsg::Clicked(count) => {
                 println!("Clicked: {} times", count);
