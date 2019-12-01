@@ -80,7 +80,6 @@ struct RenderedState<Msg> {
     vdom: Option<VNode>,
     subscriptions: HashMap<Id, Subscription<Msg>>,
     listeners: HashMap<Id, Listener<Msg>>,
-    translations: HashMap<Id, Id>,
     components: HashMap<Id, ComponentContainer<Msg>>,
 }
 
@@ -90,20 +89,23 @@ impl<Msg> RenderedState<Msg> {
             vdom: None,
             subscriptions: Default::default(),
             listeners: Default::default(),
-            translations: Default::default(),
             components: Default::default()
         }
     }
 
     fn apply(&mut self, frame: Frame<Msg>) {
-        self.translations.clear();
+        let mut translations = HashMap::new();
         for (k, v) in frame.translations {
-            self.translations.insert(k, v);
+            translations.insert(k, v);
         }
 
         self.listeners.clear();
         for listener  in frame.listeners {
-            self.listeners.insert(listener.node_id, listener);
+            if let Some(new_id) = translations.get(&listener.node_id) {
+                self.listeners.insert(*new_id, listener);
+            } else {
+                self.listeners.insert(listener.node_id, listener);
+            }
         }
 
         self.subscriptions.clear();
@@ -175,13 +177,11 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         match msg {
             RxMsg::Event(evt) => {
                 let target_id = evt.target();
-                // attempt to remap event first if it is coming from an old, "patched" node
-                let new_id = self.rendered.translations.get(&target_id).unwrap_or(&target_id);
                 // search in listeners and get a message
                 let msg = self
                     .rendered
                     .listeners
-                    .get(new_id)
+                    .get(&target_id)
                     .map(|listener| listener.call(evt));
 
                 // inject the message back into the app

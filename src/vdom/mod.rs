@@ -293,7 +293,7 @@ fn diff_recursive(old: VNode, new: VNode, patch: &mut Patch) {
                     patch.push(PatchItem::ChangeNamespace(elem_new.namespace.clone()))
                 }
                 if !elem_old.id.is_empty() {
-                    patch.translate(elem_old.id, elem_new.id);
+                    patch.translate(elem_new.id, elem_old.id);
                 }
             }
         }
