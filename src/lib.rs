@@ -18,6 +18,7 @@ mod runtime;
 mod service;
 mod vdom;
 mod websocket_pipe;
+mod services;
 
 pub mod prelude {
     pub use crate::component::{App, Component, Node, Render, Updated};

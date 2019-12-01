@@ -175,24 +175,46 @@ pub enum RxServiceMessage {
 }
 
 pub struct ServiceMailbox {
-    pub rx: UnboundedReceiver<RxServiceMessage>,
-    pub tx: UnboundedSender<TxServiceMessage>,
+    pub(crate) rx: UnboundedReceiver<RxServiceMessage>,
+    pub(crate) tx: UnboundedSender<TxServiceMessage>,
 }
 
-trait SimpleService {
+impl ServiceMailbox {
+    pub fn run_js<T: Into<String>>(&self, code: T) {
+        let _ = self.tx.unbounded_send(TxServiceMessage::RunJs(code.into()));
+    }
+
+    pub fn send_data(&self, data: Vec<u8>) {
+        let _ = self.tx.unbounded_send(TxServiceMessage::Frontend(data));
+    }
+}
+
+impl Stream for ServiceMailbox {
+    type Item = RxServiceMessage;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        Pin::new(&mut self.rx).poll_next(cx)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.rx.size_hint()
+    }
+}
+
+pub trait SimpleService {
     type Data: 'static + Send;
 
     fn run(self, mailbox: ServiceMailbox, sender: UnboundedSender<Self::Data>);
 }
 
-struct SimpleServiceContainer<S: SimpleService> {
+pub struct SimpleServiceContainer<S: SimpleService> {
     service: Option<S>,
     tx: UnboundedSender<S::Data>,
     rx: UnboundedReceiver<S::Data>,
 }
 
 impl<S: SimpleService + Unpin> SimpleServiceContainer<S> {
-    fn new(service: S) -> Self {
+    pub fn new(service: S) -> Self {
         let (tx,rx) = unbounded();
         Self {
             service: Some(service),

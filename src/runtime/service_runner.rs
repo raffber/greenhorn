@@ -62,7 +62,7 @@ impl<Msg: Send> ServiceCollection<Msg> {
             rx,
             service: subs,
             mailbox_rx: txmailbox_rx,
-            mailbox,
+            mailbox: Some(mailbox),
         };
 
         let control = ServiceControl {
@@ -112,21 +112,21 @@ pub struct ServiceRunner<Msg: 'static> {
     rx: UnboundedReceiver<ServiceControlMsg>,
     service: ServiceSubscription<Msg>,
     mailbox_rx: UnboundedReceiver<TxServiceMessage>,
-    mailbox: ServiceMailbox,
+    mailbox: Option<ServiceMailbox>,
 }
 
 impl<Msg: Send> ServiceRunner<Msg> {
     pub(crate) fn run(self) -> task::JoinHandle<()> {
         let mut runner = self;
         task::spawn(async {
-            runner.service.start(runner.mailbox);
+            runner.service.start(runner.mailbox.take().unwrap());
             let id = runner.service.id();
             loop {
                 select! {
                     tx_msg = runner.mailbox_rx.next().fuse() => {
                         if let Some(tx_msg) = tx_msg {
                             if runner.tx.unbounded_send(ServiceMessage::Tx(id, tx_msg)).is_err() {
-                                runner.service.stop();
+                                runner.stop();
                                 break
                             }
                         }
@@ -134,21 +134,25 @@ impl<Msg: Send> ServiceRunner<Msg> {
                     next_value = runner.service.next().fuse() => {
                         if let Some(x) = next_value {
                             if runner.tx.unbounded_send(ServiceMessage::Update(x)).is_err() {
-                                runner.service.stop();
+                                runner.stop();
                                 break
                             }
                         } else {
-                            runner.service.stop();
-                            let _ = runner.tx.unbounded_send(ServiceMessage::Stopped());
+                            runner.stop();
                             break
                         }
                     },
                     _control = runner.rx.next().fuse() => {
-                        runner.service.stop();
+                        runner.stop();
                         break
                     }
                 };
             }
         })
+    }
+
+    fn stop(self) {
+        self.service.stop();
+        let _ = self.tx.unbounded_send(ServiceMessage::Stopped());
     }
 }
