@@ -5,8 +5,6 @@ mod serialize;
 pub use serialize::serialize as patch_serialize;
 use std::hash::{Hash, Hasher};
 
-// TODO: diff events
-
 #[derive(Debug, Clone)]
 pub struct Attr {
     pub key: String,
