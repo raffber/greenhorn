@@ -2,7 +2,7 @@ use futures::task::{Context, Poll};
 use futures::{Stream, StreamExt};
 
 use crate::Id;
-use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
+use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use std::pin::Pin;
@@ -177,4 +177,53 @@ pub enum RxServiceMessage {
 pub struct ServiceMailbox {
     pub rx: UnboundedReceiver<RxServiceMessage>,
     pub tx: UnboundedSender<TxServiceMessage>,
+}
+
+trait SimpleService {
+    type Data: 'static + Send;
+
+    fn run(self, mailbox: ServiceMailbox, sender: UnboundedSender<Self::Data>);
+}
+
+struct SimpleServiceContainer<S: SimpleService> {
+    service: Option<S>,
+    tx: UnboundedSender<S::Data>,
+    rx: UnboundedReceiver<S::Data>,
+}
+
+impl<S: SimpleService + Unpin> SimpleServiceContainer<S> {
+    fn new(service: S) -> Self {
+        let (tx,rx) = unbounded();
+        Self {
+            service: Some(service),
+            tx,
+            rx
+        }
+    }
+
+}
+
+impl<S: SimpleService + Unpin> Service for SimpleServiceContainer<S> {
+    type Data = S::Data;
+
+    fn start(&mut self, mailbox: ServiceMailbox) {
+        let service = self.service.take().unwrap();
+        let tx = self.tx.clone();
+        service.run(mailbox, tx);
+    }
+
+    fn stop(self) {
+    }
+}
+
+impl<S: SimpleService + Unpin> Stream for SimpleServiceContainer<S> {
+    type Item = S::Data;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        Pin::new(&mut self.rx).poll_next(cx)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.rx.size_hint()
+    }
 }

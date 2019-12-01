@@ -204,12 +204,10 @@ mod tests {
     impl Service for MyService {
         type Data = i32;
 
-        fn start(&mut self, mailbox: ServiceMailbox) {
-            unimplemented!()
+        fn start(&mut self, _mailbox: ServiceMailbox) {
         }
 
         fn stop(self) {
-            unimplemented!()
         }
     }
 
