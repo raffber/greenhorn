@@ -1,7 +1,7 @@
 use ::greenhorn::prelude::*;
+use async_std::task;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use async_std::task;
 
 enum ButtonMsg {
     Clicked(DomEvent),
@@ -53,7 +53,7 @@ struct Main {
 impl Main {
     fn new() -> Self {
         Main {
-            btn: Component::new(Button::new())
+            btn: Component::new(Button::new()),
         }
     }
 }

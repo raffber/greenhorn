@@ -7,8 +7,8 @@ use crate::dom_event::DomEvent;
 use crate::event::Subscription;
 use crate::mailbox::Mailbox;
 use crate::node_builder::NodeBuilder;
-use crate::Id;
 use crate::vdom::Attr;
+use crate::Id;
 
 pub struct Updated {
     should_render: bool,
@@ -160,7 +160,7 @@ impl<T: 'static, U: 'static> ElementMap<U> for ElementRemap<T, U> {
 }
 
 pub struct ComponentContainer<T> {
-    inner: Box<dyn ComponentMap<T>>
+    inner: Box<dyn ComponentMap<T>>,
 }
 
 impl<T> ComponentMap<T> for ComponentContainer<T> {

@@ -1,4 +1,4 @@
-use crate::vdom::{Patch, PatchItem, VNode, EventHandler};
+use crate::vdom::{EventHandler, Patch, PatchItem, VNode};
 use crate::Id;
 
 trait PatchSerialize {

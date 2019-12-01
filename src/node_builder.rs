@@ -1,7 +1,7 @@
 use crate::component::Component;
 use crate::component::{Listener, Node, NodeElement, Render};
-use crate::vdom::Attr;
 use crate::dom_event::DomEvent;
+use crate::vdom::Attr;
 use crate::Id;
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -242,7 +242,8 @@ mod tests {
 
     #[test]
     fn test_listener() {
-        let node = builder().elem("div")
+        let node = builder()
+            .elem("div")
             .attr("test", "foo")
             .listener("click", |_| Msg::Clicked)
             .prevent_default()
@@ -251,7 +252,7 @@ mod tests {
             .attr("foo", "bar")
             .build();
         if let Node::Element(elem) = node {
-            let attrs= elem.attrs.as_ref().unwrap();
+            let attrs = elem.attrs.as_ref().unwrap();
             assert_eq!(attrs.len(), 2);
             assert_eq!(attrs[0].key, "test");
             assert_eq!(attrs[0].value, "foo");
@@ -270,9 +271,7 @@ mod tests {
 
     #[test]
     fn test_children() {
-        let node = builder().elem("div")
-            .add(builder().elem("pre"))
-            .build();
+        let node = builder().elem("div").add(builder().elem("pre")).build();
         if let Node::Element(elem) = node {
             assert_eq!(elem.tag.unwrap(), "div");
             assert_eq!(elem.children.as_ref().unwrap().len(), 1);

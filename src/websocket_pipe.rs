@@ -188,7 +188,7 @@ impl Stream for WebsocketReceiver {
                     };
                     println!("{}", data);
                     ret
-                },
+                }
                 Message::Binary(data) => match serde_cbor::from_slice(&data).ok() {
                     None => Poll::Pending,
                     Some(x) => Poll::Ready(Some(x)),
@@ -206,9 +206,9 @@ impl Stream for WebsocketReceiver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
-    use async_tungstenite::connect_async;
     use assert_matches::assert_matches;
+    use async_tungstenite::connect_async;
+    use std::str::FromStr;
     use url::Url;
 
     #[test]
@@ -221,18 +221,20 @@ mod tests {
             if let Some(msg) = stream.next().await {
                 match msg.unwrap() {
                     Message::Text(txt) => assert_eq!(txt, "Hello, World".to_string()),
-                    _ => panic!()
+                    _ => panic!(),
                 }
             }
             stream.close(None).await.unwrap();
         });
         task::block_on(async move {
-            pipe.req_tx.unbounded_send(Message::Text("Hello, World".into())).unwrap();
+            pipe.req_tx
+                .unbounded_send(Message::Text("Hello, World".into()))
+                .unwrap();
             let msg = pipe.resp_rx.next().await;
             match msg {
                 None => pipe.req_tx.close_channel(),
                 Some(Message::Close(_)) => pipe.req_tx.close_channel(),
-                _  => panic!(),
+                _ => panic!(),
             }
         });
         task::block_on(handle);
@@ -251,12 +253,12 @@ mod tests {
                     Message::Binary(data) => {
                         let msg: TxMsg = serde_cbor::from_slice(data.as_slice()).unwrap();
                         assert_matches!(msg, TxMsg::Ping());
-                        break
-                    },
+                        break;
+                    }
                     Message::Text(data) => {
                         let msg: TxMsg = serde_json::from_str(&data).unwrap();
                         assert_matches!(msg, TxMsg::Ping());
-                        break
+                        break;
                     }
                     _ => panic!(),
                 }
@@ -288,7 +290,7 @@ mod tests {
                     Message::Close(None) => {
                         stream.close(None).await.unwrap();
                         break;
-                    },
+                    }
                     _ => panic!(),
                 }
             }

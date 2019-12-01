@@ -1,9 +1,9 @@
 use futures::Stream;
 
 use crate::dom_event::DomEvent;
-use serde::{Deserialize, Serialize};
-use crate::service::{TxServiceMessage, RxServiceMessage};
+use crate::service::{RxServiceMessage, TxServiceMessage};
 use crate::Id;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum TxMsg {
@@ -17,7 +17,7 @@ pub enum RxMsg {
     Ping(),
     Event(DomEvent),
     FrameApplied(),
-    Service(Id, RxServiceMessage)
+    Service(Id, RxServiceMessage),
 }
 
 pub trait Sender: Clone {

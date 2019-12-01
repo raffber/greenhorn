@@ -133,7 +133,10 @@ impl<T: 'static> Mailbox<T> {
         self.services.send(subs);
     }
 
-    pub fn map<U: Send + 'static, F: 'static + Send + Sync + Fn(U) -> T>(&self, fun: F) -> Mailbox<U> {
+    pub fn map<U: Send + 'static, F: 'static + Send + Sync + Fn(U) -> T>(
+        &self,
+        fun: F,
+    ) -> Mailbox<U> {
         let mapper = Arc::new(fun);
         let new_sender = self.services.clone();
         let mapped = new_sender.map(move |subs: ServiceSubscription<U>| subs.map(mapper.clone()));
@@ -178,14 +181,13 @@ impl<T: 'static> Mailbox<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::service::ServiceProcess;
-    use futures::Stream;
-    use futures::task::{Context, Poll};
-    use std::pin::Pin;
     use crate::mailbox::tests::MsgB::ItemB;
-    use dummy_waker::dummy_context;
+    use crate::service::ServiceProcess;
     use assert_matches::assert_matches;
-
+    use dummy_waker::dummy_context;
+    use futures::task::{Context, Poll};
+    use futures::Stream;
+    use std::pin::Pin;
 
     #[derive(Debug)]
     enum MsgA {
@@ -194,7 +196,7 @@ mod tests {
 
     #[derive(Debug)]
     enum MsgB {
-        ItemB(i32)
+        ItemB(i32),
     }
 
     struct MyService {}
@@ -208,8 +210,7 @@ mod tests {
         }
     }
 
-    struct MyServiceProcess {
-    }
+    struct MyServiceProcess {}
 
     impl Stream for MyServiceProcess {
         type Item = i32;
@@ -220,18 +221,16 @@ mod tests {
     }
 
     impl ServiceProcess<i32> for MyServiceProcess {
-        fn stop(self) {
-        }
+        fn stop(self) {}
     }
-
 
     #[test]
     fn test_mailbox() {
         let ctx = dummy_context();
         let (mb, rx) = Mailbox::<MsgA>::new();
-        let mut mapped = mb.map(|msgb| MsgA::ItemA(msgb) );
+        let mut mapped = mb.map(MsgA::ItemA);
         let service = MyService {};
-        mapped.spawn(service, |x| ItemB(x));
+        mapped.spawn(service, ItemB);
         if let Ok(mut subs) = rx.services.recv() {
             let polled = Pin::new(&mut subs).poll_next(&mut ctx.context());
             assert_matches!(polled, Poll::Ready(Some(MsgA::ItemA(MsgB::ItemB(1)))));

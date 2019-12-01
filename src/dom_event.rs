@@ -1,7 +1,6 @@
 use crate::Id;
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ModifierState {
     pub alt_key: bool,
@@ -18,7 +17,6 @@ pub struct KeyboardEvent {
     pub location: i32,
     pub repeat: bool,
 }
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WheelEvent {

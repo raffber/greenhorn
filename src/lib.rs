@@ -1,12 +1,12 @@
 #![allow(dead_code)]
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 
+use serde::{Deserialize, Serialize};
 use std::cmp::Eq;
 use std::convert::From;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
-use serde::{Serialize, Deserialize};
 
 mod component;
 mod dom_event;
@@ -24,8 +24,8 @@ pub mod prelude {
     pub use crate::dom_event::DomEvent;
     pub use crate::event::Event;
     pub use crate::mailbox::Mailbox;
-    pub use crate::websocket_pipe::WebsocketPipe;
     pub use crate::runtime::{Runtime, RuntimeControl};
+    pub use crate::websocket_pipe::WebsocketPipe;
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]

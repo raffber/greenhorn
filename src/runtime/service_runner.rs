@@ -1,13 +1,13 @@
-use futures::channel::mpsc::{UnboundedSender, UnboundedReceiver, unbounded};
-use crate::service::{ServiceSubscription, ServiceMailbox, TxServiceMessage, RxServiceMessage};
-use async_std::task;
-use futures::{StreamExt, FutureExt, Stream};
-use futures::select;
-use async_std::task::JoinHandle;
-use futures::task::{Context, Poll};
-use std::pin::Pin;
+use crate::service::{RxServiceMessage, ServiceMailbox, ServiceSubscription, TxServiceMessage};
 use crate::Id;
+use async_std::task;
+use async_std::task::JoinHandle;
+use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
+use futures::select;
+use futures::task::{Context, Poll};
+use futures::{FutureExt, Stream, StreamExt};
 use std::collections::HashMap;
+use std::pin::Pin;
 
 enum ServiceControlMsg {
     Stop,
@@ -62,7 +62,7 @@ impl<Msg: Send> ServiceCollection<Msg> {
             rx,
             service: subs,
             mailbox_rx: txmailbox_rx,
-            mailbox
+            mailbox,
         };
 
         let control = ServiceControl {
@@ -74,16 +74,16 @@ impl<Msg: Send> ServiceCollection<Msg> {
         self.services.insert(id, control);
     }
 
-   fn stop_all(mut self) {
+    fn stop_all(mut self) {
         self.services.drain().for_each(|x| x.1.stop());
-   }
+    }
 
     fn send(&mut self, id: Id, msg: RxServiceMessage) {
         if let Some(x) = self.services.get(&id) {
-           if let Err(_) = x.mailbox_tx.unbounded_send(msg) {
-               // the service has terminated
-               self.services.remove(&id);
-           }
+            if let Err(_) = x.mailbox_tx.unbounded_send(msg) {
+                // the service has terminated
+                self.services.remove(&id);
+            }
         }
     }
 }
@@ -95,7 +95,8 @@ struct ServiceControl {
 }
 
 impl ServiceControl {
-    #[inline] fn stop(self) {
+    #[inline]
+    fn stop(self) {
         let _ = self.tx.unbounded_send(ServiceControlMsg::Stop);
     }
 }

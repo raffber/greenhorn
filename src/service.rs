@@ -1,12 +1,12 @@
 use futures::task::{Context, Poll};
 use futures::{Stream, StreamExt};
 
+use crate::Id;
+use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
+use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::sync::Arc;
-use crate::Id;
-use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
-use serde::{Serialize, Deserialize};
 
 pub trait ServiceProcess<T>: Stream<Item = T> {
     fn stop(self);
@@ -80,7 +80,7 @@ impl<T: 'static> Stream for ServiceSubscription<T> {
     }
 }
 
-trait ServiceProcessMap<T> : Send {
+trait ServiceProcessMap<T>: Send {
     fn stop(self: Box<Self>);
     fn poll_next(&mut self, cx: &mut Context<'_>) -> Poll<Option<T>>;
     fn size_hint(&self) -> (usize, Option<usize>);
@@ -140,7 +140,9 @@ struct ServiceProcessMapped<T, U, Mapper: Fn(T) -> U> {
     mapper: Arc<Mapper>,
 }
 
-impl<T, U, Mapper: Fn(T) -> U + Send + Sync> ServiceProcessMap<U> for ServiceProcessMapped<T, U, Mapper> {
+impl<T, U, Mapper: Fn(T) -> U + Send + Sync> ServiceProcessMap<U>
+    for ServiceProcessMapped<T, U, Mapper>
+{
     fn stop(self: Box<Self>) {
         self.inner.stop();
     }
@@ -170,7 +172,7 @@ impl<T, U, Mapper: Fn(T) -> U + Send + Sync> ServiceProcessMap<U> for ServicePro
 #[derive(Serialize, Deserialize, Debug)]
 pub enum TxServiceMessage {
     Frontend(Vec<u8>),
-    RunJs(String)
+    RunJs(String),
 }
 
 #[derive(Serialize, Deserialize, Debug)]

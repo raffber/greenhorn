@@ -12,12 +12,12 @@ pub struct Attr {
 }
 
 impl Attr {
-   fn new<K: Into<String>, V: Into<String>>(key: K, value: V) -> Self {
-       Attr {
-           key: key.into(),
-           value: value.into(),
-       }
-   }
+    fn new<K: Into<String>, V: Into<String>>(key: K, value: V) -> Self {
+        Attr {
+            key: key.into(),
+            value: value.into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq)]
@@ -29,7 +29,9 @@ pub struct EventHandler {
 
 impl PartialEq for EventHandler {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && self.no_propagate == other.no_propagate && self.prevent_default == other.prevent_default
+        self.name == other.name
+            && self.no_propagate == other.no_propagate
+            && self.prevent_default == other.prevent_default
     }
 }
 
@@ -54,7 +56,9 @@ impl VElement {
         if let Some(new_id) = translations.get(&self.id) {
             self.id = *new_id;
         }
-        self.children.iter_mut().for_each(|x| x.back_annotate(translations));
+        self.children
+            .iter_mut()
+            .for_each(|x| x.back_annotate(translations));
     }
 }
 
@@ -76,7 +80,7 @@ impl VNode {
     pub fn back_annotate(&mut self, translations: &HashMap<Id, Id>) {
         match self {
             VNode::Element(elem) => elem.back_annotate(translations),
-            VNode::Text(_) => {},
+            VNode::Text(_) => {}
         }
     }
 }
@@ -102,7 +106,7 @@ impl<'a> PatchItem<'a> {
             PatchItem::Ascend() => true,
             PatchItem::Descend() => true,
             PatchItem::NextNode() => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -136,7 +140,7 @@ impl<'a> Patch<'a> {
     }
 
     pub fn is_empty(&self) -> bool {
-        return self.items.len() == 0;
+        self.items.len() == 0
     }
 }
 
@@ -287,8 +291,9 @@ fn diff_recursive<'a>(old: &'a VNode, new: &'a VNode, patch: &mut Patch<'a>) {
     match (old, new) {
         (VNode::Element(elem_old), VNode::Element(elem_new)) => {
             if elem_old.tag != elem_new.tag
-                    || elem_old.namespace != elem_new.namespace
-                    || !diff_events(elem_old, elem_new) {
+                || elem_old.namespace != elem_new.namespace
+                || !diff_events(elem_old, elem_new)
+            {
                 patch.push(PatchItem::Replace(new))
             } else {
                 diff_attrs(elem_old, elem_new, patch);

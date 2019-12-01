@@ -1,16 +1,16 @@
-use crate::component::{App, ComponentMap, Listener, Node, ComponentContainer};
+use crate::component::{App, ComponentContainer, ComponentMap, Listener, Node};
 use crate::event::{Emission, Subscription};
 use crate::mailbox::Mailbox;
 use crate::pipe::Sender;
 use crate::pipe::{Pipe, RxMsg, TxMsg};
-use crate::vdom::{diff, patch_serialize, Patch, VElement, VNode, EventHandler};
+use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
+use crate::vdom::{diff, patch_serialize, EventHandler, Patch, VElement, VNode};
 use crate::Id;
+use async_std::task;
 use async_timer::Interval;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::{select, FutureExt, StreamExt};
 use std::collections::{HashMap, VecDeque};
-use async_std::task;
-use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
 
 mod service_runner;
 
@@ -51,7 +51,6 @@ enum RuntimeMsg {
     Cancel,
 }
 
-
 struct Frame<Msg> {
     vdom: Option<VNode>,
     subscriptions: Vec<(Id, Subscription<Msg>)>,
@@ -75,17 +74,16 @@ impl<Msg> Frame<Msg> {
         RenderResult {
             subscriptions: &mut self.subscriptions,
             listeners: &mut self.listeners,
-            components: &mut self.rendered_components
+            components: &mut self.rendered_components,
         }
     }
 
     fn back_annotate(&mut self) {
         if let Some(ref mut vdom) = self.vdom {
-            vdom.back_annotate(& self.translations);
+            vdom.back_annotate(&self.translations);
         }
     }
 }
-
 
 struct RenderedState<Msg> {
     vdom: Option<VNode>,
@@ -100,13 +98,13 @@ impl<Msg> RenderedState<Msg> {
             vdom: None,
             subscriptions: Default::default(),
             listeners: Default::default(),
-            components: Default::default()
+            components: Default::default(),
         }
     }
 
     fn apply(&mut self, frame: Frame<Msg>) {
         self.listeners.clear();
-        for listener  in frame.listeners {
+        for listener in frame.listeners {
             if let Some(new_id) = frame.translations.get(&listener.node_id) {
                 self.listeners.insert(*new_id, listener);
             } else {
@@ -122,7 +120,6 @@ impl<Msg> RenderedState<Msg> {
         self.vdom = frame.vdom;
     }
 }
-
 
 struct RenderResult<'a, Msg> {
     subscriptions: &'a mut Vec<(Id, Subscription<Msg>)>,
@@ -147,7 +144,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             render_tx,
             render_rx,
             next_frame: None,
-            dirty: false
+            dirty: false,
         };
         let control = RuntimeControl { tx };
         (runtime, control)
@@ -192,9 +189,8 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         match msg {
             ServiceMessage::Update(msg) => self.update(msg),
             ServiceMessage::Tx(id, msg) => self.sender.send(TxMsg::Service(id, msg)),
-            ServiceMessage::Stopped() => {},
+            ServiceMessage::Stopped() => {}
         }
-
     }
 
     async fn handle_pipe_msg(&mut self, msg: RxMsg) -> bool {
@@ -294,7 +290,6 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                         prevent_default: listener.prevent_default,
                     });
                     result.listeners.push(listener);
-
                 }
                 Some(VNode::element(VElement {
                     id: elem.id(),
@@ -304,7 +299,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                     children,
                     namespace: elem.take_namespace(),
                 }))
-            },
+            }
             Node::Component(comp) => {
                 let rendered = comp.render();
                 result.components.push(comp);
@@ -327,7 +322,6 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                         prevent_default: listener.prevent_default,
                     });
                     result.listeners.push(listener);
-
                 }
                 Some(VNode::element(VElement {
                     id: elem.id,
@@ -354,7 +348,10 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
 
         // render new DOM
         frame.vdom = self.render_recursive(&mut result, dom);
-        let new_dom = frame.vdom.as_mut().expect("Expected an actual DOM to render.");
+        let new_dom = frame
+            .vdom
+            .as_mut()
+            .expect("Expected an actual DOM to render.");
 
         // create a patch
         let patch = if let Some(old_dom) = &old_dom {

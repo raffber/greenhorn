@@ -13,9 +13,8 @@ fn test_remove_attr() {
         attr: vec![Attr::new("foo", "bar")],
         events: vec![],
         children: vec![],
-        namespace: None
+        namespace: None,
     });
-
 
     let elem_b = VNode::element(VElement {
         id: id_b,
@@ -23,7 +22,7 @@ fn test_remove_attr() {
         attr: vec![],
         events: vec![],
         children: vec![],
-        namespace: None
+        namespace: None,
     });
 
     let patch = diff(Some(&elem_a), &elem_b);
@@ -47,9 +46,8 @@ fn test_add_attr() {
         attr: vec![],
         events: vec![],
         children: vec![],
-        namespace: None
+        namespace: None,
     });
-
 
     let elem_b = VNode::element(VElement {
         id: id_b,
@@ -57,7 +55,7 @@ fn test_add_attr() {
         attr: vec![Attr::new("foo", "bar")],
         events: vec![],
         children: vec![],
-        namespace: None
+        namespace: None,
     });
 
     let patch = diff(Some(&elem_a), &elem_b);
@@ -82,9 +80,8 @@ fn test_change_attr() {
         attr: vec![Attr::new("foo", "bla")],
         events: vec![],
         children: vec![],
-        namespace: None
+        namespace: None,
     });
-
 
     let elem_b = VNode::element(VElement {
         id: id_b,
@@ -92,7 +89,7 @@ fn test_change_attr() {
         attr: vec![Attr::new("foo", "bar")],
         events: vec![],
         children: vec![],
-        namespace: None
+        namespace: None,
     });
 
     let patch = diff(Some(&elem_a), &elem_b);
@@ -115,9 +112,8 @@ fn test_change_tag() {
         attr: vec![],
         events: vec![],
         children: vec![],
-        namespace: None
+        namespace: None,
     });
-
 
     let elem_b = VNode::element(VElement {
         id: Id::new(),
@@ -125,7 +121,7 @@ fn test_change_tag() {
         attr: vec![],
         events: vec![],
         children: vec![],
-        namespace: None
+        namespace: None,
     });
 
     let patch = diff(Some(&elem_a), &elem_b);
@@ -147,9 +143,8 @@ fn test_add_event() {
         attr: vec![],
         events: vec![],
         children: vec![],
-        namespace: None
+        namespace: None,
     });
-
 
     let elem_b = VNode::element(VElement {
         id: Id::new(),
@@ -158,10 +153,10 @@ fn test_add_event() {
         events: vec![EventHandler {
             name: "click".to_string(),
             no_propagate: true,
-            prevent_default: false
+            prevent_default: false,
         }],
         children: vec![],
-        namespace: None
+        namespace: None,
     });
 
     let patch = diff(Some(&elem_a), &elem_b);
@@ -174,16 +169,14 @@ fn test_add_event() {
 
 #[test]
 fn test_add_child() {
-
     let elem_a = VNode::element(VElement {
         id: Id::new(),
         tag: "foo".into(),
         attr: vec![],
         events: vec![],
         children: vec![],
-        namespace: None
+        namespace: None,
     });
-
 
     let elem_b = VNode::element(VElement {
         id: Id::new(),
@@ -196,9 +189,9 @@ fn test_add_child() {
             attr: vec![],
             events: vec![],
             children: vec![],
-            namespace: None
+            namespace: None,
         })],
-        namespace: None
+        namespace: None,
     });
 
     let patch = diff(Some(&elem_a), &elem_b);
@@ -221,15 +214,17 @@ fn test_output_patch() {
         id: Id::new(),
         tag: "div".into(),
         attr: vec![Attr::new("class", "foo"), Attr::new("id", "bar")],
-        events: vec![EventHandler {
-            name: "click".to_string(),
-            no_propagate: false,
-            prevent_default: false
-        },EventHandler {
-            name: "mouseenter".to_string(),
-            no_propagate: false,
-            prevent_default: false
-        }
+        events: vec![
+            EventHandler {
+                name: "click".to_string(),
+                no_propagate: false,
+                prevent_default: false,
+            },
+            EventHandler {
+                name: "mouseenter".to_string(),
+                no_propagate: false,
+                prevent_default: false,
+            },
         ],
         children: vec![VNode::element(VElement {
             id: Id::new(),
@@ -237,9 +232,9 @@ fn test_output_patch() {
             attr: vec![],
             events: vec![],
             children: vec![VNode::text("Hello, World")],
-            namespace: None
+            namespace: None,
         })],
-        namespace: None
+        namespace: None,
     });
 
     let patch = diff(None, &elem_b);
