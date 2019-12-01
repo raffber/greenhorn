@@ -1,5 +1,5 @@
 use crate::Id;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 mod serialize;
 pub use serialize::serialize as patch_serialize;
@@ -83,19 +83,17 @@ impl VNode {
 
 #[derive(Debug)]
 pub enum PatchItem<'a> {
-    AppendChild(&'a VNode),
+    AppendNode(&'a VNode),
     Replace(&'a VNode),
     ChangeText(&'a str),
     Ascend(),
     Descend(),
     RemoveChildren(),
-    TruncateChildren(),
+    TruncateNodes(),
     NextNode(),
     RemoveAttribute(&'a str),
     AddAtrribute(&'a str, &'a str),
     ReplaceAttribute(&'a str, &'a str),
-    RemoveEvent(&'a EventHandler),
-    AddEvent(&'a EventHandler),
 }
 
 impl<'a> PatchItem<'a> {
@@ -161,7 +159,7 @@ pub fn diff<'a>(old: Option<&'a VNode>, new: &'a VNode) -> Patch<'a> {
         diff_recursive(old, new, &mut patch);
         optimize_patch(&mut patch);
     } else {
-        patch.push(PatchItem::AppendChild(new))
+        patch.push(PatchItem::AppendNode(new))
     }
     patch
 }
@@ -261,49 +259,39 @@ fn diff_children<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>
     }
 
     if n_old > n_new {
-        patch.push(PatchItem::TruncateChildren());
-        
+        patch.push(PatchItem::TruncateNodes());
     } else if n_new > n_old {
         let range = (n_new - n_old - 1)..n_new;
         for k in range {
             let new_node = new.children.get(k).unwrap();
-            patch.push(PatchItem::AppendChild(new_node))
+            patch.push(PatchItem::AppendNode(new_node))
         }
     }
 
     patch.push(PatchItem::Ascend())
 }
 
-fn diff_events<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) {
-    let mut old_evts = HashSet::new();
-    for evt in &old.events {
-        old_evts.insert(evt);
+fn diff_events<'a>(old: &'a VElement, new: &'a VElement) -> bool {
+    if new.events.len() != old.events.len() {
+        return false;
     }
-    let mut new_evts = HashSet::new();
-    for evt in &new.events {
-        new_evts.insert(evt);
-    }
-    for evt in old_evts.iter() {
-        let evt = *evt;
-        if !new_evts.contains(evt) {
-            patch.push(PatchItem::RemoveEvent(&evt));
+    for k in 0..new.events.len() {
+        if new.events[k] != old.events[k] {
+            return false;
         }
     }
-    for evt in new_evts {
-        if !old_evts.contains(evt) {
-            patch.push(PatchItem::AddEvent(&evt));
-        }
-    }
+    true
 }
 
 fn diff_recursive<'a>(old: &'a VNode, new: &'a VNode, patch: &mut Patch<'a>) {
     match (old, new) {
         (VNode::Element(elem_old), VNode::Element(elem_new)) => {
-            if elem_old.tag != elem_new.tag || elem_old.namespace != elem_new.namespace {
+            if elem_old.tag != elem_new.tag
+                    || elem_old.namespace != elem_new.namespace
+                    || !diff_events(elem_old, elem_new) {
                 patch.push(PatchItem::Replace(new))
             } else {
                 diff_attrs(elem_old, elem_new, patch);
-                diff_events(elem_old, elem_new, patch);
                 let _new_id = (*elem_new).id.clone();
                 diff_children(elem_old, elem_new, patch);
                 if !elem_old.id.is_empty() {

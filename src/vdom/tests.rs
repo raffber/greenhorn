@@ -210,7 +210,7 @@ fn test_add_child() {
     assert_eq!(patch.items.len(), 3);
     assert_matches!(&patch.items[0], PatchItem::Descend());
     assert_matches!(&patch.items[2], PatchItem::Ascend());
-    if let PatchItem::AppendChild(VNode::Element(child)) = &patch.items[1] {
+    if let PatchItem::AppendNode(VNode::Element(child)) = &patch.items[1] {
         assert_eq!(child.tag, "bla");
     } else {
         panic!()

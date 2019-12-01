@@ -85,7 +85,7 @@ pub fn serialize(patch: Patch) -> Vec<u8> {
     let mut output = Vec::new();
     for patch in patch.items {
         match patch {
-            PatchItem::AppendChild(node) => {
+            PatchItem::AppendNode(node) => {
                 output.push(1);
                 node.serialize(&mut output);
             }
@@ -106,7 +106,7 @@ pub fn serialize(patch: Patch) -> Vec<u8> {
             PatchItem::RemoveChildren() => {
                 output.push(7);
             }
-            PatchItem::TruncateChildren() => {
+            PatchItem::TruncateNodes() => {
                 output.push(8);
             }
             PatchItem::NextNode() => {
@@ -125,14 +125,6 @@ pub fn serialize(patch: Patch) -> Vec<u8> {
                 output.push(12);
                 key.serialize(&mut output);
                 value.serialize(&mut output);
-            }
-            PatchItem::RemoveEvent(evt) => {
-                output.push(13);
-                evt.name.serialize(&mut output);
-            }
-            PatchItem::AddEvent(evt) => {
-                output.push(14);
-                evt.serialize(&mut output);
             }
         }
     }

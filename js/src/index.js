@@ -73,6 +73,15 @@ function serializeEvent(id, evt) {
     }
 }
 
+function addEvent(app, id, elem, evt) {
+    // TODO: also set passive = true if !preventDefault
+    // TODO: also support once
+    // TODO: also support useCapture
+    elem.addEventListener(evt.name, function(e) {
+        app.sendEvent(id, e);
+    })
+}
+
 class Element {
     constructor(id, tag, attrs=[], events=[], children=[]) {
         this.id = id;
@@ -91,12 +100,7 @@ class Element {
         }
         for (var k = 0; k < this.events.length; ++k) {
             let evt = this.events[k];
-            // TODO: also set passive = true if !preventDefault
-            // TODO: also support once
-            // TODO: also support useCapture
-            elem.addEventListener(evt.name, function(e) {
-                app.sendEvent(id, e);
-            })
+            addEvent(app, id, elem, evt);
         }
         for (var k = 0; k < this.children.length; ++k) {
             let child = this.children[k].create(app);
@@ -254,7 +258,6 @@ export class Patch {
         this.offset = 0;
         this.element = element;
         this.app = app;
-        this.child_idx = [0];
         this.patch_funs = {
             1: Patch.prototype.appendChild,
             3: Patch.prototype.replace,
@@ -267,8 +270,6 @@ export class Patch {
             10: Patch.prototype.removeAttribute,
             11: Patch.prototype.addAttribute,
             12: Patch.prototype.replaceAttribute,
-            13: Patch.prototype.removeEvent,
-            14: Patch.prototype.addEvent,
         }
     }
 
@@ -335,7 +336,12 @@ export class Patch {
 
     truncateChildren() {
         console.log("truncateChildren")
-        // TODO: ....
+        let next = this.element.nextSibling;
+        while (next != null) {
+            let to_remove = next;
+            next = next.nextSibling;
+            this.element.removeChild(to_remove);
+        }
     }
 
     nextNode() {
@@ -361,18 +367,6 @@ export class Patch {
         let key = this.deserializeString();
         let value = this.deserializeString();
         this.element.setAttribute(key, value);
-    }
-
-    removeEvent() {
-        console.log("removeEvent")
-        let name = this.deserializeString();
-        // TODO: ...
-    }
-
-    addEvent() {
-        console.log("addEvent")
-        let evt = this.deserializeEventHandler();
-        // TODO: ...
     }
 
     deserializeElement() {
