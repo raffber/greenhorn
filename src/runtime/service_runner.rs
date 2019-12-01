@@ -78,13 +78,19 @@ impl<Msg: Send> ServiceCollection<Msg> {
         self.services.drain().for_each(|x| x.1.stop());
     }
 
-    fn send(&mut self, id: Id, msg: RxServiceMessage) {
+    pub(crate) fn send(&mut self, id: Id, msg: RxServiceMessage) {
         if let Some(x) = self.services.get(&id) {
             if x.mailbox_tx.unbounded_send(msg).is_err() {
                 // the service has terminated
                 self.services.remove(&id);
             }
         }
+    }
+}
+
+impl<Msg> Drop for ServiceCollection<Msg> {
+    fn drop(&mut self) {
+        self.services.drain().for_each(|x| x.1.stop());
     }
 }
 

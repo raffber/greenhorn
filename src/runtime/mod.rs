@@ -216,7 +216,9 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                 }
             }
             RxMsg::Ping() => {}
-            _ => {}
+            RxMsg::Service(id, msg) => {
+                self.services.send(id, msg);
+            }
         };
         true
     }
