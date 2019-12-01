@@ -52,7 +52,7 @@ struct Frame<Msg> {
     subscriptions: Vec<(Id, Subscription<Msg>)>,
     listeners: Vec<Listener<Msg>>,
     rendered_components: Vec<Box<dyn ComponentMap<Msg>>>,
-    translations: Vec<(Id, Id)>,
+    translations: HashMap<Id, Id>,
 }
 
 impl<Msg> Frame<Msg> {
@@ -62,7 +62,7 @@ impl<Msg> Frame<Msg> {
             subscriptions: vec![],
             listeners: vec![],
             rendered_components: vec![],
-            translations: vec![]
+            translations: HashMap::new(),
         }
     }
 
@@ -71,6 +71,12 @@ impl<Msg> Frame<Msg> {
             subscriptions: &mut self.subscriptions,
             listeners: &mut self.listeners,
             components: &mut self.rendered_components
+        }
+    }
+
+    fn back_annotate(&mut self) {
+        if let Some(ref mut vdom) = self.vdom {
+            vdom.back_annotate(& self.translations);
         }
     }
 }
@@ -94,14 +100,9 @@ impl<Msg> RenderedState<Msg> {
     }
 
     fn apply(&mut self, frame: Frame<Msg>) {
-        let mut translations = HashMap::new();
-        for (k, v) in frame.translations {
-            translations.insert(k, v);
-        }
-
         self.listeners.clear();
         for listener  in frame.listeners {
-            if let Some(new_id) = translations.get(&listener.node_id) {
+            if let Some(new_id) = frame.translations.get(&listener.node_id) {
                 self.listeners.insert(*new_id, listener);
             } else {
                 self.listeners.insert(listener.node_id, listener);
@@ -321,21 +322,28 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         let new_dom = frame.vdom.as_mut().expect("Expected an actual DOM to render.");
 
         // create a patch
-        let mut patch = if let Some(old_dom) = &old_dom {
+        let patch = if let Some(old_dom) = &old_dom {
             diff(Some(&old_dom), &new_dom)
         } else {
             Patch::from_dom(&new_dom)
         };
-        println!("Translations: {:?}", patch.translations);
-        frame.translations.append(&mut patch.translations);
+
+        let mut translations = HashMap::new();
+        for (k, v) in &patch.translations {
+            translations.insert(k.clone(), v.clone());
+        }
+        frame.translations = translations;
+
         self.dirty = false;
         println!("{:?}", patch);
         if patch.is_empty() {
+            frame.back_annotate();
             self.rendered.apply(frame);
         } else {
             let serialized = patch_serialize(patch);
 
             // schedule next frame
+            frame.back_annotate();
             self.next_frame = Some(frame);
 
             // serialize the patch and send it to the client
