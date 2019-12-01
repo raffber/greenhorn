@@ -382,4 +382,6 @@ pub trait Render {
 
 pub trait App: Render {
     fn update(&mut self, msg: Self::Message, mailbox: Mailbox<Self::Message>) -> Updated;
+    fn mount(&mut self, _mailbox: Mailbox<Self::Message>) {
+    }
 }

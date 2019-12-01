@@ -152,6 +152,14 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
 
     pub async fn run(mut self) {
         self.schedule_render();
+        let (mailbox, receiver) = Mailbox::<A::Message>::new();
+        self.app.mount(mailbox);
+        while let Ok(e) = receiver.emissions.try_recv() {
+            self.event_queue.push_back(PendingEvent::Component(e));
+        }
+        while let Ok(service) = receiver.services.try_recv() {
+            self.services.spawn(service);
+        }
         loop {
             select! {
                 _ = self.render_rx.next().fuse() => {
