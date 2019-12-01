@@ -50,6 +50,12 @@ impl<T: 'static> NodeBuilder<T> {
     }
 }
 
+impl<T: 'static> Default for NodeBuilder<T> {
+    fn default() -> Self {
+        NodeBuilder::new()
+    }
+}
+
 pub struct TextBuilder<T> {
     text: String,
     phantom: PhantomData<T>,
@@ -94,7 +100,7 @@ impl<T: 'static> ElementBuilder<T> {
         }
         self.listeners.push(Listener {
             event_name: name.into(),
-            node_id: self.id.clone(),
+            node_id: self.id,
             fun: Arc::new(fun),
             no_propagate: false,
             prevent_default: false,
@@ -168,7 +174,7 @@ impl<T: 'static> ListenerBuilder<T> {
     fn build(mut self) -> ElementBuilder<T> {
         self.parent.listeners.push(Listener {
             event_name: self.name,
-            node_id: self.parent.id.clone(),
+            node_id: self.parent.id,
             fun: self.fun,
             no_propagate: self.no_propagate,
             prevent_default: self.prevent_default,

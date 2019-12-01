@@ -71,7 +71,7 @@ struct ElementMapDirect<T, U> {
 }
 
 impl<T: 'static, U: 'static> ElementMapDirect<T, U> {
-    fn new(fun: Arc<dyn Fn(T) -> U>, inner: NodeElement<T>) -> Box<dyn ElementMap<U>> {
+    fn new_box(fun: Arc<dyn Fn(T) -> U>, inner: NodeElement<T>) -> Box<dyn ElementMap<U>> {
         Box::new(ElementMapDirect { fun, inner })
     }
 }
@@ -98,7 +98,7 @@ impl<T: 'static, U: 'static> ElementMap<U> for ElementMapDirect<T, U> {
     }
 
     fn id(&self) -> Id {
-        self.inner.id.clone()
+        self.inner.id
     }
 
     fn take_attrs(&mut self) -> Vec<Attr> {
@@ -120,7 +120,7 @@ struct ElementRemap<T, U> {
 }
 
 impl<T: 'static, U: 'static> ElementRemap<T, U> {
-    fn new(fun: Arc<dyn Fn(T) -> U>, inner: Box<dyn ElementMap<T>>) -> Box<dyn ElementMap<U>> {
+    fn new_box(fun: Arc<dyn Fn(T) -> U>, inner: Box<dyn ElementMap<T>>) -> Box<dyn ElementMap<U>> {
         Box::new(ElementRemap { fun, inner })
     }
 }
@@ -184,7 +184,7 @@ struct ComponentMapDirect<R: Render, U> {
 }
 
 impl<R: 'static + Render, U: 'static> ComponentMapDirect<R, U> {
-    fn new(fun: Arc<dyn Fn(R::Message) -> U>, inner: Component<R>) -> Box<dyn ComponentMap<U>> {
+    fn new_box(fun: Arc<dyn Fn(R::Message) -> U>, inner: Component<R>) -> Box<dyn ComponentMap<U>> {
         Box::new(Self { fun, inner })
     }
 }
@@ -205,7 +205,10 @@ struct ComponentRemap<T, U> {
 }
 
 impl<T: 'static, U: 'static> ComponentRemap<T, U> {
-    fn new(fun: Arc<dyn Fn(T) -> U>, inner: Box<dyn ComponentMap<T>>) -> Box<dyn ComponentMap<U>> {
+    fn new_box(
+        fun: Arc<dyn Fn(T) -> U>,
+        inner: Box<dyn ComponentMap<T>>,
+    ) -> Box<dyn ComponentMap<U>> {
         Box::new(Self { fun, inner })
     }
 }
@@ -237,13 +240,13 @@ impl<T: 'static> Node<T> {
     pub fn map_arc<U: 'static>(self, fun: Arc<dyn Fn(T) -> U>) -> Node<U> {
         match self {
             Node::ElementMap(inner) => {
-                let ret = ElementRemap::new(fun, inner);
+                let ret = ElementRemap::new_box(fun, inner);
                 Node::ElementMap(ret)
             }
-            Node::Component(inner) => Node::Component(ComponentRemap::new(fun, inner)),
+            Node::Component(inner) => Node::Component(ComponentRemap::new_box(fun, inner)),
             Node::Text(text) => Node::Text(text),
-            Node::Element(elem) => Node::ElementMap(ElementMapDirect::new(fun, elem)),
-            Node::EventSubscription(id, evt) => Node::EventSubscription(id.clone(), evt.map(fun)),
+            Node::Element(elem) => Node::ElementMap(ElementMapDirect::new_box(fun, elem)),
+            Node::EventSubscription(id, evt) => Node::EventSubscription(id, evt.map(fun)),
         }
     }
 
@@ -253,7 +256,7 @@ impl<T: 'static> Node<T> {
             Node::Component(inner) => inner.id(),
             Node::Text(_) => Id::empty(),
             Node::Element(elem) => elem.id,
-            Node::EventSubscription(id, _) => id.clone(),
+            Node::EventSubscription(id, _) => *id,
         }
     }
 }
@@ -322,7 +325,7 @@ pub struct Component<T: Render> {
 impl<T: Render> Clone for Component<T> {
     fn clone(&self) -> Self {
         Self {
-            id: self.id.clone(),
+            id: self.id,
             comp: self.comp.clone(),
         }
     }
@@ -345,7 +348,7 @@ impl<T: 'static + Render> Component<T> {
     }
 
     pub fn id(&self) -> Id {
-        self.id.clone()
+        self.id
     }
 
     pub fn render(&self) -> Node<T::Message> {
@@ -360,8 +363,7 @@ impl<T: 'static + Render> Component<T> {
     pub fn update<R, F: FnOnce(&mut T) -> R>(&mut self, fun: F) -> R {
         let mut borrow = self.comp.deref().borrow_mut();
         let data = &mut borrow;
-        let ret = fun(data);
-        ret
+        fun(data)
     }
 }
 

@@ -151,7 +151,7 @@ impl VNode {
 
     fn id(&self) -> Id {
         match self {
-            VNode::Element(e) => e.id.clone(),
+            VNode::Element(e) => e.id,
             VNode::Text(_) => Id::empty(),
         }
     }
@@ -236,6 +236,7 @@ fn diff_attrs<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) {
     }
 }
 
+#[allow(clippy::comparison_chain)]
 fn diff_children<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) {
     if old.children.is_empty() && new.children.is_empty() {
         return;
@@ -297,7 +298,7 @@ fn diff_recursive<'a>(old: &'a VNode, new: &'a VNode, patch: &mut Patch<'a>) {
                 patch.push(PatchItem::Replace(new))
             } else {
                 diff_attrs(elem_old, elem_new, patch);
-                let _new_id = (*elem_new).id.clone();
+                let _new_id = (*elem_new).id;
                 diff_children(elem_old, elem_new, patch);
                 if !elem_old.id.is_empty() {
                     patch.translate(elem_new.id, elem_old.id);

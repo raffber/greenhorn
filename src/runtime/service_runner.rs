@@ -80,7 +80,7 @@ impl<Msg: Send> ServiceCollection<Msg> {
 
     fn send(&mut self, id: Id, msg: RxServiceMessage) {
         if let Some(x) = self.services.get(&id) {
-            if let Err(_) = x.mailbox_tx.unbounded_send(msg) {
+            if x.mailbox_tx.unbounded_send(msg).is_err() {
                 // the service has terminated
                 self.services.remove(&id);
             }
@@ -119,7 +119,7 @@ impl<Msg: Send> ServiceRunner<Msg> {
                 select! {
                     tx_msg = runner.mailbox_rx.next().fuse() => {
                         if let Some(tx_msg) = tx_msg {
-                            if let Err(_) = runner.tx.unbounded_send(ServiceMessage::Tx(id, tx_msg)) {
+                            if runner.tx.unbounded_send(ServiceMessage::Tx(id, tx_msg)).is_err() {
                                 runner.service.stop();
                                 break
                             }
@@ -127,7 +127,7 @@ impl<Msg: Send> ServiceRunner<Msg> {
                     },
                     next_value = runner.service.next().fuse() => {
                         if let Some(x) = next_value {
-                            if let Err(_) = runner.tx.unbounded_send(ServiceMessage::Update(x)) {
+                            if runner.tx.unbounded_send(ServiceMessage::Update(x)).is_err() {
                                 runner.service.stop();
                                 break
                             }

@@ -26,7 +26,7 @@ pub struct WebsocketPipe {
 }
 
 impl WebsocketPipe {
-    pub fn new(addr: SocketAddr) -> WebsocketPipeBuilder {
+    pub fn build(addr: SocketAddr) -> WebsocketPipeBuilder {
         let (req_tx, req_rx) = unbounded();
         let (resp_tx, resp_rx) = unbounded();
         WebsocketPipeBuilder {
@@ -214,7 +214,7 @@ mod tests {
     #[test]
     fn test_accept() {
         let addr = SocketAddr::from_str("127.0.0.1:5903").unwrap();
-        let mut pipe = WebsocketPipe::new(addr).listen();
+        let mut pipe = WebsocketPipe::build(addr).listen();
         let handle = task::spawn(async move {
             let url = Url::parse("ws://127.0.0.1:5903").unwrap();
             let (mut stream, _) = connect_async(url).await.expect("Failed to connect!");
@@ -243,7 +243,7 @@ mod tests {
     #[test]
     fn test_close_client() {
         let addr = SocketAddr::from_str("127.0.0.1:5904").unwrap();
-        let pipe = WebsocketPipe::new(addr).listen();
+        let pipe = WebsocketPipe::build(addr).listen();
         let client = task::spawn(async move {
             let url = Url::parse("ws://127.0.0.1:5904").unwrap();
             let (mut stream, _) = connect_async(url).await.expect("Failed to connect!");
@@ -280,7 +280,7 @@ mod tests {
     #[test]
     fn test_close_server() {
         let addr = SocketAddr::from_str("127.0.0.1:5905").unwrap();
-        let pipe = WebsocketPipe::new(addr).listen();
+        let pipe = WebsocketPipe::build(addr).listen();
         let client = task::spawn(async move {
             let url = Url::parse("ws://127.0.0.1:5905").unwrap();
             let (mut stream, _) = connect_async(url).await.expect("Failed to connect!");

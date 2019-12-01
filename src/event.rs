@@ -72,7 +72,7 @@ impl<T: 'static> Subscription<T> {
     pub(crate) fn id(&self) -> Id {
         match self {
             Subscription::Mapper(map) => map.id(),
-            Subscription::Handler(id, _) => id.clone(),
+            Subscription::Handler(id, _) => *id,
         }
     }
 }
@@ -94,14 +94,14 @@ impl<T: Any> Event<T> {
     pub(crate) fn emit<V: Any>(&self, value: V) -> Emission {
         let data = Box::new(value);
         Emission {
-            event_id: self.id.clone(),
+            event_id: self.id,
             data,
         }
     }
 
     pub fn subscribe<M: 'static, F: 'static + Fn(T) -> M>(&self, fun: F) -> Subscription<M> {
         Subscription::Handler(
-            self.id.clone(),
+            self.id,
             Box::new(SubscriptionHandlerImpl {
                 handler: fun,
                 a: PhantomData,
@@ -110,3 +110,10 @@ impl<T: Any> Event<T> {
         )
     }
 }
+
+impl<T: Any> Default for Event<T> {
+    fn default() -> Self {
+        Event::new()
+    }
+}
+

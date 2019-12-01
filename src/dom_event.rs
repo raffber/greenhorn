@@ -56,11 +56,11 @@ pub enum DomEvent {
 impl DomEvent {
     pub fn target(&self) -> Id {
         match self {
-            DomEvent::Base(id) => id.clone(),
-            DomEvent::Focus(id) => id.clone(),
-            DomEvent::Keyboard(id, _) => id.clone(),
-            DomEvent::Mouse(id, _) => id.clone(),
-            DomEvent::Wheel(id, _) => id.clone(),
+            DomEvent::Base(id) => *id,
+            DomEvent::Focus(id) => *id,
+            DomEvent::Keyboard(id, _) => *id,
+            DomEvent::Mouse(id, _) => *id,
+            DomEvent::Wheel(id, _) => *id,
         }
     }
 }

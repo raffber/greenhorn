@@ -35,13 +35,14 @@ pub struct Id {
 
 static COUNTER: AtomicU64 = AtomicU64::new(1);
 
+#[allow(clippy::new_without_default)]
 impl Id {
     pub fn new() -> Id {
         let id = COUNTER.fetch_add(1, Ordering::SeqCst);
         Id { id }
     }
 
-    pub fn data(&self) -> u64 {
+    pub fn data(self) -> u64 {
         self.id
     }
 
@@ -49,7 +50,7 @@ impl Id {
         Self { id: 0 }
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub fn is_empty(self) -> bool {
         self.id == 0
     }
 }
