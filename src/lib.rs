@@ -22,7 +22,7 @@ pub mod services;
 
 pub mod prelude {
     pub use crate::component::{App, Component, Node, Render, Updated};
-    pub use crate::dom_event::DomEvent;
+    pub use crate::dom_event::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent};
     pub use crate::event::Event;
     pub use crate::mailbox::Mailbox;
     pub use crate::runtime::{Runtime, RuntimeControl};

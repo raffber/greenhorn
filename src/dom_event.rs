@@ -63,4 +63,34 @@ impl DomEvent {
             DomEvent::Wheel(id, _) => *id,
         }
     }
+
+    fn into_keyboard(self) -> Option<KeyboardEvent> {
+        match self {
+            DomEvent::Base(_) => None,
+            DomEvent::Focus(_) => None,
+            DomEvent::Keyboard(_, evt) => Some(evt),
+            DomEvent::Mouse(_, _) => None,
+            DomEvent::Wheel(_, _) => None,
+        }
+    }
+
+    fn into_mouse(self) -> Option<MouseEvent> {
+        match self {
+            DomEvent::Base(_) => None,
+            DomEvent::Focus(_) => None,
+            DomEvent::Keyboard(_, _) => None,
+            DomEvent::Mouse(_, evt) => Some(evt),
+            DomEvent::Wheel(_, _) => None,
+        }
+    }
+
+    fn into_wheel(self) -> Option<WheelEvent> {
+        match self {
+            DomEvent::Base(_) => None,
+            DomEvent::Focus(_) => None,
+            DomEvent::Keyboard(_, _) => None,
+            DomEvent::Mouse(_, _) => None,
+            DomEvent::Wheel(_, evt) => Some(evt),
+        }
+    }
 }

@@ -3,6 +3,7 @@ use async_std::task;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use ::greenhorn::services::ElementSizeNotifier;
+use greenhorn::services::element_size::ElementSize;
 
 enum ButtonMsg {
     Clicked(DomEvent),
@@ -62,7 +63,7 @@ impl Main {
 enum MainMsg {
     Clicked(i32),
     Btn(ButtonMsg),
-    Resized( (i32,i32) )
+    Resized( ElementSize )
 }
 
 impl Render for Main {
@@ -89,7 +90,8 @@ impl App for Main {
             MainMsg::Clicked(count) => {
                 println!("Clicked: {} times", count);
             }
-            MainMsg::Resized((_dx,_dy)) => {
+            MainMsg::Resized(size) => {
+                println!("{}", size.dx);
             }
         }
         true.into()

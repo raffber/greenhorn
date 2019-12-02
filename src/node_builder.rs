@@ -135,8 +135,31 @@ impl<T: 'static> ElementBuilder<T> {
         self
     }
 
+    pub fn add_option<S: Into<Node<T>>>(mut self, child: Option<S>) -> Self {
+        if let Some(child) = child {
+            self.children.push(child.into());
+        }
+        self
+    }
+
     pub fn text<S: Into<String>>(mut self, text: S) -> Self {
         self.children.push(Node::Text(text.into()));
+        self
+    }
+
+    pub fn id<S: Into<String>>(mut self, id: S) -> Self {
+        self.attrs.push(Attr {
+            key: "id".into(),
+            value: id.into(),
+        });
+        self
+    }
+
+    pub fn class<S: Into<String>>(mut self, class: S) -> Self {
+        self.attrs.push(Attr {
+            key: "class".into(),
+            value: class.into(),
+        });
         self
     }
 

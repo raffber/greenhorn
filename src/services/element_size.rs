@@ -12,18 +12,28 @@ pub struct ElementSizeNotifier {
 const JS: &'static str = r#"
 (function(ctx) {
     var elem = null;
-    let size = [-1,-1];
+    let size = [-1, -1, -1,-1];
     setInterval(function() {
         if (elem === null) {
             elem = document.getElementById("{{element_id}}");
         }
         if (elem === null) { return; }
-        var new_dx = elem.offsetWidth;
-        var new_dy = elem.offsetHeight;
-        if (size[0] != new_dx || size[1] != new_dy) {
-            size[0] = new_dx;
-            size[1] = new_dy;
-            let data = JSON.stringify([new_dx, new_dy]);
+        var dx = elem.offsetWidth;
+        var dy = elem.offsetHeight;
+        var rect = elem.getBoundingClientRect();
+        var x = rect.left;
+        var y = rect.right;
+        if (size[0] != x || size[1] != y || size[2] != dx || size[3] != dy) {
+            size[0] = x;
+            size[1] = y;
+            size[2] = dx;
+            size[3] = dy;
+            var data = JSON.stringify({
+                "x": x,
+                "y": y,
+                "dx": dx,
+                "dy": dy
+            });
             ctx.send(data);
         }
     }, 50);
@@ -35,8 +45,16 @@ struct TemplateData {
     element_id: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct ElementSize {
+    pub x: i32,
+    pub y: i32,
+    pub dx: i32,
+    pub dy: i32,
+}
+
 impl SimpleService for ElementSizeNotifier {
-    type Data = (i32,i32);
+    type Data = ElementSize;
 
     fn run(mut self, mut mailbox: ServiceMailbox, sender: UnboundedSender<Self::Data>) {
         let handlebars = Handlebars::new();
@@ -67,7 +85,7 @@ impl ElementSizeNotifier {
         })
     }
 
-    fn process_msg(&mut self, msg: RxServiceMessage) -> Option<(i32,i32)> {
+    fn process_msg(&mut self, msg: RxServiceMessage) -> Option<ElementSize> {
         let data = match msg {
             RxServiceMessage::Frontend(x) => x,
         };
