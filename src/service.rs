@@ -167,6 +167,7 @@ impl<T, U, Mapper: Fn(T) -> U + Send + Sync> ServiceMap<U>
 pub enum TxServiceMessage {
     Frontend(Vec<u8>),
     RunJs(String),
+    LoadCss(String),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -186,6 +187,10 @@ impl ServiceMailbox {
 
     pub fn send_data(&self, data: Vec<u8>) {
         let _ = self.tx.unbounded_send(TxServiceMessage::Frontend(data));
+    }
+
+    pub fn load_css<T: Into<String>>(&self, css: T) {
+        let _ = self.tx.unbounded_send(TxServiceMessage::LoadCss(css.into()));
     }
 }
 

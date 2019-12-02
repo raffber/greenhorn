@@ -78,49 +78,54 @@ pub(crate) struct EventPropagate {
 }
 
 pub struct Mailbox<T: 'static> {
-    emissions: Sender<Emission>,
-    propagate: Sender<EventPropagate>,
+    tx: Sender<MailboxMsg>,
     services: MapSender<ServiceSubscription<T>>,
 }
 
 impl<T: 'static> Clone for Mailbox<T> {
     fn clone(&self) -> Self {
         Self {
-            emissions: self.emissions.clone(),
-            propagate: self.propagate.clone(),
+            tx: self.tx.clone(),
             services: self.services.clone(),
         }
     }
 }
 
 pub(crate) struct MailboxReceiver<T: 'static> {
-    pub(crate) emissions: Receiver<Emission>,
+    pub(crate) rx: Receiver<MailboxMsg>,
     pub(crate) services: Receiver<ServiceSubscription<T>>,
-    pub(crate) propagate: Receiver<EventPropagate>,
+}
+
+pub(crate) enum MailboxMsg {
+    Emission(Emission),
+    LoadCss(String),
+    RunJs(String),
+    Propagate(EventPropagate),
 }
 
 impl<T: 'static> Mailbox<T> {
     pub(crate) fn new() -> (Self, MailboxReceiver<T>) {
-        let (e_tx, e_rx) = channel();
+        let (tx, rx) = channel();
         let (s_tx, s_rx) = channel();
-        let (p_tx, p_rx) = channel();
         (
             Mailbox {
-                emissions: e_tx,
-                propagate: p_tx,
+                tx,
                 services: MapSender::new(s_tx),
             },
             MailboxReceiver {
-                emissions: e_rx,
+                rx,
                 services: s_rx,
-                propagate: p_rx,
             },
         )
     }
 
     pub fn emit<D: Any>(&self, event: Event<D>, data: D) {
         let emission = event.emit(data);
-        self.emissions.send(emission).unwrap();
+        self.tx.send(MailboxMsg::Emission(emission)).unwrap();
+    }
+
+    pub fn load_css<Css: Into<String>>(&self, css: Css) {
+        self.tx.send(MailboxMsg::LoadCss(css.into())).unwrap();
     }
 
     pub fn spawn<S, F>(&mut self, service: S, fun: F)
@@ -141,39 +146,38 @@ impl<T: 'static> Mailbox<T> {
         let new_sender = self.services.clone();
         let mapped = new_sender.map(move |subs: ServiceSubscription<U>| subs.map(mapper.clone()));
         Mailbox {
-            emissions: self.emissions.clone(),
-            propagate: self.propagate.clone(),
+            tx: self.tx.clone(),
             services: mapped,
         }
     }
 
     pub fn propagate(&self, e: DomEvent) {
-        self.propagate
-            .send(EventPropagate {
+        self.tx
+            .send(MailboxMsg::Propagate(EventPropagate {
                 event: e,
                 propagate: true,
                 default_action: false,
-            })
+            }))
             .unwrap();
     }
 
     pub fn default_action(&self, e: DomEvent) {
-        self.propagate
-            .send(EventPropagate {
+        self.tx
+            .send(MailboxMsg::Propagate(EventPropagate {
                 event: e,
                 propagate: false,
                 default_action: true,
-            })
+            }))
             .unwrap();
     }
 
     pub fn propagate_and_default(&self, e: DomEvent) {
-        self.propagate
-            .send(EventPropagate {
+        self.tx
+            .send(MailboxMsg::Propagate(EventPropagate {
                 event: e,
                 propagate: true,
                 default_action: true,
-            })
+            }))
             .unwrap();
     }
 }

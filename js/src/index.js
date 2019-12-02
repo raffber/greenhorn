@@ -4,6 +4,12 @@ var msgpack = require("msgpack-lite");
 
 const decoder = new TextDecoder();
 
+function loadCss(css) {
+    var s = document.createElement("style");
+    s.innerHTML = css;
+    document.getElementsByTagName("head")[0].appendChild(s);
+}
+
 function serializeModifierState(evt) {
     return {
         "alt_key": evt.altKey,
@@ -177,7 +183,13 @@ export class Pipe {
             } else if (service_msg[1].hasOwnProperty("RunJs")) {
                 let run_js_msg = service_msg[1].RunJs;
                 this.onRunJsMsg(id, run_js_msg);
-            }            
+            } else if (service_msg[1].hasOwnProperty("LoadCss")) {
+                loadCss(service_msg[1].LoadCss);
+            }
+        } else if (msg.hasOwnProperty("LoadCss")) {
+            loadCss(msg.LoadCss);
+        } else if (msg.hasOwnProperty("RunJs")) {
+            eval(msg.RunJs);
         }
     }
 

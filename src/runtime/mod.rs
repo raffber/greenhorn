@@ -1,6 +1,6 @@
 use crate::component::{App, ComponentContainer, ComponentMap, Listener, Node};
 use crate::event::{Emission, Subscription};
-use crate::mailbox::Mailbox;
+use crate::mailbox::{Mailbox, MailboxMsg, MailboxReceiver};
 use crate::pipe::Sender;
 use crate::pipe::{Pipe, RxMsg, TxMsg};
 use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
@@ -23,8 +23,8 @@ struct ComponentDom<M: 'static> {
 }
 
 pub struct Runtime<A: 'static + App, P: Pipe> {
-    tx: UnboundedSender<RuntimeMsg>,
-    rx: UnboundedReceiver<RuntimeMsg>,
+    tx: UnboundedSender<RuntimeMsg<A::Message>>,
+    rx: UnboundedReceiver<RuntimeMsg<A::Message>>,
     app: A,
     sender: P::Sender,
     receiver: P::Receiver,
@@ -37,18 +37,23 @@ pub struct Runtime<A: 'static + App, P: Pipe> {
     dirty: bool,
 }
 
-pub struct RuntimeControl {
-    tx: UnboundedSender<RuntimeMsg>,
+pub struct RuntimeControl<M: 'static + Send> {
+    tx: UnboundedSender<RuntimeMsg<M>>,
 }
 
-impl RuntimeControl {
+impl<M: 'static + Send> RuntimeControl<M> {
     pub fn cancel(&self) {
         self.tx.unbounded_send(RuntimeMsg::Cancel).unwrap();
     }
+
+    pub fn update(&self, msg: M) {
+        self.tx.unbounded_send(RuntimeMsg::Update(msg)).unwrap();
+    }
 }
 
-enum RuntimeMsg {
+enum RuntimeMsg<M: 'static + Send> {
     Cancel,
+    Update(M)
 }
 
 struct Frame<Msg> {
@@ -128,8 +133,8 @@ struct RenderResult<'a, Msg> {
 }
 
 impl<A: App, P: 'static + Pipe> Runtime<A, P> {
-    pub fn new(app: A, pipe: P) -> (Runtime<A, P>, RuntimeControl) {
-        let (tx, rx) = unbounded::<RuntimeMsg>();
+    pub fn new(app: A, pipe: P) -> (Runtime<A, P>, RuntimeControl<A::Message>) {
+        let (tx, rx) = unbounded::<RuntimeMsg<A::Message>>();
         let (sender, receiver) = pipe.split();
         let (render_tx, render_rx) = unbounded();
         let runtime = Runtime {
@@ -154,12 +159,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         self.schedule_render();
         let (mailbox, receiver) = Mailbox::<A::Message>::new();
         self.app.mount(mailbox);
-        while let Ok(e) = receiver.emissions.try_recv() {
-            self.event_queue.push_back(PendingEvent::Component(e));
-        }
-        while let Ok(service) = receiver.services.try_recv() {
-            self.services.spawn(service);
-        }
+        self.handle_mailbox_result(receiver);
         loop {
             select! {
                 _ = self.render_rx.next().fuse() => {
@@ -231,9 +231,13 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         true
     }
 
-    fn handle_msg(&mut self, msg: RuntimeMsg) -> bool {
+    fn handle_msg(&mut self, msg: RuntimeMsg<A::Message>) -> bool {
         match msg {
             RuntimeMsg::Cancel => false,
+            RuntimeMsg::Update(msg) => {
+                self.update(msg);
+                true
+            }
         }
     }
 
@@ -255,8 +259,26 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         self.schedule_render();
         let (mailbox, receiver) = Mailbox::<A::Message>::new();
         self.app.update(msg, mailbox);
-        while let Ok(e) = receiver.emissions.try_recv() {
-            self.event_queue.push_back(PendingEvent::Component(e));
+        self.handle_mailbox_result(receiver);
+    }
+
+    fn handle_mailbox_result(&mut self, receiver: MailboxReceiver<A::Message>) {
+        while let Ok(cmd) = receiver.rx.try_recv() {
+            match cmd {
+                MailboxMsg::Emission(e) => {
+                    self.event_queue.push_back(PendingEvent::Component(e));
+                },
+                MailboxMsg::LoadCss(css) => {
+                    self.sender.send(TxMsg::LoadCss(css));
+                },
+                MailboxMsg::RunJs(js) => {
+                    self.sender.send(TxMsg::RunJs(js));
+                },
+                MailboxMsg::Propagate(_prop) => {
+                    // TODO: ...
+                    unimplemented!()
+                },
+            }
         }
         while let Ok(service) = receiver.services.try_recv() {
             self.services.spawn(service);

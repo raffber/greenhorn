@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 pub enum TxMsg {
     Ping(),
     Patch(Vec<u8>),
+    LoadCss(String),
+    RunJs(String),
     Service(u64, TxServiceMessage),
 }
 
