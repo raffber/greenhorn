@@ -10,20 +10,24 @@ pub struct ElementSizeNotifier {
 }
 
 const JS: &'static str = r#"
-function(ctx) {
+(function(ctx) {
     var elem = null;
+    let size = [-1,-1];
     setInterval(function() {
         if (elem === null) {
             elem = document.getElementById("{{element_id}}");
         }
         if (elem === null) { return; }
-        var json = JSON.stringify({
-            dx: elem.offsetWidth(),
-            dy: elem.offsetHeight()
-        });
-        ctx.send(json);
+        var new_dx = elem.offsetWidth;
+        var new_dy = elem.offsetHeight;
+        if (size[0] != new_dx || size[1] != new_dy) {
+            size[0] = new_dx;
+            size[1] = new_dy;
+            let data = JSON.stringify([new_dx, new_dy]);
+            ctx.send(data);
+        }
     }, 50);
-}
+})(ctx);
 "#;
 
 #[derive(Serialize, Deserialize)]
@@ -63,8 +67,11 @@ impl ElementSizeNotifier {
         })
     }
 
-    fn process_msg(&mut self, _msg: RxServiceMessage) -> Option<(i32,i32)> {
-        None
+    fn process_msg(&mut self, msg: RxServiceMessage) -> Option<(i32,i32)> {
+        let data = match msg {
+            RxServiceMessage::Frontend(x) => x,
+        };
+        serde_json::from_str(&data).ok()
     }
 
 }

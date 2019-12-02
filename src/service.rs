@@ -171,7 +171,7 @@ pub enum TxServiceMessage {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum RxServiceMessage {
-    Frontend(Vec<u8>),
+    Frontend(String),
 }
 
 pub struct ServiceMailbox {

@@ -196,7 +196,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     fn handle_service_msg(&mut self, msg: ServiceMessage<A::Message>) {
         match msg {
             ServiceMessage::Update(msg) => self.update(msg),
-            ServiceMessage::Tx(id, msg) => self.sender.send(TxMsg::Service(id, msg)),
+            ServiceMessage::Tx(id, msg) => self.sender.send(TxMsg::Service(id.data(), msg)),
             ServiceMessage::Stopped() => {}
         }
     }
@@ -225,7 +225,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             }
             RxMsg::Ping() => {}
             RxMsg::Service(id, msg) => {
-                self.services.send(id, msg);
+                self.services.send(Id::from_data(id), msg);
             }
         };
         true

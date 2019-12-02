@@ -43,6 +43,10 @@ impl Id {
         Id { id }
     }
 
+    pub fn from_data(data: u64) -> Self {
+        Id { id: data }
+    }
+
     pub fn data(self) -> u64 {
         self.id
     }

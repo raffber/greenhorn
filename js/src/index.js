@@ -128,6 +128,17 @@ class EventHandler {
     }
 }
 
+class Context {
+    constructor(id, app) {
+        this.app = app;
+        this.id = id;
+    }
+
+    send(data) {
+        this.app.pipe.sendServiceMsg(this.id, data);
+    }
+}
+
 
 export class Pipe {
     constructor(url) {
@@ -159,17 +170,15 @@ export class Pipe {
             this.socket.send(reply);
         } else if (msg.hasOwnProperty("Service")) {
             let service_msg = msg.Service;
-            let id = service_msg[0].id;
+            let id = service_msg[0];
             if (service_msg[1].hasOwnProperty("Frontend")) {
                 let frontend_msg = service_msg[1].Frontend;
                 this.onServiceMsg(id, frontend_msg);
             } else if (service_msg[1].hasOwnProperty("RunJs")) {
                 let run_js_msg = service_msg[1].RunJs;
-                console.log(run_js_msg);
-                this.onServiceMsg(id, run_js_msg);
+                this.onRunJsMsg(id, run_js_msg);
             }            
         }
-        console.log("onMessage");
     }
 
     sendEvent(id, evt) {
@@ -182,6 +191,14 @@ export class Pipe {
         console.log("sendEvent = " + data);
     }
 
+    sendServiceMsg(id, data) {
+        let msg = {
+            "Service": [id, {"Frontend": data}]
+        };
+        let serialized = JSON.stringify(msg);
+        this.socket.send(serialized);
+    }
+
     close() {
         this.socket.close();
     }
@@ -191,12 +208,22 @@ export class Application {
     constructor(url, root_element) {
         this.pipe = new Pipe(url);
         let self = this;
-        this.pipe.onPatch = (e) => {
-            self.onPatch(e);
-        }
         let elem = document.createElement("div");
         root_element.appendChild(elem);
         this.root_element = root_element;
+
+        this.pipe.onPatch = (e) => {
+            self.onPatch(e);
+        }
+
+        this.pipe.onRunJsMsg = (id, js) => {
+            self.onRunJsMsg(id, js);
+        }
+    }
+
+    onRunJsMsg(id, js) {
+        let ctx = new Context(id, this);
+        eval(js);
     }
 
     onPatch(patch_data) {

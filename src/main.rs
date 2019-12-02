@@ -89,8 +89,7 @@ impl App for Main {
             MainMsg::Clicked(count) => {
                 println!("Clicked: {} times", count);
             }
-            MainMsg::Resized((dx,dy)) => {
-                println!("dx = {} -- dy = {}", dx, dy);
+            MainMsg::Resized((_dx,_dy)) => {
             }
         }
         true.into()
