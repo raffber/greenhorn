@@ -2,37 +2,44 @@ use crate::service::{SimpleService, ServiceMailbox, SimpleServiceContainer, RxSe
 use futures::StreamExt;
 use futures::channel::mpsc::UnboundedSender;
 use async_std::task;
+use serde::{Serialize,Deserialize};
+use handlebars::Handlebars;
 
-struct ElementSizeNotifier {
+pub struct ElementSizeNotifier {
     html_id: String,
 }
 
 const JS: &'static str = r#"
-function(ctx) {{
+function(ctx) {
     var elem = null;
-    setInterval(function() {{
-        if (elem === null) {{
-            elem = document.getElementById("{}");
-        }}
-        if (elem === null) {{ return; }}
-        var json = JSON.stringify({{
+    setInterval(function() {
+        if (elem === null) {
+            elem = document.getElementById("{{element_id}}");
+        }
+        if (elem === null) { return; }
+        var json = JSON.stringify({
             dx: elem.offsetWidth(),
             dy: elem.offsetHeight()
-        }});
+        });
         ctx.send(json);
-    }}, 50);
-}}
+    }, 50);
+}
 "#;
 
-enum ElementSizeMsg {
-    Changed{dx: i32, dy: i32}
+#[derive(Serialize, Deserialize)]
+struct TemplateData {
+    element_id: String,
 }
 
 impl SimpleService for ElementSizeNotifier {
-    type Data = ElementSizeMsg;
+    type Data = (i32,i32);
 
     fn run(mut self, mut mailbox: ServiceMailbox, sender: UnboundedSender<Self::Data>) {
-        let js = format!(JS, self.html_id);
+        let handlebars = Handlebars::new();
+        let data = TemplateData {
+            element_id: self.html_id.clone(),
+        };
+        let js = handlebars.render_template(JS, &data).unwrap();
         mailbox.run_js(js);
         task::spawn(async move {
             loop {
@@ -50,13 +57,13 @@ impl SimpleService for ElementSizeNotifier {
 }
 
 impl ElementSizeNotifier {
-    fn create<S: Into<String>>(html_id: S) -> SimpleServiceContainer<ElementSizeNotifier> {
+    pub fn create<S: Into<String>>(html_id: S) -> SimpleServiceContainer<ElementSizeNotifier> {
         SimpleServiceContainer::new(Self {
             html_id: html_id.into()
         })
     }
 
-    fn process_msg(&mut self, _msg: RxServiceMessage) -> Option<ElementSizeMsg> {
+    fn process_msg(&mut self, _msg: RxServiceMessage) -> Option<(i32,i32)> {
         None
     }
 

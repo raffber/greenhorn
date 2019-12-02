@@ -24,6 +24,6 @@
     ]
   },
   "dependencies": {
-    "cbor": "^5.0.1"
+    "msgpack-lite": "^0.1.26"
   }
 }

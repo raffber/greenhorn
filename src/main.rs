@@ -2,6 +2,7 @@ use ::greenhorn::prelude::*;
 use async_std::task;
 use std::net::SocketAddr;
 use std::str::FromStr;
+use ::greenhorn::services::ElementSizeNotifier;
 
 enum ButtonMsg {
     Clicked(DomEvent),
@@ -61,6 +62,7 @@ impl Main {
 enum MainMsg {
     Clicked(i32),
     Btn(ButtonMsg),
+    Resized( (i32,i32) )
 }
 
 impl Render for Main {
@@ -70,6 +72,7 @@ impl Render for Main {
         self.html()
             .elem("div")
             .attr("class", "Main")
+            .attr("id", "size-test")
             .text("Hello, World!")
             .add(self.html().mount(&self.btn, MainMsg::Btn))
             .add(self.btn.borrow().clicked.subscribe(MainMsg::Clicked))
@@ -86,13 +89,21 @@ impl App for Main {
             MainMsg::Clicked(count) => {
                 println!("Clicked: {} times", count);
             }
+            MainMsg::Resized((dx,dy)) => {
+                println!("dx = {} -- dy = {}", dx, dy);
+            }
         }
         true.into()
+    }
+
+    fn mount(&mut self, mut mailbox: Mailbox<Self::Message>) {
+        mailbox.spawn(ElementSizeNotifier::create("size-test"),  MainMsg::Resized)
     }
 }
 
 fn main() {
     loop {
+        println!("------------------- STARTUP -----------------------------------");
         let addr = SocketAddr::from_str("127.0.0.1:44123").unwrap();
         let pipe = WebsocketPipe::build(addr).listen();
         let (rt, _control) = Runtime::new(Main::new(), pipe);

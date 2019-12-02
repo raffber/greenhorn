@@ -189,7 +189,7 @@ impl Stream for WebsocketReceiver {
                     println!("{}", data);
                     ret
                 }
-                Message::Binary(data) => match serde_cbor::from_slice(&data).ok() {
+                Message::Binary(data) => match rmp_serde::from_slice(&data).ok() {
                     None => Poll::Pending,
                     Some(x) => Poll::Ready(Some(x)),
                 },
@@ -251,7 +251,7 @@ mod tests {
                 // receive one message, then terminate
                 match msg.unwrap() {
                     Message::Binary(data) => {
-                        let msg: TxMsg = serde_cbor::from_slice(data.as_slice()).unwrap();
+                        let msg: TxMsg = rmp_serde::from_slice(data.as_slice()).unwrap();
                         assert_matches!(msg, TxMsg::Ping());
                         break;
                     }

@@ -1,6 +1,6 @@
 "use strict";
 
-const CBOR = require('cbor');
+var msgpack = require("msgpack-lite");
 
 const decoder = new TextDecoder();
 
@@ -24,7 +24,7 @@ function serializeEvent(id, evt) {
     if (evt instanceof MouseEvent) {
         return {
             "Mouse": [
-                id.serialize(),
+                {"id": id},
                 {
                     "modifier_state": serializeModifierState(evt),
                     "button": evt.button,
@@ -40,7 +40,7 @@ function serializeEvent(id, evt) {
     } else if (evt instanceof KeyboardEvent) {
         return {
             "Keyboard": [
-                id.serialize(),
+                {"id": id},
                 {
                     "modifier_state": serializeModifierState(evt),
                     "code": evt.code,
@@ -53,7 +53,7 @@ function serializeEvent(id, evt) {
     } else if (evt instanceof WheelEvent) {
         return {
             "Wheel": [
-                id.serialize(),
+                {"id": id},
                 {
                     "delta_x": evt.deltaX,
                     "delta_y": evt.deltaY,
@@ -64,11 +64,11 @@ function serializeEvent(id, evt) {
         }
     } else if (evt instanceof FocusEvent) {
         return {
-            "Focus": id.serialize()
+            "Focus": {"id": id},
         }
     } else {
         return {
-            "Base": id.serialize()
+            "Base": {"id": id},
         }
     }
 }
@@ -120,27 +120,6 @@ class Text {
     }
 }
 
-class Id {
-    constructor(lo,hi) {
-        this.lo = lo;
-        this.hi = hi;
-    }
-
-    equals(other) {
-        return this.lo == other.lo && this.hi == other.hi;
-    }
-
-    stringify() {
-        return this.hi.toString(16) + "-" + this.lo.toString(16);
-    }
-
-    serialize() {
-        return {
-            "id": this.lo + (this.hi * 2**32)
-        };
-    }
-}
-
 class EventHandler {
     constructor(name, no_propagate, prevent_default) {
         this.name = name;
@@ -149,65 +128,48 @@ class EventHandler {
     }
 }
 
-function id_from_string(str) {
-    let splits = str.split("-");
-    return new Id(
-        parseInt(splits[1], 16),
-        parseInt(splits[0], 16),
-    );
-}
-
-function id_from_dataview(data_view, offset) {
-    let lo = data_view.getUint32(offset, true);
-    let hi = data_view.getUint32(offset + 4, true);
-    return new Id(lo,hi);
-}
 
 export class Pipe {
     constructor(url) {
         this.socket = new WebSocket(url);
         this.socket.binaryType = "arraybuffer";
         let self = this;
-        this.socket.onopen = (e) => {
-            self.onOpen(e);
-        };
+        this.socket.onopen = (e) => {};
+        this.socket.onerror = (e) => {};
+        this.socket.onclose = (e) => {};
 
         this.socket.onmessage = (e) => {
             self.onMessage(e);
         };
 
-        this.socket.onerror = (e) => {
-            self.onError(e);
-        };
-
-        this.socket.onclose = (e) => {
-            self.onClose(e);
-        };
 
         this.onPatch = (patch_data) => {};
-    }
-
-    onOpen(event) {
-        console.log("onOpen");
+        this.onServiceMsg = (id, service_msg) => {};
+        this.onRunJsMsg = (id, run_js_msg) => {};
     }
 
     onMessage(event) {
         let msg = JSON.parse(event.data);
-        let data = new Uint8Array(msg.Patch);
-        this.onPatch(data.buffer);
-        let reply = JSON.stringify({
-            "FrameApplied": []
-        });
-        this.socket.send(reply);
+        if (msg.hasOwnProperty("Patch")) {
+            let data = new Uint8Array(msg.Patch);
+            this.onPatch(data.buffer);
+            let reply = JSON.stringify({
+                "FrameApplied": []
+            });
+            this.socket.send(reply);
+        } else if (msg.hasOwnProperty("Service")) {
+            let service_msg = msg.Service;
+            let id = service_msg[0].id;
+            if (service_msg[1].hasOwnProperty("Frontend")) {
+                let frontend_msg = service_msg[1].Frontend;
+                this.onServiceMsg(id, frontend_msg);
+            } else if (service_msg[1].hasOwnProperty("RunJs")) {
+                let run_js_msg = service_msg[1].RunJs;
+                console.log(run_js_msg);
+                this.onServiceMsg(id, run_js_msg);
+            }            
+        }
         console.log("onMessage");
-    }
-
-    onClose(event) {
-        console.log("onClose");
-    }
-
-    onError(event) {
-        console.log("onError");
     }
 
     sendEvent(id, evt) {
@@ -289,7 +251,6 @@ export class Patch {
 
 
     deserializeNode() {
-        console.log("deserializeNode");
         let x = this.popU8();
         if (x === 0) {
             return this.deserializeElement();
@@ -306,24 +267,20 @@ export class Patch {
 
 
     replace() {
-        console.log("replace");
         let node = this.deserializeNode();
         this.element.parentNode.replaceChild(node.create(this.app), this.element);
     }
 
     changeText() {
-        console.log("changeText")
         let text = this.deserializeText();
         this.element.nodeValue = text.text;
     }
 
     ascend() {
-        console.log("ascend")
         this.element = this.element.parentNode;
     }
 
     descend() {
-        console.log("descend")
         this.element = this.element.firstChild;
     }
 
@@ -345,7 +302,6 @@ export class Patch {
     }
 
     nextNode() {
-        console.log("nextNode");
         this.element = this.element.nextSibling;
     }
 
@@ -370,7 +326,6 @@ export class Patch {
     }
 
     deserializeElement() {
-        console.log("deserializeElement");
         let id = this.deserializeId();
         let tag = this.deserializeString();
         let attr_len = this.patch.getUint32(this.offset, true);
@@ -398,7 +353,6 @@ export class Patch {
     }
 
     deserializeText() {
-        console.log("deserializeText");
         let text = this.deserializeString();
         return new Text(text); 
     }
@@ -413,18 +367,17 @@ export class Patch {
     }
 
     deserializeId() {
-        console.log("deserializeId");
         let available = this.popU8() > 0;
         if (!available) {
             return null;
         }
-        let ret = id_from_dataview(this.patch, this.offset);
+        let lo = this.patch.getUint32(this.offset, true);
+        let hi = this.patch.getUint32(this.offset + 4, true);
         this.offset += 8;
-        return ret;
+        return lo + (2**32)*hi;
     }
 
     deserializeString() {
-        console.log("deserializeString");
         let len = this.patch.getUint32(this.offset, true);
         let view = new Uint8Array(this.buffer, this.offset + 4, len);
         this.offset += len + 4;
@@ -432,7 +385,6 @@ export class Patch {
     }
 
     deserializeEventHandler() {
-        console.log("deserializeEventHandler");
         let no_prop = this.patch.getUint8(this.offset) > 0;
         let prevent_default = this.patch.getUint8(this.offset + 1) > 0;
         this.offset += 2;
