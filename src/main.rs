@@ -97,7 +97,7 @@ impl App for Main {
         true.into()
     }
 
-    fn mount(&mut self, mut mailbox: Mailbox<Self::Message>) {
+    fn mount(&mut self, mailbox: Mailbox<Self::Message>) {
         mailbox.spawn(ElementSizeNotifier::create("size-test"),  MainMsg::Resized)
     }
 }

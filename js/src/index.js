@@ -15,7 +15,7 @@ function serializeModifierState(evt) {
         "alt_key": evt.altKey,
         "ctrl_key": evt.ctrlKey,
         "meta_key": evt.metaKey,
-        "shift_key": evt.shiftKey,
+        "shift_key": evt.shiftKey
     };
 }
 
@@ -26,21 +26,25 @@ function serializePoint(x,y) {
     };
 }
 
+function serializeMouseEvent(evt) {
+    return {
+        "modifier_state": serializeModifierState(evt),
+        "button": evt.button,
+        "buttons": evt.buttons,
+        "client": serializePoint(evt.clientX, evt.clientY),
+        "movement": serializePoint(evt.movementX, evt.movementY),
+        "offset": serializePoint(evt.offsetX, evt.offsetY),
+        "page": serializePoint(evt.pageX, evt.pageY),
+        "screen": serializePoint(evt.screenX, evt.screenY)
+    };
+}
+
 function serializeEvent(id, evt) {
     if (evt instanceof MouseEvent) {
         return {
             "Mouse": [
                 {"id": id},
-                {
-                    "modifier_state": serializeModifierState(evt),
-                    "button": evt.button,
-                    "buttons": evt.buttons,
-                    "client": serializePoint(evt.clientX, evt.clientY),
-                    "movement": serializePoint(evt.movementX, evt.movementY),
-                    "offset": serializePoint(evt.offsetX, evt.offsetY),
-                    "page": serializePoint(evt.pageX, evt.pageY),
-                    "screen": serializePoint(evt.screenX, evt.screenY),
-                }
+                serializeMouseEvent(evt)
             ]
         }
     } else if (evt instanceof KeyboardEvent) {
@@ -52,7 +56,7 @@ function serializeEvent(id, evt) {
                     "code": evt.code,
                     "key": evt.key,
                     "location": evt.location,
-                    "repeat": evt.repeat,
+                    "repeat": evt.repeat
                 }
             ]
         }
@@ -61,10 +65,11 @@ function serializeEvent(id, evt) {
             "Wheel": [
                 {"id": id},
                 {
+                    "mouse_event": serializeMouseEvent(evt),
                     "delta_x": evt.deltaX,
                     "delta_y": evt.deltaY,
                     "delta_z": evt.deltaZ,
-                    "delta_mode": evt.deltaMode,
+                    "delta_mode": evt.deltaMode
                 }
             ]
         }

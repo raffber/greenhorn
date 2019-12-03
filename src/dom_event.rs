@@ -20,6 +20,7 @@ pub struct KeyboardEvent {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WheelEvent {
+    pub mouse_event: MouseEvent,
     pub delta_x: f64,
     pub delta_y: f64,
     pub delta_z: f64,
@@ -64,7 +65,7 @@ impl DomEvent {
         }
     }
 
-    fn into_keyboard(self) -> Option<KeyboardEvent> {
+    pub fn into_keyboard(self) -> Option<KeyboardEvent> {
         match self {
             DomEvent::Base(_) => None,
             DomEvent::Focus(_) => None,
@@ -74,17 +75,17 @@ impl DomEvent {
         }
     }
 
-    fn into_mouse(self) -> Option<MouseEvent> {
+    pub fn into_mouse(self) -> Option<MouseEvent> {
         match self {
             DomEvent::Base(_) => None,
             DomEvent::Focus(_) => None,
             DomEvent::Keyboard(_, _) => None,
             DomEvent::Mouse(_, evt) => Some(evt),
-            DomEvent::Wheel(_, _) => None,
+            DomEvent::Wheel(_, evt) => Some(evt.mouse_event),
         }
     }
 
-    fn into_wheel(self) -> Option<WheelEvent> {
+    pub fn into_wheel(self) -> Option<WheelEvent> {
         match self {
             DomEvent::Base(_) => None,
             DomEvent::Focus(_) => None,
