@@ -27,7 +27,7 @@ pub mod prelude {
     pub use crate::mailbox::Mailbox;
     pub use crate::runtime::{Runtime, RuntimeControl};
     pub use crate::websocket_pipe::WebsocketPipe;
-    pub use crate::node_builder::NodeBuilder;
+    pub use crate::node_builder::{NodeBuilder, ElementBuilder};
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
