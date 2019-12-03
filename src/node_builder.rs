@@ -142,6 +142,17 @@ impl<T: 'static> ElementBuilder<T> {
         self
     }
 
+    pub fn add_all<S>(mut self, children: S) -> Self
+    where
+        S: IntoIterator,
+        S::Item: Into<Node<T>>,
+     {
+        for child in children {
+            self.children.push(child.into());
+        }
+        self
+    }
+
     pub fn text<S: Into<String>>(mut self, text: S) -> Self {
         self.children.push(Node::Text(text.into()));
         self

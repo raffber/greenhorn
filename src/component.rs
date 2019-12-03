@@ -232,6 +232,15 @@ pub enum Node<T> {
 }
 
 impl<T: 'static> Node<T> {
+
+    pub fn html() -> NodeBuilder<T> {
+        NodeBuilder::new()
+    }
+
+    pub fn svg() -> NodeBuilder<T> {
+        NodeBuilder::new_with_ns("http://www.w3.org/2000/svg")
+    }
+
     pub fn map<U: 'static, F: 'static + Fn(T) -> U>(self, fun: F) -> Node<U> {
         let fun = Arc::new(fun);
         self.map_arc(fun)
