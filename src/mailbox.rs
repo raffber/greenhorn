@@ -33,7 +33,7 @@ impl<T: 'static> MapSender<T> {
         }))
     }
 
-    fn send(&mut self, value: T) {
+    fn send(&self, value: T) {
         match self {
             MapSender::Direct(sender) => {
                 sender.send(value).unwrap();
@@ -44,7 +44,7 @@ impl<T: 'static> MapSender<T> {
 }
 
 trait MappedSender<T> {
-    fn send(&mut self, value: T);
+    fn send(&self, value: T);
     fn clone_box(&self) -> Box<dyn MappedSender<T>>;
 }
 
@@ -57,7 +57,7 @@ struct MappedSenderImpl<T, U, Mapper: Fn(U) -> T> {
 impl<T: 'static, U: 'static, Mapper: 'static + Fn(U) -> T> MappedSender<U>
     for MappedSenderImpl<T, U, Mapper>
 {
-    fn send(&mut self, value: U) {
+    fn send(&self, value: U) {
         let value = (self.mapper)(value);
         self.sender.send(value);
     }
@@ -128,7 +128,7 @@ impl<T: 'static> Mailbox<T> {
         self.tx.send(MailboxMsg::LoadCss(css.into())).unwrap();
     }
 
-    pub fn spawn<S, F>(&mut self, service: S, fun: F)
+    pub fn spawn<S, F>(&self, service: S, fun: F)
     where
         S: Service + Send + Unpin + 'static,
         T: Send,
