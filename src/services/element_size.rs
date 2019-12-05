@@ -11,18 +11,14 @@ pub struct ElementSizeNotifier {
 
 const JS: &'static str = r#"
 (function(ctx) {
-    var elem = null;
     let size = [-1, -1, -1,-1];
     setInterval(function() {
-        if (elem === null) {
-            elem = document.getElementById("{{element_id}}");
-        }
-        if (elem === null) { return; }
+        var elem = document.getElementById("{{element_id}}");
         var dx = elem.offsetWidth;
         var dy = elem.offsetHeight;
         var rect = elem.getBoundingClientRect();
         var x = rect.left;
-        var y = rect.right;
+        var y = rect.top;
         if (size[0] != x || size[1] != y || size[2] != dx || size[3] != dy) {
             size[0] = x;
             size[1] = y;
