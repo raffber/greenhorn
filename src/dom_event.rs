@@ -47,51 +47,61 @@ pub struct MouseEvent {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum DomEvent {
-    Base(Id),
-    Focus(Id),
-    Keyboard(Id, KeyboardEvent),
-    Mouse(Id, MouseEvent),
-    Wheel(Id, WheelEvent),
+    Base(Id, String),
+    Focus(Id, String),
+    Keyboard(Id, String, KeyboardEvent),
+    Mouse(Id, String, MouseEvent),
+    Wheel(Id, String, WheelEvent),
 }
 
 impl DomEvent {
     pub fn target(&self) -> Id {
         match self {
-            DomEvent::Base(id) => *id,
-            DomEvent::Focus(id) => *id,
-            DomEvent::Keyboard(id, _) => *id,
-            DomEvent::Mouse(id, _) => *id,
-            DomEvent::Wheel(id, _) => *id,
+            DomEvent::Base(id, _) => *id,
+            DomEvent::Focus(id, _) => *id,
+            DomEvent::Keyboard(id, _, _) => *id,
+            DomEvent::Mouse(id, _, _) => *id,
+            DomEvent::Wheel(id, _, _) => *id,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            DomEvent::Base(_, name) => name,
+            DomEvent::Focus(_, name) => name,
+            DomEvent::Keyboard(_, name, _) => name,
+            DomEvent::Mouse(_, name, _) => name,
+            DomEvent::Wheel(_, name, _) => name,
         }
     }
 
     pub fn into_keyboard(self) -> Option<KeyboardEvent> {
         match self {
-            DomEvent::Base(_) => None,
-            DomEvent::Focus(_) => None,
-            DomEvent::Keyboard(_, evt) => Some(evt),
-            DomEvent::Mouse(_, _) => None,
-            DomEvent::Wheel(_, _) => None,
+            DomEvent::Base(_, _) => None,
+            DomEvent::Focus(_, _) => None,
+            DomEvent::Keyboard(_, _, evt) => Some(evt),
+            DomEvent::Mouse(_, _, _) => None,
+            DomEvent::Wheel(_, _, _) => None,
         }
     }
 
     pub fn into_mouse(self) -> Option<MouseEvent> {
         match self {
-            DomEvent::Base(_) => None,
-            DomEvent::Focus(_) => None,
-            DomEvent::Keyboard(_, _) => None,
-            DomEvent::Mouse(_, evt) => Some(evt),
-            DomEvent::Wheel(_, evt) => Some(evt.mouse_event),
+            DomEvent::Base(_, _) => None,
+            DomEvent::Focus(_, _) => None,
+            DomEvent::Keyboard(_, _, _) => None,
+            DomEvent::Mouse(_, _, evt) => Some(evt),
+            DomEvent::Wheel(_, _, evt) => Some(evt.mouse_event),
         }
     }
 
     pub fn into_wheel(self) -> Option<WheelEvent> {
         match self {
-            DomEvent::Base(_) => None,
-            DomEvent::Focus(_) => None,
-            DomEvent::Keyboard(_, _) => None,
-            DomEvent::Mouse(_, _) => None,
-            DomEvent::Wheel(_, evt) => Some(evt),
+            DomEvent::Base(_, _) => None,
+            DomEvent::Focus(_, _) => None,
+            DomEvent::Keyboard(_, _, _) => None,
+            DomEvent::Mouse(_, _, _) => None,
+            DomEvent::Wheel(_, _, evt) => Some(evt),
         }
     }
 }

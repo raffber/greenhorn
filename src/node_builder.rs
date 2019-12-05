@@ -252,7 +252,7 @@ mod tests {
             let listeners = &e.listeners.unwrap();
             let listener = listeners.get(0).unwrap();
             assert_eq!(listener.event_name, "click");
-            let msg = (listener.fun)(DomEvent::Base(Id::new()));
+            let msg = (listener.fun)(DomEvent::Base(Id::new(), "".into()));
             assert_matches!(msg, Msg::Clicked);
         } else {
             panic!()

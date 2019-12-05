@@ -45,7 +45,7 @@ struct TemplateData {
     element_id: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ElementSize {
     pub x: i32,
     pub y: i32,

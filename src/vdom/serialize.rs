@@ -25,6 +25,7 @@ impl PatchSerialize for VNode {
                 for c in elem.children.iter() {
                     c.serialize(output);
                 }
+                elem.namespace.serialize(output);
             }
             VNode::Text(elem) => {
                 output.push(1);
@@ -77,7 +78,9 @@ impl PatchSerialize for EventHandler {
 impl<T: PatchSerialize> PatchSerialize for Option<T> {
     fn serialize(&self, output: &mut Vec<u8>) {
         output.push(self.is_some().into());
-        self.iter().for_each(|x| x.serialize(output));
+        if let Some(x) = self {
+            x.serialize(output);
+        }
     }
 }
 

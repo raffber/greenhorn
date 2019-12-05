@@ -39,18 +39,18 @@ function serializeMouseEvent(evt) {
     };
 }
 
-function serializeEvent(id, evt) {
+function serializeEvent(id, name, evt) {
     if (evt instanceof MouseEvent) {
         return {
             "Mouse": [
-                {"id": id},
+                {"id": id}, name,
                 serializeMouseEvent(evt)
             ]
         }
     } else if (evt instanceof KeyboardEvent) {
         return {
             "Keyboard": [
-                {"id": id},
+                {"id": id}, name,
                 {
                     "modifier_state": serializeModifierState(evt),
                     "code": evt.code,
@@ -63,7 +63,7 @@ function serializeEvent(id, evt) {
     } else if (evt instanceof WheelEvent) {
         return {
             "Wheel": [
-                {"id": id},
+                {"id": id}, name,
                 {
                     "mouse_event": serializeMouseEvent(evt),
                     "delta_x": evt.deltaX,
@@ -75,11 +75,11 @@ function serializeEvent(id, evt) {
         }
     } else if (evt instanceof FocusEvent) {
         return {
-            "Focus": {"id": id},
+            "Focus": [{"id": id}, name]
         }
     } else {
         return {
-            "Base": {"id": id},
+            "Base": [{"id": id}, name]
         }
     }
 }
@@ -89,21 +89,27 @@ function addEvent(app, id, elem, evt) {
     // TODO: also support once
     // TODO: also support useCapture
     elem.addEventListener(evt.name, function(e) {
-        app.sendEvent(id, e);
+        app.sendEvent(id, evt.name, e);
     })
 }
 
 class Element {
-    constructor(id, tag, attrs=[], events=[], children=[]) {
+    constructor(id, tag, attrs=[], events=[], children=[], namespace=null) {
         this.id = id;
         this.tag = tag;
         this.attrs = attrs;
         this.events = events;
         this.children = children;
+        this.namespace = namespace;
     }
 
     create(app) {
-        let elem = document.createElement(this.tag);
+        if (this.namespace !== null) {
+            var elem = document.createElementNS(this.namespace, this.tag);
+        } else {
+            var elem = document.createElement(this.tag);
+        }
+        
         let id = this.id;
         for (var k = 0; k < this.attrs.length; ++k) {
             let attr = this.attrs[k];
@@ -198,14 +204,13 @@ export class Pipe {
         }
     }
 
-    sendEvent(id, evt) {
-        let serialized = serializeEvent(id, evt);
+    sendEvent(id, name, evt) {
+        let serialized = serializeEvent(id, name, evt);
         let msg = {
             "Event": serialized
         };
         let data = JSON.stringify(msg);
         this.socket.send(data);
-        console.log("sendEvent = " + data);
     }
 
     sendServiceMsg(id, data) {
@@ -252,8 +257,8 @@ export class Application {
         this.pipe.close();
     }
 
-    sendEvent(id, evt) {
-        this.pipe.sendEvent(id, evt)
+    sendEvent(id, name, evt) {
+        this.pipe.sendEvent(id, name, evt)
     }
 }
 
@@ -363,7 +368,6 @@ export class Patch {
     }
 
     replaceAttribute() {
-        console.log("replaceAttribute")
         let key = this.deserializeString();
         let value = this.deserializeString();
         this.element.setAttribute(key, value);
@@ -393,7 +397,14 @@ export class Patch {
         for (var k = 0; k < children_len; ++k) {
             children.push(this.deserializeNode());
         }
-        return new Element(id, tag, attrs, events, children);
+        let self = this;
+        let hasNamespace = this.popU8() > 0;
+        if (hasNamespace) {
+            var namespace = this.deserializeString();
+        } else {
+            var namespace = null;
+        }
+        return new Element(id, tag, attrs, events, children, namespace);
     }
 
     deserializeText() {

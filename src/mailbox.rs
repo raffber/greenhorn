@@ -227,7 +227,7 @@ mod tests {
     fn test_mailbox() {
         let ctx = dummy_context();
         let (mb, rx) = Mailbox::<MsgA>::new();
-        let mut mapped = mb.map(MsgA::ItemA);
+        let mapped = mb.map(MsgA::ItemA);
         let service = MyService {};
         mapped.spawn(service, ItemB);
         if let Ok(mut subs) = rx.services.recv() {

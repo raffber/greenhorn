@@ -93,8 +93,20 @@ impl<Msg> Frame<Msg> {
 struct RenderedState<Msg> {
     vdom: Option<VNode>,
     subscriptions: HashMap<Id, Subscription<Msg>>,
-    listeners: HashMap<Id, Listener<Msg>>,
+    listeners: HashMap<ListenerKey, Listener<Msg>>,
     components: HashMap<Id, ComponentContainer<Msg>>,
+}
+
+#[derive(Hash, Eq)]
+struct ListenerKey {
+    id: Id,
+    name: String,
+}
+
+impl PartialEq for ListenerKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.name == other.name
+    }
 }
 
 impl<Msg> RenderedState<Msg> {
@@ -109,12 +121,20 @@ impl<Msg> RenderedState<Msg> {
 
     fn apply(&mut self, frame: Frame<Msg>) {
         self.listeners.clear();
+
         for listener in frame.listeners {
-            if let Some(new_id) = frame.translations.get(&listener.node_id) {
-                self.listeners.insert(*new_id, listener);
+            let key = if let Some(new_id) = frame.translations.get(&listener.node_id) {
+                ListenerKey {
+                    id: *new_id,
+                    name: listener.event_name.clone(),
+                }
             } else {
-                self.listeners.insert(listener.node_id, listener);
-            }
+                ListenerKey {
+                    id: listener.node_id,
+                    name: listener.event_name.clone(),
+                }
+            };
+            self.listeners.insert(key, listener);
         }
 
         self.subscriptions.clear();
@@ -204,12 +224,13 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     async fn handle_pipe_msg(&mut self, msg: RxMsg) -> bool {
         match msg {
             RxMsg::Event(evt) => {
-                let target_id = evt.target();
+                let key = ListenerKey { id: evt.target(), name: evt.name().into() };
+
                 // search in listeners and get a message
                 let msg = self
                     .rendered
                     .listeners
-                    .get(&target_id)
+                    .get(&key)
                     .map(|listener| listener.call(evt));
 
                 // inject the message back into the app
