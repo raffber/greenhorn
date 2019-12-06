@@ -128,6 +128,10 @@ impl<T: 'static> Mailbox<T> {
         self.tx.send(MailboxMsg::LoadCss(css.into())).unwrap();
     }
 
+    pub fn run_js<Js: Into<String>>(&self, js: Js) {
+        self.tx.send(MailboxMsg::RunJs(js.into())).unwrap();
+    }
+
     pub fn spawn<S, F>(&self, service: S, fun: F)
     where
         S: Service + Send + Unpin + 'static,

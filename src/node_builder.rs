@@ -205,7 +205,10 @@ impl<T: 'static> ListenerBuilder<T> {
         self
     }
 
-    fn build(mut self) -> ElementBuilder<T> {
+    pub fn build(mut self) -> ElementBuilder<T> {
+        if self.parent.id.is_empty() {
+            self.parent.id = Id::new();
+        }
         self.parent.listeners.push(Listener {
             event_name: self.name,
             node_id: self.parent.id,

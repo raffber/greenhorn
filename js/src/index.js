@@ -40,7 +40,21 @@ function serializeMouseEvent(evt) {
 }
 
 function serializeEvent(id, name, evt) {
-    if (evt instanceof MouseEvent) {
+
+    if (evt instanceof WheelEvent) {
+        return {
+            "Wheel": [
+                {"id": id}, name,
+                {
+                    "mouse_event": serializeMouseEvent(evt),
+                    "delta_x": evt.deltaX,
+                    "delta_y": evt.deltaY,
+                    "delta_z": evt.deltaZ,
+                    "delta_mode": evt.deltaMode
+                }
+            ]
+        }
+    } else if (evt instanceof MouseEvent) {
         return {
             "Mouse": [
                 {"id": id}, name,
@@ -60,19 +74,6 @@ function serializeEvent(id, name, evt) {
                 }
             ]
         }
-    } else if (evt instanceof WheelEvent) {
-        return {
-            "Wheel": [
-                {"id": id}, name,
-                {
-                    "mouse_event": serializeMouseEvent(evt),
-                    "delta_x": evt.deltaX,
-                    "delta_y": evt.deltaY,
-                    "delta_z": evt.deltaZ,
-                    "delta_mode": evt.deltaMode
-                }
-            ]
-        }
     } else if (evt instanceof FocusEvent) {
         return {
             "Focus": [{"id": id}, name]
@@ -85,12 +86,18 @@ function serializeEvent(id, name, evt) {
 }
 
 function addEvent(app, id, elem, evt) {
-    // TODO: also set passive = true if !preventDefault
     // TODO: also support once
     // TODO: also support useCapture
+    // TODO: let passive = !evt.prevent_default;
     elem.addEventListener(evt.name, function(e) {
+        if (evt.prevent_default) {
+            e.preventDefault();
+        }
+        if (evt.no_propagate) { 
+            e.stopPropagation();
+        }
         app.sendEvent(id, evt.name, e);
-    })
+    });
 }
 
 class Element {

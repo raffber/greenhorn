@@ -97,7 +97,7 @@ struct RenderedState<Msg> {
     components: HashMap<Id, ComponentContainer<Msg>>,
 }
 
-#[derive(Hash, Eq)]
+#[derive(Hash, Eq, Debug)]
 struct ListenerKey {
     id: Id,
     name: String,
