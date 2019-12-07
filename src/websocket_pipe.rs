@@ -142,8 +142,8 @@ impl Clone for WebsocketSender {
 
 impl Sender for WebsocketSender {
     fn send(&self, msg: TxMsg) {
-        // let msg = serde_cbor::to_vec(&msg).unwrap();
-        // self.req_tx.unbounded_send(Message::Binary(msg)).unwrap();
+        // for performance notes regarding serialization and underlying transport, refer to index.js
+        // tldr: JSON.parse() in the browser is very fast
         let msg = serde_json::to_string(&msg).unwrap();
         self.req_tx.unbounded_send(Message::Text(msg)).unwrap();
     }
@@ -189,10 +189,7 @@ impl Stream for WebsocketReceiver {
 //                    println!("{}", data);
                     ret
                 }
-                Message::Binary(data) => match rmp_serde::from_slice(&data).ok() {
-                    None => Poll::Pending,
-                    Some(x) => Poll::Ready(Some(x)),
-                },
+                Message::Binary(_) => Poll::Pending,
                 Message::Ping(_) => Poll::Pending,
                 Message::Pong(_) => Poll::Pending,
                 Message::Close(_) => Poll::Ready(None),
@@ -250,11 +247,6 @@ mod tests {
             while let Some(msg) = stream.next().await {
                 // receive one message, then terminate
                 match msg.unwrap() {
-                    Message::Binary(data) => {
-                        let msg: TxMsg = rmp_serde::from_slice(data.as_slice()).unwrap();
-                        assert_matches!(msg, TxMsg::Ping());
-                        break;
-                    }
                     Message::Text(data) => {
                         let msg: TxMsg = serde_json::from_str(&data).unwrap();
                         assert_matches!(msg, TxMsg::Ping());

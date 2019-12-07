@@ -23,7 +23,5 @@
       "@babel/preset-env"
     ]
   },
-  "dependencies": {
-    "msgpack-lite": "^0.1.26"
-  }
+  "dependencies": {}
 }

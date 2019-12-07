@@ -1,7 +1,5 @@
 "use strict";
 
-var msgpack = require("msgpack-lite");
-
 const decoder = new TextDecoder();
 
 function loadCss(css) {
@@ -180,7 +178,14 @@ export class Pipe {
     }
 
     onMessage(event) {
+        // conclusion on performance testing:
+        // JSON.parse is much faster then msgpack.decode()
+        // json serialization on server is approx 2x slower
+        // however, since serialization may be run in parallel
+        // on server but must be run on a single thread here
+        // we are better off just using json
         let msg = JSON.parse(event.data);
+
         if (msg.hasOwnProperty("Patch")) {
             let data = new Uint8Array(msg.Patch);
             this.onPatch(data.buffer);
