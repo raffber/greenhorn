@@ -23,6 +23,7 @@ pub struct WebsocketPipeBuilder {
 pub struct WebsocketPipe {
     resp_rx: UnboundedReceiver<Message>,
     req_tx: UnboundedSender<Message>,
+    addr: SocketAddr,
 }
 
 impl WebsocketPipe {
@@ -36,6 +37,10 @@ impl WebsocketPipe {
             req_rx,
             resp_rx,
         }
+    }
+
+    pub fn local_addr(&self) -> SocketAddr {
+        self.addr.clone()
     }
 }
 
@@ -106,9 +111,12 @@ impl WebsocketPipeBuilder {
         let resp_tx = self.resp_tx;
         let req_rx = self.req_rx;
         let addr = self.addr;
+        let try_socket = task::block_on(async {
+            TcpListener::bind(&addr).await
+        });
+        let listener = try_socket.expect("Failed to bind");
+        let local_addr = listener.local_addr();
         task::spawn(async move {
-            let try_socket = TcpListener::bind(&addr).await;
-            let listener = try_socket.expect("Failed to bind");
             if let Ok((stream, _)) = listener.accept().await {
                 let ws = accept_async(stream).await.expect("Error during handshake");
                 let mut handler = ConnectionHandler {
@@ -124,6 +132,7 @@ impl WebsocketPipeBuilder {
         WebsocketPipe {
             resp_rx: self.resp_rx,
             req_tx: self.req_tx,
+            addr: local_addr.unwrap(),
         }
     }
 }
