@@ -1,4 +1,58 @@
 
+# Performance Optimizations - TODO
+
+ * establish better benchmarking solution
+      - try to establish common usecases and implement benchmarks
+      - find a good way to instrument code and collect data
+ * js: optimize patch decode
+      - profile
+      - closure compiler?!
+ * separate update() and render() thread
+ * component based rendering
+   => only rerender components which need it
+   => parallel component rendering
+ * don't back annotate ids, just keep translation and use when generating next patch
+ * key-based diffing
+ * diff: hash based comparison
+      - Merkle trees ?!
+      - good hashfunction for the job?
+ * diff: better algorithms to produce smaller patches for some cases?!
+
+
+# Performance Optimizations - Done
+
+ * serialization frontend <-> backend: JSON for normal messages, binary for patches seems to be the fastest solution
+   - JSON.parse() in the browser is pretty quick and outperforms js implementations of better formats
+   - initial testing showed that serialization/deserialization was about 80% of overall render time in a small-ish example
+ * lazy rerender
+ * frame limiter
+ * patch optimizations
+   - don't emit unnecessary moves
+   - truncate moves from end of patch
+
+
+# TODOs / Fixes
+ 
+ * deploy with electron
+ * comments, documentation
+ * more tests...
+ * development speed convenience features
+   - script for reload with cargo watch
+ * find a reasonable way to test runtime module
+ * client: more event propagation
+ * change events are not supported yet and should transport content of inputs
+ * file save / file open dialogs => electron
+
+
+# Features
+
+ * some webgl interface?!
+ * find the best way to deploy:
+   * some webview based deployment?
+   * cef?
+   * qt webengine
+   * or indeed electron due to all the other nice features?!
+
 
 # Ideas
 
