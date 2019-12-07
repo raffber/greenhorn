@@ -142,10 +142,17 @@ impl Clone for WebsocketSender {
 
 impl Sender for WebsocketSender {
     fn send(&self, msg: TxMsg) {
-        // for performance notes regarding serialization and underlying transport, refer to index.js
-        // tldr: JSON.parse() in the browser is very fast
-        let msg = serde_json::to_string(&msg).unwrap();
-        self.req_tx.unbounded_send(Message::Text(msg)).unwrap();
+        match msg {
+           TxMsg::Patch(p) => {
+               self.req_tx.unbounded_send(Message::Binary(p)).unwrap();
+           },
+            msg => {
+                // for performance notes regarding serialization and underlying transport, refer to index.js
+                // tldr: JSON.parse() in the browser is very fast
+                let msg = serde_json::to_string(&msg).unwrap();
+                self.req_tx.unbounded_send(Message::Text(msg)).unwrap();
+            }
+        }
     }
 
     fn close(&self) {

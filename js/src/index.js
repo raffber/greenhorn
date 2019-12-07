@@ -218,8 +218,16 @@ export class Pipe {
         // however, since serialization may be run in parallel
         // on server but must be run on a single thread here
         // we are better off just using json
-        let msg = JSON.parse(event.data);
 
+        if (event.data instanceof ArrayBuffer) {
+            let data = new Uint8Array(event.data);
+            this.onPatch(data.buffer);
+            let reply = JSON.stringify({"FrameApplied": []});
+            this.socket.send(reply);
+            return;
+        }
+
+        let msg = JSON.parse(event.data);
         if (msg.hasOwnProperty("Patch")) {
             let data = new Uint8Array(msg.Patch);
             this.onPatch(data.buffer);
@@ -392,7 +400,6 @@ export class Patch {
     }
 
     removeChildren() {
-        console.log("removeChildren")
         while (this.element.firstChild) {
             this.element.removeChild(this.element.firstChild);
           }
