@@ -282,13 +282,13 @@ export class Patch {
         this.element = element;
         this.app = app;
         this.patch_funs = {
-            1: Patch.prototype.appendChild,
+            1: Patch.prototype.appendSibling,
             3: Patch.prototype.replace,
             4: Patch.prototype.changeText,
             5: Patch.prototype.ascend,
             6: Patch.prototype.descend,
             7: Patch.prototype.removeChildren,
-            8: Patch.prototype.truncateChildren,
+            8: Patch.prototype.truncateSiblings,
             9: Patch.prototype.nextNode,
             10: Patch.prototype.removeAttribute,
             11: Patch.prototype.addAttribute,
@@ -320,16 +320,19 @@ export class Patch {
         }
     }
 
-    appendChild() {
-        console.log("appendChild");
+    appendSibling() {
         let node = this.deserializeNode();
-        this.element.appendChild(node.create(this.app));
+        let new_elem = node.create(this.app);
+        this.element.parentNode.appendChild(new_elem);
+        this.element = new_elem;
     }
 
 
     replace() {
         let node = this.deserializeNode();
-        this.element.parentNode.replaceChild(node.create(this.app), this.element);
+        let new_elem = node.create(this.app);
+        this.element.parentNode.replaceChild(new_elem, this.element);
+        this.element = new_elem;
     }
 
     changeText() {
@@ -352,13 +355,12 @@ export class Patch {
           }
     }
 
-    truncateChildren() {
-        console.log("truncateChildren")
+    truncateSiblings() {
         let next = this.element.nextSibling;
         while (next != null) {
             let to_remove = next;
             next = next.nextSibling;
-            this.element.removeChild(to_remove);
+            this.element.parentNode.removeChild(to_remove);
         }
     }
 
@@ -367,13 +369,11 @@ export class Patch {
     }
 
     removeAttribute() {
-        console.log("removeAttribute")
         let attr = this.deserializeString();
         this.element.removeAttribute(attr);
     }
 
     addAttribute() {
-        console.log("addAttribute")
         let key = this.deserializeString();
         let value = this.deserializeString();
         this.element.setAttribute(key, value);

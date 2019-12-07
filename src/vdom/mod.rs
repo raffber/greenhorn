@@ -98,13 +98,13 @@ impl VNode {
 
 #[derive(Debug)]
 pub enum PatchItem<'a> {
-    AppendNode(&'a VNode),
+    AppendSibling(&'a VNode),
     Replace(&'a VNode),
     ChangeText(&'a str),
     Ascend(),
     Descend(),
     RemoveChildren(),
-    TruncateNodes(),
+    TruncateSiblings(),
     NextNode(),
     RemoveAttribute(&'a str),
     AddAtrribute(&'a str, &'a str),
@@ -174,7 +174,7 @@ pub fn diff<'a>(old: Option<&'a VNode>, new: &'a VNode) -> Patch<'a> {
         diff_recursive(old, new, &mut patch);
         optimize_patch(&mut patch);
     } else {
-        patch.push(PatchItem::AppendNode(new))
+        patch.push(PatchItem::AppendSibling(new))
     }
     patch
 }
@@ -241,6 +241,7 @@ fn diff_children<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>
     }
 
     let mut ret = false;
+    let mut truncates = 1;
     patch.push(PatchItem::Descend());
 
     // diff common items
@@ -250,6 +251,7 @@ fn diff_children<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>
     let range = 0..common_len;
     for k in range {
         if k != 0 {
+            truncates += 1;
             patch.push(PatchItem::NextNode());
         }
         let old_node = old.children.get(k).unwrap();
@@ -258,13 +260,12 @@ fn diff_children<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>
     }
 
     if n_old > n_new {
-        patch.push(PatchItem::TruncateNodes());
+        patch.push(PatchItem::TruncateSiblings());
         ret = true;
     } else if n_new > n_old {
-        let range = (n_new - n_old - 1)..n_new;
-        for k in range {
+        for k in n_old..n_new {
             let new_node = new.children.get(k).unwrap();
-            patch.push(PatchItem::AppendNode(new_node));
+            patch.push(PatchItem::AppendSibling(new_node));
             ret = true;
         }
     }
@@ -272,8 +273,8 @@ fn diff_children<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>
     if ret {
         patch.push(PatchItem::Ascend())
     } else {
-        // remove descend again
-        patch.items.pop();
+        // remove Descend() and NextNode() again
+        patch.items.truncate(patch.items.len() - truncates);
     }
 
     ret
