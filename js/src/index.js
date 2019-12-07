@@ -26,8 +26,10 @@ function serializePoint(x,y) {
     };
 }
 
-function serializeMouseEvent(evt) {
+function serializeMouseEvent(id, name, evt) {
     return {
+        "target": {"id": id},
+        "event_name": name,
         "modifier_state": serializeModifierState(evt),
         "button": evt.button,
         "buttons": evt.buttons,
@@ -42,37 +44,31 @@ function serializeMouseEvent(evt) {
 function serializeEvent(id, name, evt) {
 
     if (evt instanceof WheelEvent) {
+        let wheel =  {
+            "delta_x": evt.deltaX,
+            "delta_y": evt.deltaY,
+            "delta_z": evt.deltaZ,
+            "delta_mode": evt.deltaMode
+        };
         return {
-            "Wheel": [
-                {"id": id}, name,
-                {
-                    "mouse_event": serializeMouseEvent(evt),
-                    "delta_x": evt.deltaX,
-                    "delta_y": evt.deltaY,
-                    "delta_z": evt.deltaZ,
-                    "delta_mode": evt.deltaMode
-                }
-            ]
+            "Wheel": { ...wheel, ...serializeMouseEvent(id, name, evt) }
         }
     } else if (evt instanceof MouseEvent) {
         return {
-            "Mouse": [
-                {"id": id}, name,
-                serializeMouseEvent(evt)
-            ]
+            "Mouse": serializeMouseEvent(id, name, evt)
         }
     } else if (evt instanceof KeyboardEvent) {
         return {
-            "Keyboard": [
-                {"id": id}, name,
+            "Keyboard":
                 {
+                    "target": {"id": id},
+                    "event_name": name,            
                     "modifier_state": serializeModifierState(evt),
                     "code": evt.code,
                     "key": evt.key,
                     "location": evt.location,
                     "repeat": evt.repeat
                 }
-            ]
         }
     } else if (evt instanceof FocusEvent) {
         return {
@@ -208,7 +204,16 @@ export class Pipe {
             loadCss(msg.LoadCss);
         } else if (msg.hasOwnProperty("RunJs")) {
             eval(msg.RunJs);
+        } else if (msg.hasOwnProperty("Propagate")) {
+            let event = msg.Propagate.event;
+            let prop = msg.Propagate.propagate;
+            let default_action = msg.Propagate.default_action;
+            this.injectEvent(event, prop, default_action);
         }
+    }
+
+    injectEvent(event, prop, default_action) {
+
     }
 
     sendEvent(id, name, evt) {

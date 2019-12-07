@@ -3,6 +3,7 @@ use futures::Stream;
 use crate::dom_event::DomEvent;
 use crate::service::{RxServiceMessage, TxServiceMessage};
 use serde::{Deserialize, Serialize};
+use crate::mailbox::EventPropagate;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum TxMsg {
@@ -11,6 +12,7 @@ pub enum TxMsg {
     LoadCss(String),
     RunJs(String),
     Service(u64, TxServiceMessage),
+    Propagate(EventPropagate),
 }
 
 #[derive(Debug, Serialize, Deserialize)]

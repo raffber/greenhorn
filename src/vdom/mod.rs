@@ -4,6 +4,7 @@ use std::collections::HashMap;
 mod serialize;
 pub use serialize::serialize as patch_serialize;
 use std::hash::{Hash, Hasher};
+use crate::component::Listener;
 
 #[derive(Debug, Clone)]
 pub struct Attr {
@@ -25,6 +26,16 @@ pub struct EventHandler {
     pub name: String,
     pub no_propagate: bool,
     pub prevent_default: bool,
+}
+
+impl EventHandler {
+    pub(crate) fn from_listener<T>(listener: &Listener<T>) -> Self {
+        EventHandler {
+            name: listener.event_name.clone(),
+            no_propagate: listener.no_propagate,
+            prevent_default: listener.prevent_default,
+        }
+    }
 }
 
 impl PartialEq for EventHandler {
@@ -169,44 +180,21 @@ pub fn diff<'a>(old: Option<&'a VNode>, new: &'a VNode) -> Patch<'a> {
 }
 
 fn optimize_patch(patch: &mut Patch) {
-    // optimize all moves
-    let mut all_moves = true;
-    for x in &patch.items {
-        all_moves &= x.is_move();
+    // optimize trailing moves as they are useless and trivial to optimize
+    let mut cutoff = 0;
+    for x in patch.items.iter().rev() {
+        if x.is_move() {
+            cutoff += 1;
+        } else {
+            break;
+        }
     }
-    if all_moves {
-        patch.items.clear();
-    }
-
-    // TODO: ignore NextNode before Ascend
-
-    // optimize Descend(), Ascend() pairs to no-op
-    // TODO: this is a bit overly primitive ;)
-    let mut new_items = Vec::new();
-    let mut last_descend = false;
-    for x in patch.items.drain(..) {
-        match x {
-            PatchItem::Descend() => {
-                last_descend = true;
-            }
-            PatchItem::Ascend() => {
-                if last_descend {
-                    new_items.pop();
-                    last_descend = false;
-                    continue;
-                }
-                last_descend = false;
-            }
-            _ => {
-                last_descend = false;
-            }
-        };
-        new_items.push(x);
-    }
-    patch.items = new_items;
+    patch.items.truncate(patch.items.len() - cutoff);
 }
 
-fn diff_attrs<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) {
+fn diff_attrs<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) -> bool {
+    let mut ret = false;
+
     let mut old_kv = HashMap::new();
     for attr in old.attr.iter() {
         old_kv.insert(&attr.key, &attr.value);
@@ -219,10 +207,12 @@ fn diff_attrs<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) {
     for attr in new.attr.iter() {
         if let Some(&old_v) = old_kv.get(&attr.key) {
             if old_v != &attr.value {
+                ret = true;
                 let p = PatchItem::ReplaceAttribute(&attr.key, &attr.value);
                 patch.push(p);
             }
         } else {
+            ret = true;
             let p = PatchItem::AddAtrribute(&attr.key, &attr.value);
             patch.push(p);
         }
@@ -230,23 +220,27 @@ fn diff_attrs<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) {
 
     for attr in old.attr.iter() {
         if !new_kv.contains_key(&attr.key) {
+            ret = true;
             let p = PatchItem::RemoveAttribute(&attr.key);
             patch.push(p);
         }
     }
+
+    ret
 }
 
 #[allow(clippy::comparison_chain)]
-fn diff_children<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) {
+fn diff_children<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) -> bool {
     if old.children.is_empty() && new.children.is_empty() {
-        return;
+        return false;
     }
 
     if !old.children.is_empty() && new.children.is_empty() {
         patch.push(PatchItem::RemoveChildren());
-        return;
+        return false;
     }
 
+    let mut ret = false;
     patch.push(PatchItem::Descend());
 
     // diff common items
@@ -260,20 +254,29 @@ fn diff_children<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>
         }
         let old_node = old.children.get(k).unwrap();
         let new_node = new.children.get(k).unwrap();
-        diff_recursive(old_node, new_node, patch);
+        ret |= diff_recursive(old_node, new_node, patch);
     }
 
     if n_old > n_new {
         patch.push(PatchItem::TruncateNodes());
+        ret = true;
     } else if n_new > n_old {
         let range = (n_new - n_old - 1)..n_new;
         for k in range {
             let new_node = new.children.get(k).unwrap();
-            patch.push(PatchItem::AppendNode(new_node))
+            patch.push(PatchItem::AppendNode(new_node));
+            ret = true;
         }
     }
 
-    patch.push(PatchItem::Ascend())
+    if ret {
+        patch.push(PatchItem::Ascend())
+    } else {
+        // remove descend again
+        patch.items.pop();
+    }
+
+    ret
 }
 
 fn diff_events<'a>(old: &'a VElement, new: &'a VElement) -> bool {
@@ -288,18 +291,20 @@ fn diff_events<'a>(old: &'a VElement, new: &'a VElement) -> bool {
     true
 }
 
-fn diff_recursive<'a>(old: &'a VNode, new: &'a VNode, patch: &mut Patch<'a>) {
+fn diff_recursive<'a>(old: &'a VNode, new: &'a VNode, patch: &mut Patch<'a>) -> bool {
+    let mut ret = false;
     match (old, new) {
         (VNode::Element(elem_old), VNode::Element(elem_new)) => {
             if elem_old.tag != elem_new.tag
                 || elem_old.namespace != elem_new.namespace
                 || !diff_events(elem_old, elem_new)
             {
+                ret = true;
                 patch.push(PatchItem::Replace(new))
             } else {
-                diff_attrs(elem_old, elem_new, patch);
+                ret |= diff_attrs(elem_old, elem_new, patch);
                 let _new_id = (*elem_new).id;
-                diff_children(elem_old, elem_new, patch);
+                ret |= diff_children(elem_old, elem_new, patch);
                 if !elem_old.id.is_empty() {
                     patch.translate(elem_new.id, elem_old.id);
                 }
@@ -307,11 +312,16 @@ fn diff_recursive<'a>(old: &'a VNode, new: &'a VNode, patch: &mut Patch<'a>) {
         }
         (VNode::Text(elem_old), VNode::Text(elem_new)) => {
             if elem_old != elem_new {
+                ret = true;
                 patch.push(PatchItem::ChangeText(elem_new))
             }
         }
-        (_, new) => patch.push(PatchItem::Replace(new)),
-    }
+        (_, new) => {
+            ret = true;
+            patch.push(PatchItem::Replace(new));
+        },
+    };
+    ret
 }
 
 #[cfg(test)]

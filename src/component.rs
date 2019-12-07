@@ -11,8 +11,8 @@ use crate::vdom::Attr;
 use crate::Id;
 
 pub struct Updated {
-    should_render: bool,
-    components_render: Option<Vec<Id>>,
+    pub(crate) should_render: bool,
+    pub(crate) components_render: Option<Vec<Id>>,
 }
 
 impl Updated {

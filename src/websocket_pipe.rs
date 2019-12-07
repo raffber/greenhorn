@@ -186,7 +186,7 @@ impl Stream for WebsocketReceiver {
                         None => Poll::Pending,
                         Some(x) => Poll::Ready(Some(x)),
                     };
-                    println!("{}", data);
+//                    println!("{}", data);
                     ret
                 }
                 Message::Binary(data) => match rmp_serde::from_slice(&data).ok() {

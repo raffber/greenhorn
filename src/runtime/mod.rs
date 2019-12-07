@@ -277,9 +277,11 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     }
 
     fn update(&mut self, msg: A::Message) {
-        self.schedule_render();
         let (mailbox, receiver) = Mailbox::<A::Message>::new();
-        self.app.update(msg, mailbox);
+        let updated = self.app.update(msg, mailbox);
+        if updated.should_render {
+            self.schedule_render();
+        }
         self.handle_mailbox_result(receiver);
     }
 
@@ -295,9 +297,8 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                 MailboxMsg::RunJs(js) => {
                     self.sender.send(TxMsg::RunJs(js));
                 },
-                MailboxMsg::Propagate(_prop) => {
-                    // TODO: ...
-                    unimplemented!()
+                MailboxMsg::Propagate(prop) => {
+                    self.sender.send(TxMsg::Propagate(prop));
                 },
             }
         }
@@ -337,11 +338,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                 }
                 let mut events = Vec::new();
                 for listener in elem.take_listeners().drain(..) {
-                    events.push(EventHandler {
-                        name: listener.event_name.clone(),
-                        no_propagate: listener.no_propagate,
-                        prevent_default: listener.prevent_default,
-                    });
+                    events.push(EventHandler::from_listener(&listener));
                     result.listeners.push(listener);
                 }
                 Some(VNode::element(VElement {
@@ -369,11 +366,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                 }
                 let mut events = Vec::new();
                 for listener in elem.listeners.take().unwrap().drain(..) {
-                    events.push(EventHandler {
-                        name: listener.event_name.clone(),
-                        no_propagate: listener.no_propagate,
-                        prevent_default: listener.prevent_default,
-                    });
+                    events.push(EventHandler::from_listener(&listener));
                     result.listeners.push(listener);
                 }
                 Some(VNode::element(VElement {
@@ -420,11 +413,11 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         frame.translations = translations;
 
         self.dirty = false;
-        println!("{:?}", patch);
         if patch.is_empty() {
             frame.back_annotate();
             self.rendered.apply(frame);
         } else {
+            println!("{:?}", patch);
             let serialized = patch_serialize(patch);
 
             // schedule next frame

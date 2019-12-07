@@ -5,6 +5,7 @@ use std::any::Any;
 use std::marker::PhantomData;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 
 enum MapSender<T> {
     Direct(Sender<T>),
@@ -71,7 +72,8 @@ impl<T: 'static, U: 'static, Mapper: 'static + Fn(U) -> T> MappedSender<U>
     }
 }
 
-pub(crate) struct EventPropagate {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EventPropagate {
     event: DomEvent,
     propagate: bool,
     default_action: bool,
