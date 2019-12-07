@@ -196,9 +196,8 @@ fn test_add_child() {
 
     let patch = diff(Some(&elem_a), &elem_b);
     assert_eq!(patch.translations.len(), 1);
-    assert_eq!(patch.items.len(), 3);
+    assert_eq!(patch.items.len(), 2);
     assert_matches!(&patch.items[0], PatchItem::Descend());
-    assert_matches!(&patch.items[2], PatchItem::Ascend());
     if let PatchItem::AppendSibling(VNode::Element(child)) = &patch.items[1] {
         assert_eq!(child.tag, "bla");
     } else {
