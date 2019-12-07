@@ -65,7 +65,8 @@ function serializeEvent(id, name, evt) {
                     "code": evt.code,
                     "key": evt.key,
                     "location": evt.location,
-                    "repeat": evt.repeat
+                    "repeat": evt.repeat,
+                    "bubble": true,
                 }
         }
     } else if (evt instanceof FocusEvent) {
@@ -79,11 +80,41 @@ function serializeEvent(id, name, evt) {
     }
 }
 
+function deserializeEvent(event) {
+    if (event.hasOwnProperty("Keyboard")) {
+        var evt = event.Keyboard;
+        let ret = new KeyboardEvent(evt.event_name, {
+            "code": evt.code,
+            "ctrlKey": evt.modifier_state.ctrl_key,
+            "key": evt.key,
+            "location": evt.location,
+            "altKey": evt.modifier_state.alt_key,
+            "repeat": evt.repeat,
+            "shiftKey": evt.shift_key,
+            "metaKey": evt.meta_key,
+        });
+        Object.defineProperty(ret, "__dispatch__", {value: true});
+        Object.defineProperty(ret, "__id__", {value: evt.target.id});
+        return ret;
+    } else if (event.hasOwnProperty("Mouse")) {
+        // TODO: 
+    } else if (event.hasOwnProperty("Wheel")) {
+        // TODO: 
+    } else if (event.hasOwnProperty("Focus")) {
+        // TODO: 
+    } else if (event.hasOwnProperty("Base")) {
+        // TODO: 
+    }
+}
+
 function addEvent(app, id, elem, evt) {
     // TODO: also support once
     // TODO: also support useCapture
     // TODO: let passive = !evt.prevent_default;
     elem.addEventListener(evt.name, function(e) {
+        if (e.hasOwnProperty("__dispatch__")) {
+            return;
+        }
         if (evt.prevent_default) {
             e.preventDefault();
         }
@@ -112,6 +143,9 @@ class Element {
         }
         
         let id = this.id;
+        if (id !== null) {
+            elem.setAttribute("__id__", id);
+        }
         for (var k = 0; k < this.attrs.length; ++k) {
             let attr = this.attrs[k];
             elem.setAttribute(attr[0], attr[1]);
@@ -218,7 +252,11 @@ export class Pipe {
     }
 
     injectEvent(event, prop, default_action) {
-
+        // TODO: use prop, default_action
+        let evt = deserializeEvent(event);
+        let query = "[__id__=\"" + evt.__id__ + "\"]";
+        let elem = document.querySelector(query);
+        elem.dispatchEvent(evt);
     }
 
     sendEvent(id, name, evt) {
