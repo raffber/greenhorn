@@ -243,10 +243,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dummy_waker"
-version = "0.1.0"
-
-[[package]]
 name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -405,7 +401,6 @@ dependencies = [
  "async-std 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "async-timer 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "async-tungstenite 0.1.0 (git+https://github.com/sdroege/async-tungstenite.git)",
- "dummy_waker 0.1.0",
  "futures 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "handlebars 2.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",

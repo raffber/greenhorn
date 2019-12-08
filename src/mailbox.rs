@@ -193,9 +193,8 @@ mod tests {
     use super::*;
     use crate::mailbox::tests::MsgB::ItemB;
     use assert_matches::assert_matches;
-    use dummy_waker::dummy_context;
     use futures::task::{Context, Poll};
-    use futures::Stream;
+    use futures::{Stream, StreamExt};
     use std::pin::Pin;
     use crate::service::ServiceMailbox;
 
@@ -231,14 +230,13 @@ mod tests {
 
     #[test]
     fn test_mailbox() {
-        let ctx = dummy_context();
         let (mb, rx) = Mailbox::<MsgA>::new();
         let mapped = mb.map(MsgA::ItemA);
         let service = MyService {};
         mapped.spawn(service, ItemB);
         if let Ok(mut subs) = rx.services.recv() {
-            let polled = Pin::new(&mut subs).poll_next(&mut ctx.context());
-            assert_matches!(polled, Poll::Ready(Some(MsgA::ItemA(MsgB::ItemB(1)))));
+            let result = async_std::task::block_on(subs.next());
+            assert_matches!(result, Some(MsgA::ItemA(MsgB::ItemB(1))));
         } else {
             panic!();
         }
