@@ -417,7 +417,6 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             frame.back_annotate();
             self.rendered.apply(frame);
         } else {
-            println!("{:?}", patch);
             let serialized = patch_serialize(patch);
 
             // schedule next frame

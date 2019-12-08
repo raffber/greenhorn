@@ -197,13 +197,9 @@ impl Stream for WebsocketReceiver {
         let ret: Poll<Option<Message>> = pin.poll_next(cx);
         match ret {
             Poll::Ready(Some(msg)) => match msg {
-                Message::Text(data) => {
-                    let ret = match serde_json::from_str(&data).ok() {
-                        None => Poll::Pending,
-                        Some(x) => Poll::Ready(Some(x)),
-                    };
-//                    println!("{}", data);
-                    ret
+                Message::Text(data) => match serde_json::from_str(&data).ok() {
+                    None => Poll::Pending,
+                    Some(x) => Poll::Ready(Some(x)),
                 }
                 Message::Binary(_) => Poll::Pending,
                 Message::Ping(_) => Poll::Pending,
