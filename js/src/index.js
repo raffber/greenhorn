@@ -327,9 +327,11 @@ export class Application {
     constructor(url, root_element) {
         this.pipe = new Pipe(url);
         let self = this;
-        let elem = document.createElement("div");
-        root_element.appendChild(elem);
         this.root_element = root_element;
+        if (!this.root_element.firstElementChild) {
+            let elem = document.createElement("div");
+            root_element.appendChild(elem);
+        }
 
         this.pipe.onPatch = (e) => {
             self.onPatch(e);
@@ -346,7 +348,7 @@ export class Application {
     }
 
     onPatch(patch_data) {
-        let patch = new Patch(patch_data, this.root_element.firstChild, this);
+        let patch = new Patch(patch_data, this.root_element.firstElementChild, this);
         patch.apply();
     }
 
