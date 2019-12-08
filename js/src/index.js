@@ -194,21 +194,49 @@ class Context {
 
 export class Pipe {
     constructor(url) {
-        this.socket = new WebSocket(url);
-        this.socket.binaryType = "arraybuffer";
-        let self = this;
-        this.socket.onopen = (e) => {};
-        this.socket.onerror = (e) => {};
-        this.socket.onclose = (e) => {};
-
-        this.socket.onmessage = (e) => {
-            self.onMessage(e);
-        };
-
-
+        this.url = url;
+        this.setupSocket();
         this.onPatch = (patch_data) => {};
         this.onServiceMsg = (id, service_msg) => {};
         this.onRunJsMsg = (id, run_js_msg) => {};
+    }
+
+    setupSocket() {
+        let self = this;
+        this.connected = false;
+        this.socket = new WebSocket(this.url);
+        this.socket.binaryType = "arraybuffer";
+        this.socket.onopen = (e) => { 
+            self.connected = true;
+        };
+        this.socket.onerror = (e) => {
+            self.retryConnect();
+        }
+        this.socket.onclose = (e) => { 
+            self.retryConnect();
+         };
+        this.socket.onmessage = (e) => { self.onMessage(e); };
+    }
+
+    retryConnect() {
+        let self = this;
+        
+        if (this.socket == null) {
+            return;
+        }
+        this.connected = false;
+        this.socket = null;
+        setTimeout(() => {
+            self.setupSocket();
+        }, 30);
+    }
+
+    sendApplied() {
+        if (this.socket == null || !this.connected) {
+            return;
+        }
+        let reply = JSON.stringify({"FrameApplied": []}); 
+        this.socket.send(reply);
     }
 
     onMessage(event) {
@@ -218,12 +246,12 @@ export class Pipe {
         // however, since serialization may be run in parallel
         // on server but must be run on a single thread here
         // we are better off just using json
+        console.log(event);
 
         if (event.data instanceof ArrayBuffer) {
             let data = new Uint8Array(event.data);
             this.onPatch(data.buffer);
-            let reply = JSON.stringify({"FrameApplied": []});
-            this.socket.send(reply);
+            this.sendApplied();
             return;
         }
 
@@ -231,10 +259,7 @@ export class Pipe {
         if (msg.hasOwnProperty("Patch")) {
             let data = new Uint8Array(msg.Patch);
             this.onPatch(data.buffer);
-            let reply = JSON.stringify({
-                "FrameApplied": []
-            });
-            this.socket.send(reply);
+            this.sendApplied();
         } else if (msg.hasOwnProperty("Service")) {
             let service_msg = msg.Service;
             let id = service_msg[0];
@@ -268,6 +293,9 @@ export class Pipe {
     }
 
     sendEvent(id, name, evt) {
+        if (this.socket == null || !this.connected) {
+            return;
+        }
         let serialized = serializeEvent(id, name, evt);
         let msg = {
             "Event": serialized
@@ -277,6 +305,9 @@ export class Pipe {
     }
 
     sendServiceMsg(id, data) {
+        if (this.socket == null || !this.connected) {
+            return;
+        }
         let msg = {
             "Service": [id, {"Frontend": data}]
         };
