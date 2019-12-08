@@ -246,8 +246,8 @@ export class Pipe {
         // however, since serialization may be run in parallel
         // on server but must be run on a single thread here
         // we are better off just using json
-        console.log(event);
 
+        // in case we get binary data it must be a Patch
         if (event.data instanceof ArrayBuffer) {
             let data = new Uint8Array(event.data);
             this.onPatch(data.buffer);
@@ -255,6 +255,7 @@ export class Pipe {
             return;
         }
 
+        // in case we get text data in can be any type of message
         let msg = JSON.parse(event.data);
         if (msg.hasOwnProperty("Patch")) {
             let data = new Uint8Array(msg.Patch);
@@ -317,6 +318,8 @@ export class Pipe {
 
     close() {
         this.socket.close();
+        this.socket = null;
+        this.connected = false;
     }
 }
 
@@ -506,7 +509,6 @@ export class Patch {
     }
 
     deserializeOption(deserializer) {
-        console.log("deserializeOption");
         let available = this.popU8() > 0;
         if (available) {
             return deserializer();
