@@ -73,7 +73,7 @@ impl<T> From<TextBuilder<T>> for Node<T> {
     }
 }
 
-pub struct ElementBuilder<T> {
+pub struct ElementBuilder<T: 'static> {
     id: Id,
     tag: String,
     attrs: Vec<Attr>,

@@ -9,6 +9,7 @@ use crate::mailbox::Mailbox;
 use crate::node_builder::NodeBuilder;
 use crate::vdom::Attr;
 use crate::Id;
+use std::fmt::{Debug, Formatter, Error};
 
 pub struct Updated {
     pub(crate) should_render: bool,
@@ -47,7 +48,7 @@ impl From<bool> for Updated {
     }
 }
 
-pub struct NodeElement<T> {
+pub struct NodeElement<T: 'static> {
     pub id: Id,
     pub tag: Option<String>,
     pub attrs: Option<Vec<Attr>>,
@@ -56,7 +57,28 @@ pub struct NodeElement<T> {
     pub namespace: Option<String>,
 }
 
-pub trait ElementMap<T> {
+impl<T> Debug for NodeElement<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        if let Some(tag) = &self.tag {
+            let _ = f.write_fmt(format_args!("<{} ", tag));
+        }
+        if let Some(attrs) = &self.attrs {
+            for attr in attrs {
+                let _ = f.write_fmt(format_args!("{} = \"{}\" ", &attr.key, &attr.value));
+            }
+        }
+        let _ = f.write_str(">");
+        if let Some(children) = self.children.as_ref() {
+            for child in children {
+                let _ = f.write_str("\n");
+                let _ = child.fmt(f);
+            }
+        }
+        f.write_str("</>")
+    }
+}
+
+pub trait ElementMap<T> : Debug {
     fn take_listeners(&mut self) -> Vec<Listener<T>>;
     fn take_children(&mut self) -> Vec<Node<T>>;
     fn id(&self) -> Id;
@@ -65,9 +87,15 @@ pub trait ElementMap<T> {
     fn take_namespace(&mut self) -> Option<String>;
 }
 
-struct ElementMapDirect<T, U> {
+struct ElementMapDirect<T: 'static, U> {
     fun: Arc<dyn Fn(T) -> U>,
     inner: NodeElement<T>,
+}
+
+impl<T, U> Debug for ElementMapDirect<T, U> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        self.inner.fmt(f)
+    }
 }
 
 impl<T: 'static, U: 'static> ElementMapDirect<T, U> {
@@ -119,6 +147,12 @@ struct ElementRemap<T, U> {
     inner: Box<dyn ElementMap<T>>,
 }
 
+impl<T, U> Debug for ElementRemap<T, U> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        std::fmt::Debug::fmt(&self.inner, f)
+    }
+}
+
 impl<T: 'static, U: 'static> ElementRemap<T, U> {
     fn new_box(fun: Arc<dyn Fn(T) -> U>, inner: Box<dyn ElementMap<T>>) -> Box<dyn ElementMap<U>> {
         Box::new(ElementRemap { fun, inner })
@@ -163,6 +197,12 @@ pub struct ComponentContainer<T> {
     inner: Box<dyn ComponentMap<T>>,
 }
 
+impl<T> Debug for ComponentContainer<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        std::fmt::Debug::fmt(&self.inner, f)
+    }
+}
+
 impl<T> ComponentMap<T> for ComponentContainer<T> {
     fn render(&self) -> Node<T> {
         self.inner.render()
@@ -173,7 +213,7 @@ impl<T> ComponentMap<T> for ComponentContainer<T> {
     }
 }
 
-pub trait ComponentMap<T> {
+pub trait ComponentMap<T> : Debug {
     fn render(&self) -> Node<T>;
     fn id(&self) -> Id;
 }
@@ -181,6 +221,12 @@ pub trait ComponentMap<T> {
 struct ComponentMapDirect<R: Render, U> {
     fun: Arc<dyn Fn(R::Message) -> U>,
     inner: Component<R>,
+}
+
+impl<R: Render, U> Debug for ComponentMapDirect<R, U> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        self.inner.fmt(f)
+    }
 }
 
 impl<R: 'static + Render, U: 'static> ComponentMapDirect<R, U> {
@@ -204,6 +250,12 @@ struct ComponentRemap<T, U> {
     inner: Box<dyn ComponentMap<T>>,
 }
 
+impl<T, U> Debug for ComponentRemap<T, U> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        std::fmt::Debug::fmt(&self.inner, f)
+    }
+}
+
 impl<T: 'static, U: 'static> ComponentRemap<T, U> {
     fn new_box(
         fun: Arc<dyn Fn(T) -> U>,
@@ -223,12 +275,24 @@ impl<T: 'static, U: 'static> ComponentMap<U> for ComponentRemap<T, U> {
     }
 }
 
-pub enum Node<T> {
+pub enum Node<T: 'static> {
     ElementMap(Box<dyn ElementMap<T>>),
     Component(Box<dyn ComponentMap<T>>),
     Text(String),
     Element(NodeElement<T>),
     EventSubscription(Id, Subscription<T>),
+}
+
+impl<T: 'static> Debug for Node<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        match self {
+            Node::ElementMap(x) => {std::fmt::Debug::fmt(&x, f)},
+            Node::Component(x) => {std::fmt::Debug::fmt(&x, f)},
+            Node::Text(text) => {f.write_str(&text)},
+            Node::Element(elem) => {elem.fmt(f)},
+            Node::EventSubscription(_, subs) => {subs.fmt(f)},
+        }
+    }
 }
 
 impl<T: 'static> Node<T> {
@@ -329,6 +393,12 @@ impl<T: 'static> Listener<T> {
 pub struct Component<T: Render> {
     id: Id,
     comp: Rc<RefCell<T>>,
+}
+
+impl<T: Render> Debug for Component<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        f.write_fmt(format_args!("<Component {:?} />", self.id) )
+    }
 }
 
 impl<T: Render> Clone for Component<T> {

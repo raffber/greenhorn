@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 
 use crate::Id;
 use std::sync::Arc;
+use std::fmt::{Debug, Formatter, Error};
 
 pub(crate) struct Emission {
     pub(crate) event_id: Id,
@@ -52,6 +53,12 @@ impl<T: 'static, V: 'static, F: Fn(V) -> T> SubscriptionHandler<T>
 pub enum Subscription<T> {
     Mapper(Box<dyn SubscriptionMap<T>>),
     Handler(Id, Box<dyn SubscriptionHandler<T>>),
+}
+
+impl<T: 'static> Debug for Subscription<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        f.write_fmt(format_args!( "<Subscription {:?} />", self.id()) )
+    }
 }
 
 impl<T: 'static> Subscription<T> {
