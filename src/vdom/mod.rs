@@ -195,11 +195,11 @@ fn optimize_patch(patch: &mut Patch) {
 fn diff_attrs<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) -> bool {
     let mut ret = false;
 
-    let mut old_kv = HashMap::new();
+    let mut old_kv = HashMap::with_capacity(old.attr.len());
     for attr in old.attr.iter() {
         old_kv.insert(&attr.key, &attr.value);
     }
-    let mut new_kv = HashMap::new();
+    let mut new_kv = HashMap::with_capacity(new.attr.len());
     for attr in new.attr.iter() {
         new_kv.insert(&attr.key, &attr.value);
     }
