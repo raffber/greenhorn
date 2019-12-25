@@ -3,4 +3,4 @@
 .idea
 test_patch\.bin
 
-templating/target/
+parser/target/
