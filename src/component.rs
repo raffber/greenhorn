@@ -57,6 +57,32 @@ pub struct NodeElement<T: 'static> {
     pub namespace: Option<String>,
 }
 
+impl<T: 'static> NodeElement<T> {
+    fn try_clone(&self) -> Option<Self> {
+        let children = if let Some(children) = self.children.as_ref() {
+            let mut new_children = Vec::with_capacity(children.len());
+            for child in children {
+                if let Some(cloned) = child.try_clone() {
+                    new_children.push(cloned)
+                } else {
+                    return None;
+                }
+            }
+            Some(new_children)
+        } else {
+            None
+        };
+        Some(Self {
+            id: self.id.clone(),
+            tag: self.tag.clone(),
+            attrs: self.attrs.clone(),
+            listeners: self.listeners.clone(),
+            children,
+            namespace: self.namespace.clone()
+        })
+    }
+}
+
 impl<T> Debug for NodeElement<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         if let Some(tag) = &self.tag {
@@ -330,6 +356,20 @@ impl<T: 'static> Node<T> {
             Node::Text(_) => Id::empty(),
             Node::Element(elem) => elem.id,
             Node::EventSubscription(id, _) => *id,
+        }
+    }
+
+    pub fn try_clone(&self) -> Option<Self> {
+        match self {
+            Node::Element(elem) => {
+                if let Some(ret) = elem.try_clone() {
+                    Some(Node::Element(ret))
+                } else {
+                    None
+                }
+            },
+            Node::Text(txt) => Some(Node::Text(txt.clone())),
+            _ => None
         }
     }
 }
