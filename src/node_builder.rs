@@ -33,11 +33,8 @@ impl<T: 'static> NodeBuilder<T> {
         ElementBuilder::new(name.into(), self.namespace.clone())
     }
 
-    pub fn text<S: Into<String>>(&self, text: S) -> TextBuilder<T> {
-        TextBuilder {
-            text: text.into(),
-            phantom: PhantomData,
-        }
+    pub fn text<S: Into<String>>(&self, text: S) -> Node<T> {
+        Node::Text(text.into())
     }
 
     pub fn mount<ChildMsg, R, Mapper>(&self, comp: &Component<R>, mapper: Mapper) -> Node<T>
@@ -53,23 +50,6 @@ impl<T: 'static> NodeBuilder<T> {
 impl<T: 'static> Default for NodeBuilder<T> {
     fn default() -> Self {
         NodeBuilder::new()
-    }
-}
-
-pub struct TextBuilder<T> {
-    text: String,
-    phantom: PhantomData<T>,
-}
-
-impl<T> TextBuilder<T> {
-    fn build(self) -> Node<T> {
-        Node::Text(self.text)
-    }
-}
-
-impl<T> From<TextBuilder<T>> for Node<T> {
-    fn from(builder: TextBuilder<T>) -> Self {
-        builder.build()
     }
 }
 
