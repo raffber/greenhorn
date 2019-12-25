@@ -51,7 +51,7 @@ fn load_tree<T: 'static>(node: NodeRef<scraper::node::Node>) -> Option<Node<T>> 
 }
 
 pub fn parse_from_string<T: 'static>(value: &str) -> Result<Vec<Node<T>>> {
-    let document = Html::parse_fragment(value);
+    let document = Html::parse_fragment(value.trim());
     if document.errors.len() != 0 {
         let errs = document.errors.iter().map(|x| x.to_string()).collect();
         return Err(LoadError::Parse(errs));
