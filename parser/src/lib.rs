@@ -7,6 +7,7 @@ use std::path::Path;
 use ego_tree::NodeRef;
 use scraper::Node as ScraperNode;
 use std::ops::Deref;
+use std::fmt::{Display, Formatter, Error};
 
 
 #[derive(Debug)]
@@ -17,6 +18,32 @@ pub enum LoadError {
 }
 
 type Result<T> = std::result::Result<T, LoadError>;
+
+impl Display for LoadError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::result::Result<(), Error> {
+        match self {
+            LoadError::Io(x) => {
+                write!(f, "IO error: {}", x)
+            },
+            LoadError::Parse(x) => {
+                if x.len() == 0 {
+                    write!(f, "Error during parsing step.")
+                } else if x.len() == 1 {
+                    write!(f, "Cannot parse: {}", x[0])
+                } else {
+                    write!(f, "While parsing, the following errors occured:")?;
+                    for err in x {
+                        write!(f, "\t{}", err)?;
+                    }
+                    Ok(())
+                }
+            },
+            LoadError::Empty => {
+                write!(f, "Document was emtpy")
+            },
+        }
+    }
+}
 
 fn load_element<T: 'static>(elem: &scraper::node::Element) -> ElementBuilder<T> {
     let ns: &str = elem.name.ns.as_ref();
