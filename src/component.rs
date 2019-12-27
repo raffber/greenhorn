@@ -336,7 +336,7 @@ impl<T: 'static> Node<T> {
         self.map_arc(fun)
     }
 
-    pub fn map_arc<U: 'static>(self, fun: Arc<dyn Fn(T) -> U>) -> Node<U> {
+    pub(crate) fn map_arc<U: 'static>(self, fun: Arc<dyn Fn(T) -> U>) -> Node<U> {
         match self {
             Node::ElementMap(inner) => {
                 let ret = ElementRemap::new_box(fun, inner);
@@ -346,6 +346,37 @@ impl<T: 'static> Node<T> {
             Node::Text(text) => Node::Text(text),
             Node::Element(elem) => Node::ElementMap(ElementMapDirect::new_box(fun, elem)),
             Node::EventSubscription(id, evt) => Node::EventSubscription(id, evt.map(fun)),
+        }
+    }
+
+    /// Maps Node() objects without providing a mapping-functions.
+    ///
+    /// Panics in case there are listeners installed on this node or
+    /// any child node.
+    /// This allows mapping node-hierarchies without listeners efficiently without
+    /// keeping the target message type around, for example when caching rendered nodes.
+    pub fn empty_map<U: 'static>(self) -> Node<U> {
+        match self {
+            Node::ElementMap(_) => panic!(),
+            Node::Component(_) => panic!(),
+            Node::Text(x) => Node::Text(x),
+            Node::Element(elem) => {
+                if elem.listeners.unwrap().len() != 0 {
+                    panic!();
+                }
+                let children = elem.children.map(
+                    |mut x| x.drain(..).map(|x| x.empty_map()).collect()
+                );
+                Node::Element(NodeElement {
+                    id: elem.id,
+                    tag: elem.tag,
+                    attrs: elem.attrs,
+                    listeners: Some(vec![]),
+                    children,
+                    namespace: elem.namespace
+                })
+            },
+            Node::EventSubscription(_, _) => panic!(),
         }
     }
 
