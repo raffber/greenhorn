@@ -19,6 +19,7 @@ mod service;
 mod vdom;
 mod websocket_pipe;
 pub mod services;
+pub mod any;
 
 pub mod prelude {
     pub use crate::component::{App, Component, Node, Render, Updated};
@@ -29,6 +30,8 @@ pub mod prelude {
     pub use crate::websocket_pipe::WebsocketPipe;
     pub use crate::node_builder::{NodeBuilder, ElementBuilder};
 }
+
+pub use crate::component::{App, Component, Render, Updated};
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Id {
