@@ -121,7 +121,7 @@ impl<T: 'static> Mailbox<T> {
         )
     }
 
-    pub fn emit<D: Any>(&self, event: Event<D>, data: D) {
+    pub fn emit<D: Any>(&self, event: &Event<D>, data: D) {
         let emission = event.emit(data);
         self.tx.send(MailboxMsg::Emission(emission)).unwrap();
     }
