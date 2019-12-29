@@ -101,6 +101,14 @@ impl<T: 'static + Render> Component<T> {
     }
 }
 
+impl<T: 'static + App> Component<T> {
+    pub fn update_app(&mut self, msg: T::Message, mailbox: Mailbox<T::Message>) -> Updated {
+        let mut borrow = self.comp.deref().borrow_mut();
+        let data = &mut borrow;
+        data.update(msg, mailbox)
+    }
+}
+
 pub trait Render {
     type Message: 'static + Send;
     fn render(&self) -> Node<Self::Message>;
