@@ -1,10 +1,11 @@
 use crate::component::Component;
-use crate::component::{Listener, Node, NodeElement, Render};
 use crate::dom_event::DomEvent;
 use crate::vdom::Attr;
-use crate::Id;
+use crate::{Id, Render};
 use std::marker::PhantomData;
 use std::sync::Arc;
+use crate::node::{Node, NodeElement};
+use crate::listener::Listener;
 
 pub struct NodeBuilder<T> {
     namespace: Option<String>,

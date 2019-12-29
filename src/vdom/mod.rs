@@ -4,7 +4,7 @@ use std::collections::HashMap;
 mod serialize;
 pub use serialize::serialize as patch_serialize;
 use std::hash::{Hash, Hasher};
-use crate::component::Listener;
+use crate::listener::Listener;
 
 #[derive(Debug, Clone)]
 pub struct Attr {

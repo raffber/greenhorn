@@ -18,11 +18,14 @@ mod runtime;
 mod service;
 mod vdom;
 mod websocket_pipe;
+mod node;
+mod listener;
 pub mod services;
 pub mod any;
 
 pub mod prelude {
-    pub use crate::component::{App, Component, Node, Render, Updated};
+    pub use crate::component::{App, Component, Render, Updated};
+    pub use crate::node::Node;
     pub use crate::dom_event::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent};
     pub use crate::event::Event;
     pub use crate::mailbox::Mailbox;

@@ -1,6 +1,6 @@
 use crate::{App, Render, Updated};
 use std::any::Any;
-use crate::component::Node;
+use crate::node::Node;
 use crate::mailbox::Mailbox;
 
 pub struct AnyApp {
