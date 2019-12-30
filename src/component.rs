@@ -13,25 +13,39 @@ pub struct Updated {
 }
 
 impl Updated {
-    fn new() -> Updated {
+    pub fn new() -> Updated {
         Updated {
             should_render: false,
             components_render: None,
         }
     }
 
-    fn render(mut self) -> Self {
+    pub fn render(mut self) -> Self {
         self.should_render = true;
         self
     }
 
-    fn invalidate(mut self, id: Id) -> Self {
+    pub fn invalidate(mut self, id: Id) -> Self {
         if let Some(ref mut ids) = self.components_render {
             ids.push(id)
         } else {
             self.components_render = Some(vec![id])
         }
         self
+    }
+
+    pub fn merge(&mut self, other: Updated) {
+        if other.should_render {
+            self.should_render = true;
+        } else {
+            if let Some(mut other_comps) = other.components_render {
+                if let Some(comps) = self.components_render.as_mut() {
+                    comps.append(&mut other_comps);
+                } else {
+                    self.components_render = Some(other_comps);
+                }
+            }
+        }
     }
 }
 
@@ -104,7 +118,13 @@ impl<T: 'static + App> Component<T> {
     pub fn update_app(&mut self, msg: T::Message, mailbox: Mailbox<T::Message>) -> Updated {
         let mut borrow = self.comp.deref().borrow_mut();
         let data = &mut borrow;
-        data.update(msg, mailbox)
+        let mut ret = data.update(msg, mailbox);
+        if ret.should_render {
+            // improve reporting accuracy
+            ret.should_render = false;
+            ret.components_render = Some(vec![self.id])
+        }
+        ret
     }
 }
 
