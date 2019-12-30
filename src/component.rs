@@ -3,7 +3,6 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use crate::mailbox::Mailbox;
-use crate::node_builder::NodeBuilder;
 use crate::Id;
 use std::fmt::{Debug, Formatter, Error};
 use crate::node::Node;
@@ -112,14 +111,6 @@ impl<T: 'static + App> Component<T> {
 pub trait Render {
     type Message: 'static + Send;
     fn render(&self) -> Node<Self::Message>;
-
-    fn html(&self) -> NodeBuilder<Self::Message> {
-        NodeBuilder::new()
-    }
-
-    fn svg(&self) -> NodeBuilder<Self::Message> {
-        NodeBuilder::new_with_ns("http://www.w3.org/2000/svg")
-    }
 }
 
 pub trait App: Render {

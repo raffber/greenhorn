@@ -116,6 +116,16 @@ impl<T: 'static> ElementBuilder<T> {
         self
     }
 
+    pub fn mount<ChildMsg, R, Mapper>(mut self, comp: &Component<R>, mapper: Mapper) -> Self
+        where
+            ChildMsg: 'static + Send,
+            R: 'static + Render<Message = ChildMsg>,
+            Mapper: 'static + Fn(ChildMsg) -> T,
+    {
+        self.children.push(comp.render().map(mapper));
+        self
+    }
+
     pub fn add_option<S: Into<Node<T>>>(mut self, child: Option<S>) -> Self {
         if let Some(child) = child {
             self.children.push(child.into());

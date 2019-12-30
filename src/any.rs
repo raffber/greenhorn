@@ -3,8 +3,10 @@ use std::any::Any;
 use crate::node::Node;
 use crate::mailbox::Mailbox;
 
+pub type AnyMsg = Box<dyn Any + Send>;
+
 pub struct AnyApp {
-    inner: Box<dyn App<Message=Box<dyn Any + Send>>>,
+    inner: Box<dyn App<Message=AnyMsg>>,
 }
 
 impl AnyApp {
