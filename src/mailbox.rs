@@ -6,6 +6,8 @@ use std::marker::PhantomData;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use std::future::Future;
+use futures::{Stream, StreamExt};
 
 enum MapSender<T> {
     Direct(Sender<T>),
@@ -79,44 +81,62 @@ pub struct EventPropagate {
     default_action: bool,
 }
 
-pub struct Mailbox<T: 'static> {
-    tx: Sender<MailboxMsg>,
-    services: MapSender<ServiceSubscription<T>>,
+pub struct Mailbox<T: 'static + Send> {
+    tx: MapSender<MailboxMsg<T>>,
 }
 
-impl<T: 'static> Clone for Mailbox<T> {
+impl<T: 'static + Send> Clone for Mailbox<T> {
     fn clone(&self) -> Self {
         Self {
             tx: self.tx.clone(),
-            services: self.services.clone(),
         }
     }
 }
 
-pub(crate) struct MailboxReceiver<T: 'static> {
-    pub(crate) rx: Receiver<MailboxMsg>,
-    pub(crate) services: Receiver<ServiceSubscription<T>>,
+pub(crate) struct MailboxReceiver<T: 'static + Send> {
+    pub(crate) rx: Receiver<MailboxMsg<T>>,
 }
 
-pub(crate) enum MailboxMsg {
+pub(crate) enum MailboxMsg<T: 'static + Send> {
     Emission(Emission),
     LoadCss(String),
     RunJs(String),
     Propagate(EventPropagate),
+    Subscription(ServiceSubscription<T>),
+    Future(Box<dyn Future<Output=T> + Unpin>),
+    Stream(Box<dyn Stream<Item=T>>),
+}
+
+impl<T: 'static + Send> MailboxMsg<T> {
+    pub fn map<U, Mapper>(self, mapper: Arc<Mapper>) -> MailboxMsg<U>
+    where
+        U: 'static + Send,
+        Mapper: 'static + Fn(T) -> U + Send + Sync
+    {
+        match self {
+            MailboxMsg::Subscription(subs) => MailboxMsg::Subscription(subs.map(mapper)),
+            MailboxMsg::Future(fut) => {
+                MailboxMsg::Future(Box::new(async move {
+                    (mapper)(fut.await)
+                }))
+            },
+            MailboxMsg::Stream(stream) => {
+                MailboxMsg::Stream(Box::new(stream.map(move |x| (mapper)(x))))
+            },
+            _ => panic!()
+        }
+    }
 }
 
 impl<T: 'static> Mailbox<T> {
     pub(crate) fn new() -> (Self, MailboxReceiver<T>) {
         let (tx, rx) = channel();
-        let (s_tx, s_rx) = channel();
         (
             Mailbox {
-                tx,
-                services: MapSender::new(s_tx),
+                tx: MapSender::new(tx),
             },
             MailboxReceiver {
                 rx,
-                services: s_rx,
             },
         )
     }
@@ -134,7 +154,7 @@ impl<T: 'static> Mailbox<T> {
         self.tx.send(MailboxMsg::RunJs(js.into())).unwrap();
     }
 
-    pub fn spawn<S, F>(&self, service: S, fun: F)
+    pub fn run_service<S, F>(&self, service: S, fun: F)
     where
         S: Service + Send + Unpin + 'static,
         T: Send,
@@ -144,16 +164,23 @@ impl<T: 'static> Mailbox<T> {
         self.services.send(subs);
     }
 
+    pub fn spawn<Fut: Future<Output=T>>(&self, fut: Fut) {
+        self.tx.send(MailboxMsg::Future(Box::new(fut)));
+    }
+
+    pub fn subscribe<S: Stream<Item=T>>(&self, stream: S) {
+        self.tx.send(MailboxMsg::Stream(Box::new(stream)));
+    }
+
     pub fn map<U: Send + 'static, F: 'static + Send + Sync + Fn(U) -> T>(
         &self,
         fun: F,
     ) -> Mailbox<U> {
         let mapper = Arc::new(fun);
         let new_sender = self.services.clone();
-        let mapped = new_sender.map(move |subs: ServiceSubscription<U>| subs.map(mapper.clone()));
+        let mapped = new_sender.map(move |msg: MailboxMsg<U>| msg.map(mapper.clone()));
         Mailbox {
-            tx: self.tx.clone(),
-            services: mapped,
+            tx: mapped,
         }
     }
 
@@ -229,16 +256,29 @@ mod tests {
     }
 
     #[test]
-    fn test_mailbox() {
+    fn test_service() {
         let (mb, rx) = Mailbox::<MsgA>::new();
         let mapped = mb.map(MsgA::ItemA);
         let service = MyService {};
-        mapped.spawn(service, ItemB);
-        if let Ok(mut subs) = rx.services.recv() {
+        mapped.run_service(service, ItemB);
+        if let Ok(mut subs) = rx.rx.recv() {
             let result = async_std::task::block_on(subs.next());
             assert_matches!(result, Some(MsgA::ItemA(MsgB::ItemB(1))));
         } else {
             panic!();
         }
     }
+//
+//    #[test]
+//    fn test_future() {
+//        let fut = async {
+//            MsgB::ItemB(123)
+//        };
+//
+//        let (mb, rx) = Mailbox::<MsgA>::new();
+//        let mapped = mb.map(MsgA::ItemA);
+//        mapped.spawn(fut);
+//        if let Ok(mut fut) = rx.rx
+//        if let Ok(mut )
+//    }
 }
