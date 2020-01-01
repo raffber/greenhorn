@@ -193,6 +193,32 @@ pub trait ElementMap<T> : Debug {
     fn take_namespace(&mut self) -> Option<String>;
 }
 
+impl<T: 'static> ElementMap<T> for NodeElement<T> {
+    fn take_listeners(&mut self) -> Vec<Listener<T>> {
+        self.listeners.take().unwrap()
+    }
+
+    fn take_children(&mut self) -> Vec<Node<T>> {
+        self.children.take().unwrap()
+    }
+
+    fn id(&self) -> Id {
+        self.id.clone()
+    }
+
+    fn take_attrs(&mut self) -> Vec<Attr> {
+        self.attrs.take().unwrap()
+    }
+
+    fn take_tag(&mut self) -> String {
+        self.tag.take().unwrap()
+    }
+
+    fn take_namespace(&mut self) -> Option<String> {
+        self.namespace.take()
+    }
+}
+
 struct ElementMapDirect<T: 'static, U> {
     fun: Arc<dyn Fn(T) -> U>,
     inner: NodeElement<T>,
@@ -301,6 +327,14 @@ impl<T: 'static, U: 'static> ElementMap<U> for ElementRemap<T, U> {
 
 pub struct ComponentContainer<T> {
     inner: Box<dyn ComponentMap<T>>,
+}
+
+impl<T> ComponentContainer<T> {
+   pub(crate) fn new(inner: Box<dyn ComponentMap<T>>) -> Self {
+        ComponentContainer {
+            inner
+        }
+   }
 }
 
 impl<T> Debug for ComponentContainer<T> {
