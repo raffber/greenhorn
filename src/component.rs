@@ -37,15 +37,17 @@ impl Updated {
     pub fn merge(&mut self, other: Updated) {
         if other.should_render {
             self.should_render = true;
-        } else {
-            if let Some(mut other_comps) = other.components_render {
-                if let Some(comps) = self.components_render.as_mut() {
-                    comps.append(&mut other_comps);
-                } else {
-                    self.components_render = Some(other_comps);
-                }
+        } else if let Some(mut other_comps) = other.components_render {
+            if let Some(comps) = self.components_render.as_mut() {
+                comps.append(&mut other_comps);
+            } else {
+                self.components_render = Some(other_comps);
             }
         }
+    }
+
+    pub fn empty(&self) -> bool {
+        !self.should_render && self.components_render.is_none()
     }
 }
 
