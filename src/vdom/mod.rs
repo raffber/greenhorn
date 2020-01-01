@@ -6,6 +6,28 @@ pub use serialize::serialize as patch_serialize;
 use std::hash::{Hash, Hasher};
 use crate::listener::Listener;
 
+#[derive(Clone)]
+pub struct Path {
+    inner: Vec<usize>
+}
+
+impl Path {
+    pub fn new() -> Path {
+        // preallocate as length probably fairly small
+        Path {
+            inner: Vec::with_capacity(64)
+        }
+    }
+
+    pub fn push(&mut self, idx: usize) {
+        self.inner.push(idx);
+    }
+
+    pub fn pop(&mut self) -> Option<usize> {
+        self.inner.pop()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Attr {
     pub key: String,
