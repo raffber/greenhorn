@@ -8,7 +8,7 @@ use crate::node_builder::NodeBuilder;
 
 pub enum Node<T: 'static> {
     ElementMap(Box<dyn ElementMap<T>>),
-    Component(Box<dyn ComponentMap<T>>),
+    Component(ComponentContainer<T>),
     Text(String),
     Element(NodeElement<T>),
     EventSubscription(Id, Subscription<T>),
@@ -326,11 +326,17 @@ impl<T: 'static, U: 'static> ElementMap<U> for ElementRemap<T, U> {
 }
 
 pub struct ComponentContainer<T> {
-    inner: Box<dyn ComponentMap<T>>,
+    inner: Arc<dyn ComponentMap<T>>,
+}
+
+impl<T> Clone for ComponentContainer<T> {
+    fn clone(&self) -> Self {
+        Self { inner: inner.clone() }
+    }
 }
 
 impl<T> ComponentContainer<T> {
-   pub(crate) fn new(inner: Box<dyn ComponentMap<T>>) -> Self {
+   pub(crate) fn new(inner: Arc<dyn ComponentMap<T>>) -> Self {
         ComponentContainer {
             inner
         }

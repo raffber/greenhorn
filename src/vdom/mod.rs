@@ -99,7 +99,7 @@ impl VElement {
 pub enum VNode {
     Element(VElement),
     Text(String),
-    Placeholder(),
+    Placeholder(Id),
 }
 
 impl VNode {

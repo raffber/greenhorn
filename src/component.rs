@@ -6,6 +6,8 @@ use crate::mailbox::Mailbox;
 use crate::Id;
 use std::fmt::{Debug, Formatter, Error};
 use crate::node::Node;
+use std::collections::HashSet;
+use std::collections::hash_map::RandomState;
 
 pub struct Updated {
     pub(crate) should_render: bool,
@@ -48,6 +50,18 @@ impl Updated {
 
     pub fn empty(&self) -> bool {
         !self.should_render && self.components_render.is_none()
+    }
+}
+
+impl Into<HashSet<Id>> for Updated {
+    fn into(self) -> HashSet<Id, RandomState> {
+        let mut ret = HashSet::new();
+        if let Some(ids) = self.components_render {
+            for id in ids {
+                ret.insert(id);
+            }
+        }
+        ret
     }
 }
 

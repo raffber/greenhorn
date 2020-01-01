@@ -16,6 +16,7 @@ use crate::runtime::render::{RenderResult, Frame, RenderedState};
 
 mod service_runner;
 mod render;
+mod dag;
 
 enum PendingEvent {
     Component(Emission),
