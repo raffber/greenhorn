@@ -84,9 +84,9 @@ impl<T: PatchSerialize> PatchSerialize for Option<T> {
     }
 }
 
-pub fn serialize(patch: Patch) -> Vec<u8> {
+pub fn serialize(patch: &Patch) -> Vec<u8> {
     let mut output = Vec::new();
-    for patch in patch.items {
+    for patch in &patch.items {
         match patch {
             PatchItem::AppendSibling(node) => {
                 output.push(1);
