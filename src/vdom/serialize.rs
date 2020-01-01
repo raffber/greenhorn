@@ -31,6 +31,7 @@ impl PatchSerialize for VNode {
                 output.push(1);
                 elem.serialize(output);
             }
+            _ => panic!(),
         }
     }
 }

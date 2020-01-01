@@ -99,6 +99,7 @@ impl VElement {
 pub enum VNode {
     Element(VElement),
     Text(String),
+    Placeholder(),
 }
 
 impl VNode {
@@ -114,6 +115,23 @@ impl VNode {
         match self {
             VNode::Element(elem) => elem.back_annotate(translations),
             VNode::Text(_) => {}
+            _ => {}
+        }
+    }
+
+    pub fn replace(&mut self, path: &[usize], value: VNode) {
+        match self {
+            VNode::Element(elem) => {
+                let idx = path[0];
+                assert!(elem.children.len() <= idx as usize);
+                if path.len() == 1 {
+                    elem.children[idx] = value;
+                } else {
+                    elem.children[idx].replace(&path[1..], value);
+                }
+            },
+            VNode::Text(_) => {panic!()},
+            VNode::Placeholder() => {panic!()},
         }
     }
 }
@@ -186,6 +204,7 @@ impl VNode {
         match self {
             VNode::Element(e) => e.id,
             VNode::Text(_) => Id::empty(),
+            _ => panic!(),
         }
     }
 }

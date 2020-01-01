@@ -1,20 +1,21 @@
 use crate::component::App;
-use crate::event::{Emission, Subscription};
+use crate::event::{Emission};
 use crate::mailbox::{Mailbox, MailboxMsg, MailboxReceiver};
 use crate::pipe::Sender;
 use crate::pipe::{Pipe, RxMsg, TxMsg};
 use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
-use crate::vdom::{diff, patch_serialize, EventHandler, Patch, VElement, VNode};
+use crate::vdom::{diff, patch_serialize, Patch, Path};
 use crate::Id;
 use async_std::task;
 use async_timer::Interval;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::{select, FutureExt, StreamExt};
-use std::collections::{HashMap, VecDeque};
-use crate::node::{ComponentMap, Node, ComponentContainer};
-use crate::listener::Listener;
+use std::collections::{HashMap, VecDeque, HashSet};
+use crate::node::{ComponentMap, ComponentContainer};
+use crate::runtime::render::{RenderResult, Frame, RenderedState};
 
 mod service_runner;
+mod render;
 
 enum PendingEvent {
     Component(Emission),
@@ -31,11 +32,14 @@ pub struct Runtime<A: 'static + App, P: Pipe> {
     sender: P::Sender,
     receiver: P::Receiver,
     event_queue: VecDeque<PendingEvent>,
-    rendered: RenderedState<A::Message>,
-    next_frame: Option<Frame<A::Message>>,
+    rendered: RenderedState<A>,
+    next_frame: Option<Frame<A>>,
     services: ServiceCollection<A::Message>,
     render_tx: UnboundedSender<()>,
     render_rx: UnboundedReceiver<()>,
+    invalidated_components: HashSet<Id>,
+    components: HashMap<Id, ComponentContainer<A::Message>>,
+    invalidate_all: bool,
     dirty: bool,
 }
 
@@ -58,101 +62,7 @@ enum RuntimeMsg<M: 'static + Send> {
     Update(M)
 }
 
-struct Frame<Msg> {
-    vdom: Option<VNode>,
-    subscriptions: Vec<(Id, Subscription<Msg>)>,
-    listeners: Vec<Listener<Msg>>,
-    rendered_components: Vec<Box<dyn ComponentMap<Msg>>>,
-    translations: HashMap<Id, Id>,
-}
 
-impl<Msg> Frame<Msg> {
-    fn new() -> Self {
-        Self {
-            vdom: None,
-            subscriptions: vec![],
-            listeners: vec![],
-            rendered_components: vec![],
-            translations: HashMap::new(),
-        }
-    }
-
-    fn borrow_render_result(&mut self) -> RenderResult<Msg> {
-        RenderResult {
-            subscriptions: &mut self.subscriptions,
-            listeners: &mut self.listeners,
-            components: &mut self.rendered_components,
-        }
-    }
-
-    fn back_annotate(&mut self) {
-        if let Some(ref mut vdom) = self.vdom {
-            vdom.back_annotate(&self.translations);
-        }
-    }
-}
-
-struct RenderedState<Msg> {
-    vdom: Option<VNode>,
-    subscriptions: HashMap<Id, Subscription<Msg>>,
-    listeners: HashMap<ListenerKey, Listener<Msg>>,
-    components: HashMap<Id, ComponentContainer<Msg>>,
-}
-
-#[derive(Hash, Eq, Debug)]
-struct ListenerKey {
-    id: Id,
-    name: String,
-}
-
-impl PartialEq for ListenerKey {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.name == other.name
-    }
-}
-
-impl<Msg> RenderedState<Msg> {
-    fn new() -> Self {
-        Self {
-            vdom: None,
-            subscriptions: Default::default(),
-            listeners: Default::default(),
-            components: Default::default(),
-        }
-    }
-
-    fn apply(&mut self, frame: Frame<Msg>) {
-        self.listeners.clear();
-
-        for listener in frame.listeners {
-            let key = if let Some(new_id) = frame.translations.get(&listener.node_id) {
-                ListenerKey {
-                    id: *new_id,
-                    name: listener.event_name.clone(),
-                }
-            } else {
-                ListenerKey {
-                    id: listener.node_id,
-                    name: listener.event_name.clone(),
-                }
-            };
-            self.listeners.insert(key, listener);
-        }
-
-        self.subscriptions.clear();
-        for (k, v) in frame.subscriptions {
-            self.subscriptions.insert(k, v);
-        }
-
-        self.vdom = frame.vdom;
-    }
-}
-
-struct RenderResult<'a, Msg> {
-    subscriptions: &'a mut Vec<(Id, Subscription<Msg>)>,
-    listeners: &'a mut Vec<Listener<Msg>>,
-    components: &'a mut Vec<Box<dyn ComponentMap<Msg>>>,
-}
 
 impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     pub fn new(app: A, pipe: P) -> (Runtime<A, P>, RuntimeControl<A::Message>) {
@@ -170,8 +80,11 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             services: ServiceCollection::new(),
             render_tx,
             render_rx,
+            invalidated_components: Default::default(),
+            components: Default::default(),
             next_frame: None,
             dirty: false,
+            invalidate_all: false
         };
         let control = RuntimeControl { tx };
         (runtime, control)
@@ -226,13 +139,10 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     async fn handle_pipe_msg(&mut self, msg: RxMsg) -> bool {
         match msg {
             RxMsg::Event(evt) => {
-                let key = ListenerKey { id: evt.target(), name: evt.name().into() };
 
                 // search in listeners and get a message
-                let msg = self
-                    .rendered
-                    .listeners
-                    .get(&key)
+                let msg = self.rendered
+                    .get_listener(&evt.target(), evt.name())
                     .map(|listener| listener.call(evt));
 
                 // inject the message back into the app
@@ -282,8 +192,14 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         let (mailbox, receiver) = Mailbox::<A::Message>::new();
         let updated = self.app.update(msg, mailbox);
         if updated.should_render {
+            self.invalidate_all = true;
             self.schedule_render();
-        }
+        } else if let Some(invalidated) = updated.components_render {
+            invalidated.iter().for_each(|x| {
+                self.invalidated_components.insert(*x);
+            });
+            self.schedule_render();
+        };
         self.handle_mailbox_result(receiver);
     }
 
@@ -312,10 +228,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     fn process_events(&mut self) {
         while let Some(evt) = self.event_queue.pop_front() {
             let msg = match evt {
-                PendingEvent::Component(e) => self
-                    .rendered
-                    .subscriptions
-                    .get(&e.event_id)
+                PendingEvent::Component(e) => self.rendered.get_subscription(&e.event_id)
                     .map(|subs| subs.call(e.data)),
             };
             if let Some(msg) = msg {
@@ -324,105 +237,35 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         }
     }
 
-    fn render_recursive<'a>(
-        &mut self,
-        result: &mut RenderResult<'a, A::Message>,
-        dom: Node<A::Message>,
-    ) -> Option<VNode> {
-        match dom {
-            Node::ElementMap(mut elem) => {
-                let mut children = Vec::new();
-                for child in elem.take_children().drain(..) {
-                    let child = self.render_recursive(result, child);
-                    if let Some(child) = child {
-                        children.push(child);
-                    }
-                }
-                let mut events = Vec::new();
-                for listener in elem.take_listeners().drain(..) {
-                    events.push(EventHandler::from_listener(&listener));
-                    result.listeners.push(listener);
-                }
-                Some(VNode::element(VElement {
-                    id: elem.id(),
-                    tag: elem.take_tag(),
-                    attr: elem.take_attrs(),
-                    events,
-                    children,
-                    namespace: elem.take_namespace(),
-                }))
-            }
-            Node::Component(comp) => {
-                let rendered = comp.render();
-                result.components.push(comp);
-                self.render_recursive(result, rendered)
-            }
-            Node::Text(text) => Some(VNode::text(text)),
-            Node::Element(mut elem) => {
-                let mut children = Vec::new();
-                for child in elem.children.take().unwrap().drain(..) {
-                    let child = self.render_recursive(result, child);
-                    if let Some(child) = child {
-                        children.push(child);
-                    }
-                }
-                let mut events = Vec::new();
-                for listener in elem.listeners.take().unwrap().drain(..) {
-                    events.push(EventHandler::from_listener(&listener));
-                    result.listeners.push(listener);
-                }
-                Some(VNode::element(VElement {
-                    id: elem.id,
-                    tag: elem.tag.take().unwrap(),
-                    attr: elem.attrs.take().unwrap(),
-                    events,
-                    children,
-                    namespace: elem.namespace,
-                }))
-            }
-            Node::EventSubscription(event_id, subs) => {
-                result.subscriptions.push((event_id, subs));
-                None
-            }
-        }
-    }
-
     fn render_dom(&mut self) {
-        let old_dom = self.rendered.vdom.take();
+        let old_dom = self.rendered.take_vdom();
         let dom = self.app.render();
 
-        let mut frame = Frame::new();
-        let mut result = frame.borrow_render_result();
 
         // render new DOM
-        frame.vdom = self.render_recursive(&mut result, dom);
-        let new_dom = frame
-            .vdom
-            .as_mut()
-            .expect("Expected an actual DOM to render.");
+        let mut path = Path::new();
+        let result = RenderResult::new(dom, &mut path);
 
         // create a patch
         let patch = if let Some(old_dom) = &old_dom {
-            diff(Some(&old_dom), &new_dom)
+            diff(Some(&old_dom), &result.vdom)
         } else {
-            Patch::from_dom(&new_dom)
+            Patch::from_dom(&result.vdom)
         };
-
-        let mut translations = HashMap::new();
-        for (k, v) in &patch.translations {
-            translations.insert(k.clone(), v.clone());
-        }
-        frame.translations = translations;
 
         self.dirty = false;
         if patch.is_empty() {
+            let translations = patch.translations;
+            let mut frame = Frame::new(result, &translations);
             frame.back_annotate();
             self.rendered.apply(frame);
         } else {
-            let serialized = patch_serialize(patch);
+            let serialized = patch_serialize(&patch);
+            let translations = patch.translations;
+            let mut frame = Frame::new(result, &translations);
+            frame.back_annotate();
 
             // schedule next frame
-            frame.back_annotate();
             self.next_frame = Some(frame);
 
             // serialize the patch and send it to the client
