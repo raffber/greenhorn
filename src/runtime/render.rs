@@ -1,11 +1,10 @@
-use crate::vdom::{Path, EventHandler, VElement, VNode};
+use crate::vdom::{EventHandler, VElement, VNode};
 use crate::node::{Node, ComponentContainer, ElementMap, ComponentMap};
 
 use crate::{App, Id, Updated};
 use crate::listener::Listener;
 use crate::event::Subscription;
 use std::collections::{HashMap, HashSet};
-use crate::runtime::dag::Dag;
 
 // TODO: currently an event cannot be subscribed to multiple times
 // since we store the event_id as the key to find a single subscription
@@ -50,7 +49,6 @@ impl<A: App> RenderedComponent<A> {
                 ResultItem::Component(comp) => {
                     children.push(comp.id())
                 },
-                _ => {}
             }
         }
 
@@ -70,13 +68,14 @@ impl<A: App> RenderedComponent<A> {
 
     fn render_recursive(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>) -> Option<VNode> {
         match dom {
-            Node::ElementMap(mut elem) => Self::render_element(&mut *elem, components),
+            Node::ElementMap(mut elem) => Self::render_element(&mut *elem, result),
             Node::Component(comp) => {
+                let id = comp.id();
                 result.push( ResultItem::Component(comp) );
-                Some(VNode::Placeholder(comp.id()))
+                Some(VNode::Placeholder(id))
             }
             Node::Text(text) => Some(VNode::text(text)),
-            Node::Element(mut elem) => Self::render_element(&mut elem, components),
+            Node::Element(mut elem) => Self::render_element(&mut elem, result),
             Node::EventSubscription(event_id, subs) => {
                 result.push( ResultItem::Subscription(event_id, subs) );
                 None
@@ -87,13 +86,11 @@ impl<A: App> RenderedComponent<A> {
 
     fn render_element(elem: &mut dyn ElementMap<A::Message>, result: &mut Vec<ResultItem<A>>) -> Option<VNode> {
         let mut children = Vec::new();
-        for (idx, child) in elem.take_children().drain(..).enumerate() {
-            path.push(idx);
+        for (_, child) in elem.take_children().drain(..).enumerate() {
             let child = Self::render_recursive(child, result);
             if let Some(child) = child {
                 children.push(child);
             }
-            path.pop();
         }
         let mut events = Vec::new();
         for listener in elem.take_listeners().drain(..) {
@@ -118,17 +115,17 @@ struct TreeItem {
 
 
 pub(crate) struct RenderResult<A: App> {
-    pub(crate) listeners: HashMap<ListenerKey, Listener<A::Message>>,
-    pub(crate) subscriptions: HashMap<Id, Subscription<A::Message>>,
-    pub(crate) components: HashMap<Id, RenderedComponent<A::Message>>,
-    pub(crate) root_components: HashSet<Id>,
+    listeners: HashMap<ListenerKey, Listener<A::Message>>,
+    subscriptions: HashMap<Id, Subscription<A::Message>>,
+    components: HashMap<Id, RenderedComponent<A>>,
+    root_components: HashSet<Id>,
     pub(crate) root: VNode,
 }
 
 impl<A: App> RenderResult<A> {
     pub(crate) fn from_root(root_rendered: Node<A::Message>) -> Self {
         let mut result = Vec::new();
-        let vdom = RenderedComponent::render_recursive(root_rendered, &mut result)
+        let vdom = RenderedComponent::<A>::render_recursive(root_rendered, &mut result)
             .expect("Root produced an empty DOM");
 
         let mut ret = Self {
@@ -157,8 +154,9 @@ impl<A: App> RenderResult<A> {
     }
 
     fn render_component(&mut self, comp: ComponentContainer<A::Message>) {
+        let id = comp.id();
         let (rendered, mut result) = RenderedComponent::new(comp);
-        self.components.insert(comp.id(), rendered);
+        self.components.insert(id, rendered);
 
         for item in result.drain(..) {
             match item {
@@ -179,21 +177,21 @@ impl<A: App> RenderResult<A> {
                                  comp: ComponentContainer<A::Message>,
                                  changes: &HashSet<Id>) {
         let id = comp.id();
-        if !changes.contains(&id) && old_components.contains_key(&id) {
-            let old_render = old.components.remove(&id).unwrap();
-            self.components.insert(id, old_render);
-            for child in comp.children {
+        if !changes.contains(&id) && old.components.contains_key(&id) {
+            let mut old_render = old.components.remove(&id).unwrap();
+            for child in old_render.children.drain(..) {
                 let old_comp = old.components.remove(&child).unwrap();
-                self.render_component_from_old(old_components, old_comp.component.clone(), changes)
+                self.render_component_from_old(old, old_comp.component.clone(), changes)
             }
-            for key in old_render.listeners {
-                let (_, listener) = old.listeners.remove(&key).unwrap();
+            for key in old_render.listeners.drain(..) {
+                let listener = old.listeners.remove(&key).unwrap();
                 self.listeners.insert(key, listener);
             }
-            for event_id in old_render.subscriptions {
-                let (_, subs) = old.subscriptions.remove(&key).unwrap();
+            for event_id in old_render.subscriptions.drain(..) {
+                let subs = old.subscriptions.remove(&event_id).unwrap();
                 self.subscriptions.insert(event_id, subs);
             }
+            self.components.insert(id, old_render);
             return;
         }
         let (rendered, mut result) = RenderedComponent::new(comp);
@@ -207,7 +205,7 @@ impl<A: App> RenderResult<A> {
                     self.subscriptions.insert(id, subscription);
                 },
                 ResultItem::Component(comp) => {
-                    self.render_component_from_old(old_components, comp, changes);
+                    self.render_component_from_old(old, comp, changes);
                 },
             }
         }
@@ -225,9 +223,10 @@ impl<A: App> RenderResult<A> {
             root: VNode::Placeholder(Id::empty()),
         };
 
-        for id in &old.root_components {
+        let root_components = old.root_components.clone(); // XXX: workaround
+        for id in &root_components {
             let comp = old.components.remove(id).unwrap();
-            ret.render_component_from_old(&old, comp.component, &changes);
+            ret.render_component_from_old(&mut old, comp.component, &changes);
         }
 
         ret.root_components = old.root_components;
@@ -251,7 +250,7 @@ impl<A: App> Frame<A> {
     }
 
     pub(crate) fn back_annotate(&mut self) {
-        self.rendered.vdom.back_annotate(&self.translations);
+        self.rendered.root.back_annotate(&self.translations);
     }
 }
 
@@ -310,30 +309,29 @@ impl<A: App> RenderedState<A> {
     pub(crate) fn apply(&mut self, mut frame: Frame<A>) {
         self.listeners.clear();
         self.subscriptions.clear();
-        self.vdom = Some(frame.rendered.vdom);
+        self.vdom = Some(frame.rendered.root);
 
-        for item in frame.rendered.data.drain(..) {
-            match item {
-                ResultItem::Listener(listener) => {
-                    let key = if let Some(new_id) = frame.translations.get(&listener.node_id) {
-                        ListenerKey {
-                            id: *new_id,
-                            name: listener.event_name.clone(),
-                        }
-                    } else {
-                        ListenerKey {
-                            id: listener.node_id,
-                            name: listener.event_name.clone(),
-                        }
-                    };
-                    self.listeners.insert(key, listener);
-                },
-                ResultItem::Subscription(id, subs) => {
-                    self.subscriptions.insert(id, subs);
-                },
-                ResultItem::Component(_) => {},
-                ResultItem::VDom(_, _) => {},
-            }
-        }
+//        for item in frame.rendered.data.drain(..) {
+//            match item {
+//                ResultItem::Listener(listener) => {
+//                    let key = if let Some(new_id) = frame.translations.get(&listener.node_id) {
+//                        ListenerKey {
+//                            id: *new_id,
+//                            name: listener.event_name.clone(),
+//                        }
+//                    } else {
+//                        ListenerKey {
+//                            id: listener.node_id,
+//                            name: listener.event_name.clone(),
+//                        }
+//                    };
+//                    self.listeners.insert(key, listener);
+//                },
+//                ResultItem::Subscription(id, subs) => {
+//                    self.subscriptions.insert(id, subs);
+//                },
+//                ResultItem::Component(_) => {},
+//            }
+//        }
     }
 }

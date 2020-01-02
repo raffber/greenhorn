@@ -47,7 +47,7 @@ impl<T: 'static> Node<T> {
                 let ret = ElementRemap::new_box(fun, inner);
                 Node::ElementMap(ret)
             }
-            Node::Component(inner) => Node::Component(ComponentRemap::new_box(fun, inner)),
+            Node::Component(inner) => Node::Component(ComponentRemap::new_arc(fun, inner.inner)),
             Node::Text(text) => Node::Text(text),
             Node::Element(elem) => Node::ElementMap(ElementMapDirect::new_box(fun, elem)),
             Node::EventSubscription(id, evt) => Node::EventSubscription(id, evt.map(fun)),
@@ -331,7 +331,7 @@ pub struct ComponentContainer<T> {
 
 impl<T> Clone for ComponentContainer<T> {
     fn clone(&self) -> Self {
-        Self { inner: inner.clone() }
+        Self { inner: self.inner.clone() }
     }
 }
 
@@ -393,7 +393,7 @@ impl<R: 'static + Render, U: 'static> ComponentMap<U> for ComponentMapDirect<R, 
 
 struct ComponentRemap<T, U> {
     fun: Arc<dyn Fn(T) -> U>,
-    inner: Box<dyn ComponentMap<T>>,
+    inner: Arc<dyn ComponentMap<T>>,
 }
 
 impl<T, U> Debug for ComponentRemap<T, U> {
@@ -403,11 +403,13 @@ impl<T, U> Debug for ComponentRemap<T, U> {
 }
 
 impl<T: 'static, U: 'static> ComponentRemap<T, U> {
-    fn new_box(
+    fn new_arc(
         fun: Arc<dyn Fn(T) -> U>,
-        inner: Box<dyn ComponentMap<T>>,
-    ) -> Box<dyn ComponentMap<U>> {
-        Box::new(Self { fun, inner })
+        inner: Arc<dyn ComponentMap<T>>,
+    ) -> ComponentContainer<U> {
+        ComponentContainer {
+            inner: Arc::new(Self { fun, inner })
+        }
     }
 }
 

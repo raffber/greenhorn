@@ -131,7 +131,7 @@ impl VNode {
                 }
             },
             VNode::Text(_) => {panic!()},
-            VNode::Placeholder() => {panic!()},
+            VNode::Placeholder(_) => {panic!()},
         }
     }
 }

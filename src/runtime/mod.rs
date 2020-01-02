@@ -4,7 +4,7 @@ use crate::mailbox::{Mailbox, MailboxMsg, MailboxReceiver};
 use crate::pipe::Sender;
 use crate::pipe::{Pipe, RxMsg, TxMsg};
 use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
-use crate::vdom::{diff, patch_serialize, Patch, Path};
+use crate::vdom::{diff, patch_serialize, Patch};
 use crate::Id;
 use async_std::task;
 use async_timer::Interval;
@@ -16,7 +16,6 @@ use crate::runtime::render::{RenderResult, Frame, RenderedState};
 
 mod service_runner;
 mod render;
-mod dag;
 
 enum PendingEvent {
     Component(Emission),
@@ -241,17 +240,13 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     fn render_dom(&mut self) {
         let old_dom = self.rendered.take_vdom();
         let dom = self.app.render();
-
-
-        // render new DOM
-        let mut path = Path::new();
-        let result = RenderResult::new(dom, &mut path);
+        let result = RenderResult::from_root(dom);
 
         // create a patch
         let patch = if let Some(old_dom) = &old_dom {
-            diff(Some(&old_dom), &result.vdom)
+            diff(Some(&old_dom), &result.root)
         } else {
-            Patch::from_dom(&result.vdom)
+            Patch::from_dom(&result.root)
         };
 
         self.dirty = false;
