@@ -51,8 +51,17 @@ impl<T: 'static, V: 'static, F: Fn(V) -> T> SubscriptionHandler<T>
 }
 
 pub enum Subscription<T> {
-    Mapper(Box<dyn SubscriptionMap<T>>),
-    Handler(Id, Box<dyn SubscriptionHandler<T>>),
+    Mapper(Arc<dyn SubscriptionMap<T>>),
+    Handler(Id, Arc<dyn SubscriptionHandler<T>>),
+}
+
+impl<T> Clone for Subscription<T> {
+    fn clone(&self) -> Self {
+        match self {
+            Subscription::Mapper(x) => {Subscription::Mapper(x.clone())},
+            Subscription::Handler(id, x) => {Subscription::Handler(id.clone(), x.clone())},
+        }
+    }
 }
 
 impl<T: 'static> Debug for Subscription<T> {
@@ -63,7 +72,7 @@ impl<T: 'static> Debug for Subscription<T> {
 
 impl<T: 'static> Subscription<T> {
     pub(crate) fn map<U: 'static>(self, fun: Arc<dyn Fn(T) -> U>) -> Subscription<U> {
-        Subscription::Mapper(Box::new(SubscriptionMapImpl {
+        Subscription::Mapper(Arc::new(SubscriptionMapImpl {
             mapper: fun,
             child: self,
         }))
@@ -109,7 +118,7 @@ impl<T: Any> Event<T> {
     pub fn subscribe<M: 'static, F: 'static + Fn(T) -> M>(&self, fun: F) -> Subscription<M> {
         Subscription::Handler(
             self.id,
-            Box::new(SubscriptionHandlerImpl {
+            Arc::new(SubscriptionHandlerImpl {
                 handler: fun,
                 a: PhantomData,
                 b: PhantomData,

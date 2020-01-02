@@ -1,10 +1,11 @@
-use crate::Id;
+use crate::{Id, App};
 use std::collections::HashMap;
 
 mod serialize;
 pub use serialize::serialize as patch_serialize;
 use std::hash::{Hash, Hasher};
 use crate::listener::Listener;
+use crate::runtime::{Frame, RenderResult};
 
 #[derive(Clone)]
 pub struct Path {
@@ -209,14 +210,10 @@ impl VNode {
     }
 }
 
-pub fn diff<'a>(old: Option<&'a VNode>, new: &'a VNode) -> Patch<'a> {
+pub fn diff<'a, A: App>(old: &'a Frame<A>, new: &'a RenderResult<A>) -> Patch<'a> {
     let mut patch = Patch::new();
-    if let Some(old) = old {
-        diff_recursive(old, new, &mut patch);
-        optimize_patch(&mut patch);
-    } else {
-        patch.push(PatchItem::AppendSibling(new))
-    }
+    diff_recursive(old, new, &mut patch);
+    optimize_patch(&mut patch);
     patch
 }
 

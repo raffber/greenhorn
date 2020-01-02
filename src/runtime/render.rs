@@ -254,7 +254,7 @@ impl<A: App> Frame<A> {
     }
 }
 
-#[derive(Hash, Eq, Debug)]
+#[derive(Hash, Eq, Debug, Clone)]
 struct ListenerKey {
     id: Id,
     name: String,
@@ -276,25 +276,17 @@ impl PartialEq for ListenerKey {
 }
 
 pub(crate) struct RenderedState<A: App> {
-    vdom: Option<VNode>,
     subscriptions: HashMap<Id, Subscription<A::Message>>,
     listeners: HashMap<ListenerKey, Listener<A::Message>>,
-    components: HashMap<Id, ComponentContainer<A::Message>>,
 }
 
 
 impl<A: App> RenderedState<A> {
     pub(crate) fn new() -> Self {
         Self {
-            vdom: None,
             subscriptions: Default::default(),
             listeners: Default::default(),
-            components: Default::default(),
         }
-    }
-
-    pub(crate) fn take_vdom(&mut self) -> Option<VNode> {
-        self.vdom.take()
     }
 
     pub(crate) fn get_listener(&self, target: &Id, name: &str) -> Option<&Listener<A::Message>>{
@@ -306,32 +298,8 @@ impl<A: App> RenderedState<A> {
         self.subscriptions.get(&event_id)
     }
 
-    pub(crate) fn apply(&mut self, mut frame: Frame<A>) {
-        self.listeners.clear();
-        self.subscriptions.clear();
-        self.vdom = Some(frame.rendered.root);
-
-//        for item in frame.rendered.data.drain(..) {
-//            match item {
-//                ResultItem::Listener(listener) => {
-//                    let key = if let Some(new_id) = frame.translations.get(&listener.node_id) {
-//                        ListenerKey {
-//                            id: *new_id,
-//                            name: listener.event_name.clone(),
-//                        }
-//                    } else {
-//                        ListenerKey {
-//                            id: listener.node_id,
-//                            name: listener.event_name.clone(),
-//                        }
-//                    };
-//                    self.listeners.insert(key, listener);
-//                },
-//                ResultItem::Subscription(id, subs) => {
-//                    self.subscriptions.insert(id, subs);
-//                },
-//                ResultItem::Component(_) => {},
-//            }
-//        }
+    pub(crate) fn apply(&mut self, frame: &Frame<A>) {
+        self.listeners = frame.rendered.listeners.clone();
+        self.subscriptions = frame.rendered.subscriptions.clone();
     }
 }

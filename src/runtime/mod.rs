@@ -12,7 +12,8 @@ use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::{select, FutureExt, StreamExt};
 use std::collections::{HashMap, VecDeque, HashSet};
 use crate::node::{ComponentMap, ComponentContainer};
-use crate::runtime::render::{RenderResult, Frame, RenderedState};
+use crate::runtime::render::RenderedState;
+pub(crate) use crate::runtime::render::{RenderResult, Frame};
 
 mod service_runner;
 mod render;
@@ -33,6 +34,7 @@ pub struct Runtime<A: 'static + App, P: Pipe> {
     receiver: P::Receiver,
     event_queue: VecDeque<PendingEvent>,
     rendered: RenderedState<A>,
+    current_frame: Option<Frame<A>>,
     next_frame: Option<Frame<A>>,
     services: ServiceCollection<A::Message>,
     render_tx: UnboundedSender<()>,
@@ -84,7 +86,8 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             components: Default::default(),
             next_frame: None,
             dirty: false,
-            invalidate_all: false
+            invalidate_all: false,
+            current_frame: None
         };
         let control = RuntimeControl { tx };
         (runtime, control)
@@ -153,7 +156,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             }
             RxMsg::FrameApplied() => {
                 if let Some(frame) = self.next_frame.take() {
-                    self.rendered.apply(frame);
+                    self.rendered.apply(&frame);
                 }
             }
             RxMsg::Ping() => {}
@@ -238,13 +241,13 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     }
 
     fn render_dom(&mut self) {
-        let old_dom = self.rendered.take_vdom();
+        let old_frame = self.current_frame.take();
         let dom = self.app.render();
         let result = RenderResult::from_root(dom);
 
         // create a patch
-        let patch = if let Some(old_dom) = &old_dom {
-            diff(Some(&old_dom), &result.root)
+        let patch = if let Some(old_frame) = &old_frame {
+            diff(&old_frame, &result)
         } else {
             Patch::from_dom(&result.root)
         };
@@ -254,7 +257,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             let translations = patch.translations;
             let mut frame = Frame::new(result, &translations);
             frame.back_annotate();
-            self.rendered.apply(frame);
+            self.rendered.apply(&frame);
         } else {
             let serialized = patch_serialize(&patch);
             let translations = patch.translations;
