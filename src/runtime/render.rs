@@ -7,11 +7,14 @@ use crate::event::Subscription;
 use std::collections::{HashMap, HashSet};
 use crate::runtime::dag::Dag;
 
+// TODO: currently an event cannot be subscribed to multiple times
+// since we store the event_id as the key to find a single subscription
+// however, we should use a subscription list as value
+
 pub(crate) enum ResultItem<A: App> {
     Listener( Listener<A::Message> ),
     Subscription( Id, Subscription<A::Message> ),
     Component( ComponentContainer<A::Message> ),
-    VDom( Id, Path, VNode ),
 }
 
 
@@ -19,13 +22,14 @@ pub(crate) enum ResultItem<A: App> {
 struct RenderedComponent<A: App> {
     component: ComponentContainer<A::Message>,
     vdom: VNode,
-    listeners: Vec<Id>, /// Node ids of all DomEvent listeners
-    subscriptions: Vec<Id>, /// Event-ids this component is subscribed to
-    children: Vec<Id>, /// list of component ids which are direct children of this component
+    listeners: Vec<ListenerKey>,
+    subscriptions: Vec<Id>,
+    children: Vec<Id>,
 }
 
 impl<A: App> RenderedComponent<A> {
-    fn new(comp: ComponentContainer<A::Message>, dom: Node<A::Message>) -> (Self, Vec<ResultItem<A>>) {
+    fn new(comp: ComponentContainer<A::Message>) -> (Self, Vec<ResultItem<A>>) {
+        let dom = comp.render();
         let mut result = Vec::new();
         let vdom = Self::render_recursive(dom, &mut result)
             .expect("Expected an actual DOM to render.");
@@ -37,7 +41,8 @@ impl<A: App> RenderedComponent<A> {
         for item in &result {
             match item {
                 ResultItem::Listener(listener) => {
-                    listeners.push(listener.node_id)
+                    let key = ListenerKey { id: listener.node_id, name: listener.event_name.clone() };
+                    listeners.push(key)
                 },
                 ResultItem::Subscription(id, _) => {
                     subs.push(id.clone());
@@ -53,6 +58,10 @@ impl<A: App> RenderedComponent<A> {
             component: comp, vdom, listeners,
             subscriptions: subs, children
         }, result)
+    }
+
+    fn id(&self) -> Id {
+        self.component.id()
     }
 
     fn render(&self) -> Node<A::Message> {
@@ -102,66 +111,129 @@ impl<A: App> RenderedComponent<A> {
     }
 }
 
+struct TreeItem {
+    dirty: bool,
+    component_id: Id
+}
+
+
 pub(crate) struct RenderResult<A: App> {
     pub(crate) listeners: HashMap<ListenerKey, Listener<A::Message>>,
     pub(crate) subscriptions: HashMap<Id, Subscription<A::Message>>,
     pub(crate) components: HashMap<Id, RenderedComponent<A::Message>>,
+    pub(crate) root_components: HashSet<Id>,
     pub(crate) root: VNode,
-    pub(crate) dag: Dag,
 }
 
 impl<A: App> RenderResult<A> {
-    pub(crate) fn from_root(root_rendered: Node<A::Message>, changes: Updated) -> Self {
-        todo!()
-    }
-
-    pub(crate) fn from_frame(last: Frame<A>, changes: Updated) -> Self {
-        let invalidated = changes.into();
-        let ancestor = last.rendered.dag.find_common_ancestor(&invalidated);
-        if ancestor == last.rendered.dag.root() {
-            // special case of root re-render
-            todo!();
-            // return ...
-        }
-
-        let children = last.rendered.dag.get_children(&changes.into());
-        let new_dag = last.rendered.dag.clone();
-        new_dag.remove_all_children(ancestor);
-
-        // fetch the component to be rendered and render into the DOM
-        let component = last.rendered.components.get(&ancestor).unwrap().clone();
-        let dom = component.render();
-        let rendered = RenderedComponent::new(component, dom);
+    pub(crate) fn from_root(root_rendered: Node<A::Message>) -> Self {
+        let mut result = Vec::new();
+        let vdom = RenderedComponent::render_recursive(root_rendered, &mut result)
+            .expect("Root produced an empty DOM");
 
         let mut ret = Self {
             listeners: Default::default(),
             subscriptions: Default::default(),
-            components: Default::default(),
-            root: last.rendered.root,
-            dag: new_dag,
+            components: HashMap::default(),
+            root_components: HashSet::new(),
+            root: vdom,
         };
 
-        // ... then render it into a vdom
-        let mut result = Vec::new();
-        let ancestor_rendered = ret.render_recursive(dom, &mut result)
-            .expect("Expect non-empty DOM from component");
-
-        let new_components: HashSet<Id> = last.rendered.components.iter()
-            .map(|x| *x.0)
-            .filter(|x| children.contains(x))
-            .collect();
-
-
+        for item in result.drain(..) {
+            match item {
+                ResultItem::Listener(listener) => {
+                    ret.listeners.insert(ListenerKey::new(&listener), listener);
+                },
+                ResultItem::Subscription(id, subscription) => {
+                    ret.subscriptions.insert(id, subscription);
+                },
+                ResultItem::Component(comp) => {
+                    ret.root_components.insert(comp.id());
+                    ret.render_component(comp);
+                }
+            }
+        }
+        ret
     }
 
-    fn update(&mut self, data: Vec<ResultItem<A>>) {
-        todo!()
+    fn render_component(&mut self, comp: ComponentContainer<A::Message>) {
+        let (rendered, mut result) = RenderedComponent::new(comp);
+        self.components.insert(comp.id(), rendered);
+
+        for item in result.drain(..) {
+            match item {
+                ResultItem::Listener(listener) => {
+                    self.listeners.insert(ListenerKey::new(&listener), listener);
+                },
+                ResultItem::Subscription(id, subscription) => {
+                    self.subscriptions.insert(id, subscription);
+                },
+                ResultItem::Component(comp) => {
+                    self.render_component(comp);
+                }
+            }
+        }
     }
 
-    fn submit(&mut self, result: ResultItem<A>) {
-        self.data.push(result);
+    fn render_component_from_old(&mut self, old: &mut RenderResult<A>,
+                                 comp: ComponentContainer<A::Message>,
+                                 changes: &HashSet<Id>) {
+        let id = comp.id();
+        if !changes.contains(&id) && old_components.contains_key(&id) {
+            let old_render = old.components.remove(&id).unwrap();
+            self.components.insert(id, old_render);
+            for child in comp.children {
+                let old_comp = old.components.remove(&child).unwrap();
+                self.render_component_from_old(old_components, old_comp.component.clone(), changes)
+            }
+            for key in old_render.listeners {
+                let (_, listener) = old.listeners.remove(&key).unwrap();
+                self.listeners.insert(key, listener);
+            }
+            for event_id in old_render.subscriptions {
+                let (_, subs) = old.subscriptions.remove(&key).unwrap();
+                self.subscriptions.insert(event_id, subs);
+            }
+            return;
+        }
+        let (rendered, mut result) = RenderedComponent::new(comp);
+        self.components.insert(id, rendered);
+        for item in result.drain(..) {
+            match item {
+                ResultItem::Listener(listener) => {
+                    self.listeners.insert(ListenerKey::new(&listener), listener);
+                },
+                ResultItem::Subscription(id, subscription) => {
+                    self.subscriptions.insert(id, subscription);
+                },
+                ResultItem::Component(comp) => {
+                    self.render_component_from_old(old_components, comp, changes);
+                },
+            }
+        }
     }
 
+    /// precondition: The root component must still be valid and not require a re-render
+    pub(crate) fn from_frame(old: Frame<A>, changes: Updated) -> Self {
+        let mut old = old.rendered;
+        let changes : HashSet<Id> = changes.into();
+        let mut ret = Self {
+            listeners: Default::default(),
+            subscriptions: Default::default(),
+            components: HashMap::with_capacity(old.components.len() * 2 ),
+            root_components: HashSet::new(),
+            root: VNode::Placeholder(Id::empty()),
+        };
+
+        for id in &old.root_components {
+            let comp = old.components.remove(id).unwrap();
+            ret.render_component_from_old(&old, comp.component, &changes);
+        }
+
+        ret.root_components = old.root_components;
+        ret.root = old.root;
+        ret
+    }
 }
 
 pub(crate) struct Frame<A: App> {
@@ -187,6 +259,15 @@ impl<A: App> Frame<A> {
 struct ListenerKey {
     id: Id,
     name: String,
+}
+
+impl ListenerKey {
+    fn new<M: 'static + Send>(listener: &Listener<M>) -> Self {
+        Self {
+            id: listener.node_id,
+            name: listener.event_name.clone()
+        }
+    }
 }
 
 impl PartialEq for ListenerKey {
