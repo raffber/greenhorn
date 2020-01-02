@@ -259,7 +259,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             frame.back_annotate();
             self.rendered.apply(&frame);
         } else {
-            let serialized = patch_serialize(&patch);
+            let serialized = patch_serialize(&result, &patch);
             let translations = patch.translations;
             let mut frame = Frame::new(result, &translations);
             frame.back_annotate();

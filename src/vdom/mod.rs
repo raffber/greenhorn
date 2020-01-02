@@ -205,7 +205,7 @@ impl VNode {
         match self {
             VNode::Element(e) => e.id,
             VNode::Text(_) => Id::empty(),
-            _ => panic!(),
+            VNode::Placeholder(x) => x.clone(),
         }
     }
 }

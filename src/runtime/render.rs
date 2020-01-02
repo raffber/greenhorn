@@ -233,6 +233,10 @@ impl<A: App> RenderResult<A> {
         ret.root = old.root;
         ret
     }
+
+    pub(crate) fn get_component_vdom(&self, component_id: &Id) -> Option<&VNode> {
+        self.components.get(component_id).map(|x| &x.vdom)
+    }
 }
 
 pub(crate) struct Frame<A: App> {

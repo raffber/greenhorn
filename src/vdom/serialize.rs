@@ -1,12 +1,17 @@
 use crate::vdom::{EventHandler, Patch, PatchItem, VNode};
-use crate::Id;
+use crate::{Id, App};
+use crate::runtime::RenderResult;
 
 trait PatchSerialize {
     fn serialize(&self, output: &mut Vec<u8>);
 }
 
-impl PatchSerialize for VNode {
-    fn serialize(&self, output: &mut Vec<u8>) {
+trait NodeSerialize {
+    fn serialize<A: App>(&self, rendered: &RenderResult<A>, output: &mut Vec<u8>);
+}
+
+impl NodeSerialize for VNode {
+    fn serialize<A: App>(&self, rendered: &RenderResult<A>, output: &mut Vec<u8>) {
         match self {
             VNode::Element(elem) => {
                 output.push(0);
@@ -23,15 +28,18 @@ impl PatchSerialize for VNode {
                 }
                 (elem.children.len() as u32).serialize(output);
                 for c in elem.children.iter() {
-                    c.serialize(output);
+                    c.serialize(rendered, output);
                 }
                 elem.namespace.serialize(output);
-            }
+            },
             VNode::Text(elem) => {
                 output.push(1);
                 elem.serialize(output);
+            },
+            VNode::Placeholder(id) => {
+                let vdom = rendered.get_component_vdom(id).unwrap();
+                vdom.serialize(rendered, output);
             }
-            _ => panic!(),
         }
     }
 }
@@ -85,17 +93,17 @@ impl<T: PatchSerialize> PatchSerialize for Option<T> {
     }
 }
 
-pub fn serialize(patch: &Patch) -> Vec<u8> {
+pub fn serialize<A: App>(rendered: &RenderResult<A>, patch: &Patch) -> Vec<u8> {
     let mut output = Vec::new();
     for patch in &patch.items {
         match patch {
             PatchItem::AppendSibling(node) => {
                 output.push(1);
-                node.serialize(&mut output);
+                node.serialize(rendered, &mut output);
             }
             PatchItem::Replace(node) => {
                 output.push(3);
-                node.serialize(&mut output);
+                node.serialize(rendered, &mut output);
             }
             PatchItem::ChangeText(text) => {
                 output.push(4);
