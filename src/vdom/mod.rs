@@ -1,11 +1,16 @@
-use crate::{Id, App};
-use std::collections::HashMap;
 
 mod serialize;
+mod diff;
+#[cfg(test)] mod tests;
+
+pub use diff::Differ;
+use crate::{Id, App};
+use std::collections::HashMap;
 pub use serialize::serialize as patch_serialize;
 use std::hash::{Hash, Hasher};
 use crate::listener::Listener;
 use crate::runtime::{Frame, RenderResult};
+
 
 #[derive(Clone)]
 pub struct Path {
@@ -135,6 +140,18 @@ impl VNode {
             VNode::Placeholder(_) => {panic!()},
         }
     }
+
+    pub fn from_string<T: Into<String>>(s: T) -> VNode {
+        VNode::Text(s.into())
+    }
+
+    fn id(&self) -> Id {
+        match self {
+            VNode::Element(e) => e.id,
+            VNode::Text(_) => Id::empty(),
+            VNode::Placeholder(x) => x.clone(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -194,174 +211,19 @@ impl<'a> Patch<'a> {
     pub fn is_empty(&self) -> bool {
         self.items.len() == 0
     }
-}
 
-impl VNode {
-    pub fn from_string<T: Into<String>>(s: T) -> VNode {
-        VNode::Text(s.into())
-    }
-
-    fn id(&self) -> Id {
-        match self {
-            VNode::Element(e) => e.id,
-            VNode::Text(_) => Id::empty(),
-            VNode::Placeholder(x) => x.clone(),
-        }
-    }
-}
-
-pub fn diff<'a, A: App>(old: &'a Frame<A>, new: &'a RenderResult<A>) -> Patch<'a> {
-    let mut patch = Patch::new();
-    diff_recursive(old, new, &mut patch);
-    optimize_patch(&mut patch);
-    patch
-}
-
-fn optimize_patch(patch: &mut Patch) {
-    // optimize trailing moves as they are useless and trivial to optimize
-    let mut cutoff = 0;
-    for x in patch.items.iter().rev() {
-        if x.is_move() {
-            cutoff += 1;
-        } else {
-            break;
-        }
-    }
-    patch.items.truncate(patch.items.len() - cutoff);
-}
-
-fn diff_attrs<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) -> bool {
-    let mut ret = false;
-
-    let mut old_kv = HashMap::with_capacity(old.attr.len());
-    for attr in old.attr.iter() {
-        old_kv.insert(&attr.key, &attr.value);
-    }
-    let mut new_kv = HashMap::with_capacity(new.attr.len());
-    for attr in new.attr.iter() {
-        new_kv.insert(&attr.key, &attr.value);
-    }
-
-    for attr in new.attr.iter() {
-        if let Some(&old_v) = old_kv.get(&attr.key) {
-            if old_v != &attr.value {
-                ret = true;
-                let p = PatchItem::ReplaceAttribute(&attr.key, &attr.value);
-                patch.push(p);
-            }
-        } else {
-            ret = true;
-            let p = PatchItem::AddAtrribute(&attr.key, &attr.value);
-            patch.push(p);
-        }
-    }
-
-    for attr in old.attr.iter() {
-        if !new_kv.contains_key(&attr.key) {
-            ret = true;
-            let p = PatchItem::RemoveAttribute(&attr.key);
-            patch.push(p);
-        }
-    }
-
-    ret
-}
-
-#[allow(clippy::comparison_chain)]
-fn diff_children<'a>(old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) -> bool {
-    if old.children.is_empty() && new.children.is_empty() {
-        return false;
-    }
-
-    if !old.children.is_empty() && new.children.is_empty() {
-        patch.push(PatchItem::RemoveChildren());
-        return false;
-    }
-
-    let mut ret = false;
-    let mut truncates = 1;
-    patch.push(PatchItem::Descend());
-
-    // diff common items
-    let n_new = new.children.len();
-    let n_old = old.children.len();
-    let common_len = n_old.min(n_new);
-    let range = 0..common_len;
-    for k in range {
-        if k != 0 {
-            truncates += 1;
-            patch.push(PatchItem::NextNode());
-        }
-        let old_node = old.children.get(k).unwrap();
-        let new_node = new.children.get(k).unwrap();
-        ret |= diff_recursive(old_node, new_node, patch);
-    }
-
-    if n_old > n_new {
-        patch.push(PatchItem::TruncateSiblings());
-        ret = true;
-    } else if n_new > n_old {
-        for k in n_old..n_new {
-            let new_node = new.children.get(k).unwrap();
-            patch.push(PatchItem::AppendSibling(new_node));
-            ret = true;
-        }
-    }
-
-    if ret {
-        patch.push(PatchItem::Ascend())
-    } else {
-        // remove Descend() and NextNode() again
-        patch.items.truncate(patch.items.len() - truncates);
-    }
-
-    ret
-}
-
-fn diff_events<'a>(old: &'a VElement, new: &'a VElement) -> bool {
-    if new.events.len() != old.events.len() {
-        return false;
-    }
-    for k in 0..new.events.len() {
-        if new.events[k] != old.events[k] {
-            return false;
-        }
-    }
-    true
-}
-
-fn diff_recursive<'a>(old: &'a VNode, new: &'a VNode, patch: &mut Patch<'a>) -> bool {
-    let mut ret = false;
-    match (old, new) {
-        (VNode::Element(elem_old), VNode::Element(elem_new)) => {
-            if elem_old.tag != elem_new.tag
-                || elem_old.namespace != elem_new.namespace
-                || !diff_events(elem_old, elem_new)
-            {
-                ret = true;
-                patch.push(PatchItem::Replace(new))
+    fn optimize(&mut self) {
+        // optimize trailing moves as they are useless and trivial to optimize
+        let mut cutoff = 0;
+        for x in self.items.iter().rev() {
+            if x.is_move() {
+                cutoff += 1;
             } else {
-                ret |= diff_attrs(elem_old, elem_new, patch);
-                let _new_id = (*elem_new).id;
-                ret |= diff_children(elem_old, elem_new, patch);
-                if !elem_old.id.is_empty() {
-                    patch.translate(elem_new.id, elem_old.id);
-                }
+                break;
             }
         }
-        (VNode::Text(elem_old), VNode::Text(elem_new)) => {
-            if elem_old != elem_new {
-                ret = true;
-                patch.push(PatchItem::ChangeText(elem_new))
-            }
-        }
-        (_, new) => {
-            ret = true;
-            patch.push(PatchItem::Replace(new));
-        },
-    };
-    ret
+        self.items.truncate(patch.items.len() - cutoff);
+    }
 }
 
-#[cfg(test)]
-mod tests;
+
