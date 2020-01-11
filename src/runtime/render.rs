@@ -16,8 +16,6 @@ pub(crate) enum ResultItem<A: App> {
     Component( ComponentContainer<A::Message> ),
 }
 
-
-
 struct RenderedComponent<A: App> {
     component: ComponentContainer<A::Message>,
     vdom: VNode,
@@ -119,7 +117,7 @@ pub(crate) struct RenderResult<A: App> {
     subscriptions: HashMap<Id, Subscription<A::Message>>,
     components: HashMap<Id, RenderedComponent<A>>,
     root_components: HashSet<Id>,
-    rendered: Option<HashSet<Id>>,
+    rendered: HashSet<Id>,
     pub(crate) root: VNode,
 }
 
@@ -134,7 +132,7 @@ impl<A: App> RenderResult<A> {
             subscriptions: Default::default(),
             components: HashMap::default(),
             root_components: HashSet::new(),
-            rendered: None,
+            rendered: HashSet::new(),
             root: vdom,
         };
 
@@ -178,7 +176,7 @@ impl<A: App> RenderResult<A> {
     fn render_component_from_old(&mut self, old: &mut RenderResult<A>,
                                  comp: ComponentContainer<A::Message>, ) {
         let id = comp.id();
-        if !self.changes.contains(&id) && old.components.contains_key(&id) {
+        if !self.rendered.contains(&id) && old.components.contains_key(&id) {
             let mut old_render = old.components.remove(&id).unwrap();
             for child in old_render.children.drain(..) {
                 let old_comp = old.components.remove(&child).unwrap();
@@ -221,7 +219,7 @@ impl<A: App> RenderResult<A> {
             subscriptions: Default::default(),
             components: HashMap::with_capacity(old.components.len() * 2 ),
             root_components: HashSet::new(),
-            rendered: changes,
+            rendered: changes.into(),
             root: VNode::Placeholder(Id::empty()),
         };
 
@@ -247,11 +245,7 @@ pub(crate) struct Frame<A: App> {
 }
 
 impl<A: App> Frame<A> {
-    pub(crate) fn new(rendered: RenderResult<A>, trans: &Vec<(Id,Id)>) -> Self {
-        let mut translations = HashMap::new();
-        for (k, v) in trans {
-            translations.insert(k.clone(), v.clone());
-        }
+    pub(crate) fn new(rendered: RenderResult<A>, translations: HashMap<Id, Id>) -> Self {
         Self { rendered, translations }
     }
 

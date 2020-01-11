@@ -3,20 +3,21 @@ use crate::runtime::{Frame, RenderResult};
 use crate::vdom::{Patch, VElement, PatchItem, VNode};
 use std::collections::{HashMap, HashSet};
 
-struct Differ<'a, A: App> {
+pub(crate) struct Differ<'a, A: App> {
     old: &'a RenderResult<A>,
     new: &'a RenderResult<A>,
+    rendered: HashSet<Id>,
 }
 
 impl<'a, A: App> Differ<'a, A> {
     pub(crate) fn new(old: &'a RenderResult<A>, new: &'a RenderResult<A>, rendered: HashSet<Id>) -> Self {
-        Self { old, new }
+        Self { old, new, rendered }
     }
 
     pub(crate) fn diff(&self) -> Patch<'a> {
         let mut patch = Patch::new();
         self.diff_recursive(&self.old.root, &self.new.root, &mut patch);
-        optimize_patch(&mut patch);
+        patch.optimize();
         patch
     }
 
@@ -126,14 +127,14 @@ impl<'a, A: App> Differ<'a, A> {
             (VNode::Element(elem_old), VNode::Element(elem_new)) => {
                 if elem_old.tag != elem_new.tag
                     || elem_old.namespace != elem_new.namespace
-                    || !diff_events(elem_old, elem_new)
+                    || !self.diff_events(elem_old, elem_new)
                 {
                     ret = true;
                     patch.push(PatchItem::Replace(new))
                 } else {
-                    ret |= diff_attrs(elem_old, elem_new, patch);
+                    ret |= self.diff_attrs(elem_old, elem_new, patch);
                     let _new_id = (*elem_new).id;
-                    ret |= diff_children(elem_old, elem_new, patch);
+                    ret |= self.diff_children(elem_old, elem_new, patch);
                     if !elem_old.id.is_empty() {
                         patch.translate(elem_new.id, elem_old.id);
                     }
@@ -146,10 +147,16 @@ impl<'a, A: App> Differ<'a, A> {
                 }
             }
             (VNode::Placeholder(id_old), VNode::Placeholder(id_new)) => {
-                if id_old == id_new {
-                    patch.push(PatchItem::NextNode())
+                if id_old == id_new && !self.rendered.contains(id_new) {
+                    patch.push(PatchItem::NextNode());
+                } else if id_old == id_new {
+                    let old_vdom = self.old.get_component_vdom(id_old).unwrap();
+                    let new_vdom = self.new.get_component_vdom(id_new).unwrap();
+                    self.diff_recursive(old_vdom, new_vdom, patch);
                 } else {
-                    diff_recursive()
+                    // don't even bother diffing
+                    let new_vdom = self.new.get_component_vdom(id_new);
+                    patch.push(PatchItem::Replace(new));
                 }
             },
             (_, new) => {

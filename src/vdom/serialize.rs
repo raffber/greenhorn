@@ -93,7 +93,7 @@ impl<T: PatchSerialize> PatchSerialize for Option<T> {
     }
 }
 
-pub fn serialize<A: App>(rendered: &RenderResult<A>, patch: &Patch) -> Vec<u8> {
+pub(crate) fn serialize<A: App>(rendered: &RenderResult<A>, patch: &Patch) -> Vec<u8> {
     let mut output = Vec::new();
     for patch in &patch.items {
         match patch {

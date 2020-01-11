@@ -3,10 +3,10 @@ mod serialize;
 mod diff;
 #[cfg(test)] mod tests;
 
-pub use diff::Differ;
+pub(crate) use diff::Differ;
 use crate::{Id, App};
 use std::collections::HashMap;
-pub use serialize::serialize as patch_serialize;
+pub(crate) use serialize::serialize as patch_serialize;
 use std::hash::{Hash, Hasher};
 use crate::listener::Listener;
 use crate::runtime::{Frame, RenderResult};
@@ -183,14 +183,14 @@ impl<'a> PatchItem<'a> {
 #[derive(Debug)]
 pub struct Patch<'a> {
     pub items: Vec<PatchItem<'a>>,
-    pub translations: Vec<(Id, Id)>,
+    pub translations: HashMap<Id, Id>,
 }
 
 impl<'a> Patch<'a> {
     fn new() -> Self {
         Patch {
             items: vec![],
-            translations: vec![],
+            translations: HashMap::new(),
         }
     }
 
@@ -205,7 +205,7 @@ impl<'a> Patch<'a> {
     }
 
     fn translate(&mut self, from: Id, to: Id) {
-        self.translations.push((from, to));
+        self.translations.insert(from, to);
     }
 
     pub fn is_empty(&self) -> bool {
@@ -222,7 +222,7 @@ impl<'a> Patch<'a> {
                 break;
             }
         }
-        self.items.truncate(patch.items.len() - cutoff);
+        self.items.truncate(self.items.len() - cutoff);
     }
 }
 

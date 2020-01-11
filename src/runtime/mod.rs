@@ -4,7 +4,7 @@ use crate::mailbox::{Mailbox, MailboxMsg, MailboxReceiver};
 use crate::pipe::Sender;
 use crate::pipe::{Pipe, RxMsg, TxMsg};
 use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
-use crate::vdom::{diff, patch_serialize, Patch};
+use crate::vdom::{Differ, patch_serialize, Patch};
 use crate::Id;
 use async_std::task;
 use async_timer::Interval;
@@ -14,6 +14,7 @@ use std::collections::{HashMap, VecDeque, HashSet};
 use crate::node::{ComponentMap, ComponentContainer};
 use crate::runtime::render::RenderedState;
 pub(crate) use crate::runtime::render::{RenderResult, Frame};
+use std::borrow::BorrowMut;
 
 mod service_runner;
 mod render;
@@ -39,7 +40,7 @@ pub struct Runtime<A: 'static + App, P: Pipe> {
     services: ServiceCollection<A::Message>,
     render_tx: UnboundedSender<()>,
     render_rx: UnboundedReceiver<()>,
-    invalidated_components: HashSet<Id>,
+    invalidated_components: Option<HashSet<Id>>,
     components: HashMap<Id, ComponentContainer<A::Message>>,
     invalidate_all: bool,
     dirty: bool,
@@ -82,7 +83,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             services: ServiceCollection::new(),
             render_tx,
             render_rx,
-            invalidated_components: Default::default(),
+            invalidated_components: Some(HashSet::new()),
             components: Default::default(),
             next_frame: None,
             dirty: false,
@@ -198,9 +199,8 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             self.invalidate_all = true;
             self.schedule_render();
         } else if let Some(invalidated) = updated.components_render {
-            invalidated.iter().for_each(|x| {
-                self.invalidated_components.insert(*x);
-            });
+            let mut invalidated_components = self.invalidated_components.as_mut().unwrap();
+            invalidated.iter().for_each(|x| { invalidated_components.insert(*x); });
             self.schedule_render();
         };
         self.handle_mailbox_result(receiver);
@@ -244,10 +244,12 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         let old_frame = self.current_frame.take();
         let dom = self.app.render();
         let result = RenderResult::from_root(dom);
+        let updated = self.invalidated_components.take().unwrap();
+        self.invalidated_components = Some(HashSet::new());
 
         // create a patch
         let patch = if let Some(old_frame) = &old_frame {
-            diff(&old_frame, &result)
+            Differ::new(&old_frame.rendered, &result, updated).diff()
         } else {
             Patch::from_dom(&result.root)
         };
@@ -255,13 +257,13 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         self.dirty = false;
         if patch.is_empty() {
             let translations = patch.translations;
-            let mut frame = Frame::new(result, &translations);
+            let mut frame = Frame::new(result, translations);
             frame.back_annotate();
             self.rendered.apply(&frame);
         } else {
             let serialized = patch_serialize(&result, &patch);
             let translations = patch.translations;
-            let mut frame = Frame::new(result, &translations);
+            let mut frame = Frame::new(result, translations);
             frame.back_annotate();
 
             // schedule next frame
