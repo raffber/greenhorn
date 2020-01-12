@@ -14,7 +14,6 @@ use std::collections::{HashMap, VecDeque, HashSet};
 use crate::node::{ComponentMap, ComponentContainer};
 use crate::runtime::render::RenderedState;
 pub(crate) use crate::runtime::render::{RenderResult, Frame};
-use std::borrow::BorrowMut;
 
 mod service_runner;
 mod render;
@@ -199,7 +198,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             self.invalidate_all = true;
             self.schedule_render();
         } else if let Some(invalidated) = updated.components_render {
-            let mut invalidated_components = self.invalidated_components.as_mut().unwrap();
+            let invalidated_components = self.invalidated_components.as_mut().unwrap();
             invalidated.iter().for_each(|x| { invalidated_components.insert(*x); });
             self.schedule_render();
         };

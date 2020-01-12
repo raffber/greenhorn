@@ -4,12 +4,11 @@ mod diff;
 #[cfg(test)] mod tests;
 
 pub(crate) use diff::Differ;
-use crate::{Id, App};
+use crate::Id;
 use std::collections::HashMap;
 pub(crate) use serialize::serialize as patch_serialize;
 use std::hash::{Hash, Hasher};
 use crate::listener::Listener;
-use crate::runtime::{Frame, RenderResult};
 
 
 #[derive(Clone)]

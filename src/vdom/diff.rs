@@ -1,5 +1,5 @@
 use crate::{App, Id};
-use crate::runtime::{Frame, RenderResult};
+use crate::runtime::RenderResult;
 use crate::vdom::{Patch, VElement, PatchItem, VNode};
 use std::collections::{HashMap, HashSet};
 
@@ -155,8 +155,8 @@ impl<'a, A: App> Differ<'a, A> {
                     self.diff_recursive(old_vdom, new_vdom, patch);
                 } else {
                     // don't even bother diffing
-                    let new_vdom = self.new.get_component_vdom(id_new);
-                    patch.push(PatchItem::Replace(new));
+                    let new_vdom = self.new.get_component_vdom(id_new).unwrap();
+                    patch.push(PatchItem::Replace(new_vdom));
                 }
             },
             (_, new) => {
