@@ -242,15 +242,18 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     fn render_dom(&mut self) {
         let old_frame = self.current_frame.take();
         let dom = self.app.render();
-        let result = RenderResult::from_root(dom);
         let updated = self.invalidated_components.take().unwrap();
         self.invalidated_components = Some(HashSet::new());
 
         // create a patch
-        let patch = if let Some(old_frame) = &old_frame {
-            Differ::new(&old_frame.rendered, &result, updated).diff()
+        let (patch, result) = if let Some(old_frame) = &old_frame {
+            let result = RenderResult::from_frame(old_frame, updated);
+            let patch = Differ::new(&old_frame.rendered, &result, updated).diff();
+            (patch, result)
         } else {
-            Patch::from_dom(&result.root)
+            let result = RenderResult::from_root(dom);
+            let patch = Patch::from_dom(&result.root);
+            (patch, result)
         };
 
         self.dirty = false;

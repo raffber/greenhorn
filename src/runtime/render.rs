@@ -5,6 +5,7 @@ use crate::{App, Id, Updated};
 use crate::listener::Listener;
 use crate::event::Subscription;
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 // TODO: currently an event cannot be subscribed to multiple times
 // since we store the event_id as the key to find a single subscription
@@ -115,10 +116,10 @@ struct TreeItem {
 pub(crate) struct RenderResult<A: App> {
     listeners: HashMap<ListenerKey, Listener<A::Message>>,
     subscriptions: HashMap<Id, Subscription<A::Message>>,
-    components: HashMap<Id, RenderedComponent<A>>,
+    components: HashMap<Id, Rc<RenderedComponent<A>>>,
     root_components: HashSet<Id>,
     rendered: HashSet<Id>,
-    pub(crate) root: VNode,
+    pub(crate) root: Rc<VNode>,
 }
 
 impl<A: App> RenderResult<A> {
@@ -133,7 +134,7 @@ impl<A: App> RenderResult<A> {
             components: HashMap::default(),
             root_components: HashSet::new(),
             rendered: HashSet::new(),
-            root: vdom,
+            root: Rc::new(vdom),
         };
 
         for item in result.drain(..) {
@@ -156,7 +157,7 @@ impl<A: App> RenderResult<A> {
     fn render_component(&mut self, comp: ComponentContainer<A::Message>) {
         let id = comp.id();
         let (rendered, mut result) = RenderedComponent::new(comp);
-        self.components.insert(id, rendered);
+        self.components.insert(id, Rc::new(rendered));
 
         for item in result.drain(..) {
             match item {
@@ -173,28 +174,28 @@ impl<A: App> RenderResult<A> {
         }
     }
 
-    fn render_component_from_old(&mut self, old: &mut RenderResult<A>,
+    fn render_component_from_old(&mut self, old: &RenderResult<A>,
                                  comp: ComponentContainer<A::Message>, ) {
         let id = comp.id();
         if !self.rendered.contains(&id) && old.components.contains_key(&id) {
-            let mut old_render = old.components.remove(&id).unwrap();
-            for child in old_render.children.drain(..) {
-                let old_comp = old.components.remove(&child).unwrap();
+            let mut old_render = old.components.get(&id).unwrap();
+            for child in &old_render.children {
+                let old_comp = old.components.get(&child).unwrap();
                 self.render_component_from_old(old, old_comp.component.clone())
             }
-            for key in old_render.listeners.drain(..) {
-                let listener = old.listeners.remove(&key).unwrap();
-                self.listeners.insert(key, listener);
+            for key in &old_render.listeners {
+                let listener = old.listeners.get(key).unwrap();
+                self.listeners.insert(key.clone(), listener.clone());
             }
-            for event_id in old_render.subscriptions.drain(..) {
-                let subs = old.subscriptions.remove(&event_id).unwrap();
-                self.subscriptions.insert(event_id, subs);
+            for event_id in &old_render.subscriptions {
+                let subs = old.subscriptions.get(&event_id).unwrap();
+                self.subscriptions.insert(*event_id, subs.clone());
             }
-            self.components.insert(id, old_render);
+            self.components.insert(id, old_render.clone());
             return;
         }
         let (rendered, mut result) = RenderedComponent::new(comp);
-        self.components.insert(id, rendered);
+        self.components.insert(id, Rc::new(rendered));
         for item in result.drain(..) {
             match item {
                 ResultItem::Listener(listener) => {
@@ -211,26 +212,25 @@ impl<A: App> RenderResult<A> {
     }
 
     /// precondition: The root component must still be valid and not require a re-render
-    pub(crate) fn from_frame(old: Frame<A>, changes: Updated) -> Self {
-        let mut old = old.rendered;
-        let changes : HashSet<Id> = changes.into();
+    pub(crate) fn from_frame(old: &Frame<A>, changes: HashSet<Id>) -> Self {
+        let mut old = &old.rendered;
         let mut ret = Self {
             listeners: Default::default(),
             subscriptions: Default::default(),
             components: HashMap::with_capacity(old.components.len() * 2 ),
             root_components: HashSet::new(),
             rendered: changes.into(),
-            root: VNode::Placeholder(Id::empty()),
+            root: Rc::new(VNode::Placeholder(Id::empty())),
         };
 
         let root_components = old.root_components.clone(); // XXX: workaround
         for id in &root_components {
-            let comp = old.components.remove(id).unwrap();
-            ret.render_component_from_old(&mut old, comp.component);
+            let comp = old.components.get(id).unwrap();
+            ret.render_component_from_old(&mut old, comp.component.clone());
         }
 
-        ret.root_components = old.root_components;
-        ret.root = old.root;
+        ret.root_components = old.root_components.clone();
+        ret.root = old.root.clone();
         ret
     }
 

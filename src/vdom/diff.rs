@@ -148,7 +148,11 @@ impl<'a, A: App> Differ<'a, A> {
             }
             (VNode::Placeholder(id_old), VNode::Placeholder(id_new)) => {
                 if id_old == id_new && !self.rendered.contains(id_new) {
-                    patch.push(PatchItem::NextNode());
+                    // TODO: skip this component, navigate to its children and diff those if they
+                    // were rendered
+                    let old_vdom = self.old.get_component_vdom(id_old).unwrap();
+                    let new_vdom = self.new.get_component_vdom(id_new).unwrap();
+                    self.diff_recursive(old_vdom, new_vdom, patch);
                 } else if id_old == id_new {
                     let old_vdom = self.old.get_component_vdom(id_old).unwrap();
                     let new_vdom = self.new.get_component_vdom(id_new).unwrap();
