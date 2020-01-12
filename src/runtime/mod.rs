@@ -157,6 +157,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             RxMsg::FrameApplied() => {
                 if let Some(frame) = self.next_frame.take() {
                     self.rendered.apply(&frame);
+                    self.current_frame = Some(frame);
                 }
             }
             RxMsg::Ping() => {}

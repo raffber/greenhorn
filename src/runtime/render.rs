@@ -298,6 +298,7 @@ impl<A: App> RenderedState<A> {
     pub(crate) fn apply(&mut self, frame: &Frame<A>) {
         self.listeners = frame.rendered.listeners.clone();
         self.subscriptions = frame.rendered.subscriptions.clone();
+        self.translations.clear();
         for (new, old) in &frame.translations {
             self.translations.insert(*old, *new);
         }
