@@ -1,7 +1,7 @@
 use crate::vdom::{EventHandler, VElement, VNode};
 use crate::node::{Node, ComponentContainer, ElementMap, ComponentMap};
 
-use crate::{App, Id, Updated};
+use crate::{App, Id};
 use crate::listener::Listener;
 use crate::event::Subscription;
 use std::collections::{HashMap, HashSet};
@@ -118,7 +118,6 @@ pub(crate) struct RenderResult<A: App> {
     subscriptions: HashMap<Id, Subscription<A::Message>>,
     components: HashMap<Id, Rc<RenderedComponent<A>>>,
     root_components: HashSet<Id>,
-    rendered: HashSet<Id>,
     pub(crate) root: Rc<VNode>,
 }
 
@@ -133,7 +132,6 @@ impl<A: App> RenderResult<A> {
             subscriptions: Default::default(),
             components: HashMap::default(),
             root_components: HashSet::new(),
-            rendered: HashSet::new(),
             root: Rc::new(vdom),
         };
 
@@ -175,13 +173,14 @@ impl<A: App> RenderResult<A> {
     }
 
     fn render_component_from_old(&mut self, old: &RenderResult<A>,
-                                 comp: ComponentContainer<A::Message>, ) {
+            comp: ComponentContainer<A::Message>,
+            rendered: &HashSet<Id>) {
         let id = comp.id();
-        if !self.rendered.contains(&id) && old.components.contains_key(&id) {
-            let mut old_render = old.components.get(&id).unwrap();
+        if !rendered.contains(&id) && old.components.contains_key(&id) {
+            let old_render = old.components.get(&id).unwrap();
             for child in &old_render.children {
                 let old_comp = old.components.get(&child).unwrap();
-                self.render_component_from_old(old, old_comp.component.clone())
+                self.render_component_from_old(old, old_comp.component.clone(), rendered)
             }
             for key in &old_render.listeners {
                 let listener = old.listeners.get(key).unwrap();
@@ -194,8 +193,8 @@ impl<A: App> RenderResult<A> {
             self.components.insert(id, old_render.clone());
             return;
         }
-        let (rendered, mut result) = RenderedComponent::new(comp);
-        self.components.insert(id, Rc::new(rendered));
+        let (rendered_component, mut result) = RenderedComponent::new(comp);
+        self.components.insert(id, Rc::new(rendered_component));
         for item in result.drain(..) {
             match item {
                 ResultItem::Listener(listener) => {
@@ -205,28 +204,27 @@ impl<A: App> RenderResult<A> {
                     self.subscriptions.insert(id, subscription);
                 },
                 ResultItem::Component(comp) => {
-                    self.render_component_from_old(old, comp);
+                    self.render_component_from_old(old, comp, rendered);
                 },
             }
         }
     }
 
     /// precondition: The root component must still be valid and not require a re-render
-    pub(crate) fn from_frame(old: &Frame<A>, changes: HashSet<Id>) -> Self {
+    pub(crate) fn from_frame(old: &Frame<A>, changes: &HashSet<Id>) -> Self {
         let mut old = &old.rendered;
         let mut ret = Self {
             listeners: Default::default(),
             subscriptions: Default::default(),
             components: HashMap::with_capacity(old.components.len() * 2 ),
             root_components: HashSet::new(),
-            rendered: changes.into(),
             root: Rc::new(VNode::Placeholder(Id::empty())),
         };
 
         let root_components = old.root_components.clone(); // XXX: workaround
         for id in &root_components {
             let comp = old.components.get(id).unwrap();
-            ret.render_component_from_old(&mut old, comp.component.clone());
+            ret.render_component_from_old(&mut old, comp.component.clone(), changes);
         }
 
         ret.root_components = old.root_components.clone();
@@ -241,16 +239,12 @@ impl<A: App> RenderResult<A> {
 
 pub(crate) struct Frame<A: App> {
     pub(crate) rendered: RenderResult<A>,
-    translations: HashMap<Id, Id>,
+    pub(crate) translations: HashMap<Id, Id>,
 }
 
 impl<A: App> Frame<A> {
     pub(crate) fn new(rendered: RenderResult<A>, translations: HashMap<Id, Id>) -> Self {
         Self { rendered, translations }
-    }
-
-    pub(crate) fn back_annotate(&mut self) {
-        self.rendered.root.back_annotate(&self.translations);
     }
 }
 
@@ -278,6 +272,7 @@ impl PartialEq for ListenerKey {
 pub(crate) struct RenderedState<A: App> {
     subscriptions: HashMap<Id, Subscription<A::Message>>,
     listeners: HashMap<ListenerKey, Listener<A::Message>>,
+    translations: HashMap<Id, Id> // old -> new
 }
 
 
@@ -286,10 +281,12 @@ impl<A: App> RenderedState<A> {
         Self {
             subscriptions: Default::default(),
             listeners: Default::default(),
+            translations: Default::default()
         }
     }
 
     pub(crate) fn get_listener(&self, target: &Id, name: &str) -> Option<&Listener<A::Message>>{
+        let target = self.translations.get(target).unwrap_or(target);
         let key = ListenerKey { id: target.clone(), name: name.into() };
         self.listeners.get(&key)
     }
@@ -301,5 +298,8 @@ impl<A: App> RenderedState<A> {
     pub(crate) fn apply(&mut self, frame: &Frame<A>) {
         self.listeners = frame.rendered.listeners.clone();
         self.subscriptions = frame.rendered.subscriptions.clone();
+        for (new, old) in &frame.translations {
+            self.translations.insert(*old, *new);
+        }
     }
 }

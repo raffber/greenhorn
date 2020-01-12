@@ -245,28 +245,28 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         let updated = self.invalidated_components.take().unwrap();
         self.invalidated_components = Some(HashSet::new());
 
-        // create a patch
-        let (patch, result) = if let Some(old_frame) = &old_frame {
-            let result = RenderResult::from_frame(old_frame, updated);
-            let patch = Differ::new(&old_frame.rendered, &result, updated).diff();
-            (patch, result)
+        let result = if let Some(old_frame) = &old_frame {
+            RenderResult::from_frame(old_frame, &updated)
         } else {
-            let result = RenderResult::from_root(dom);
-            let patch = Patch::from_dom(&result.root);
-            (patch, result)
+            RenderResult::from_root(dom)
+        };
+
+        // create a patch
+        let patch= if let Some(old_frame) = &old_frame {
+            Differ::new(&old_frame, &result, updated).diff()
+        } else {
+            Patch::from_dom(&result.root)
         };
 
         self.dirty = false;
         if patch.is_empty() {
             let translations = patch.translations;
-            let mut frame = Frame::new(result, translations);
-            frame.back_annotate();
+            let frame = Frame::new(result, translations);
             self.rendered.apply(&frame);
         } else {
             let serialized = patch_serialize(&result, &patch);
             let translations = patch.translations;
-            let mut frame = Frame::new(result, translations);
-            frame.back_annotate();
+            let frame = Frame::new(result, translations);
 
             // schedule next frame
             self.next_frame = Some(frame);

@@ -1,22 +1,22 @@
 use crate::{App, Id};
-use crate::runtime::RenderResult;
+use crate::runtime::{RenderResult, Frame};
 use crate::vdom::{Patch, VElement, PatchItem, VNode};
 use std::collections::{HashMap, HashSet};
 
 pub(crate) struct Differ<'a, A: App> {
-    old: &'a RenderResult<A>,
+    old: &'a Frame<A>,
     new: &'a RenderResult<A>,
     rendered: HashSet<Id>,
 }
 
 impl<'a, A: App> Differ<'a, A> {
-    pub(crate) fn new(old: &'a RenderResult<A>, new: &'a RenderResult<A>, rendered: HashSet<Id>) -> Self {
+    pub(crate) fn new(old: &'a Frame<A>, new: &'a RenderResult<A>, rendered: HashSet<Id>) -> Self {
         Self { old, new, rendered }
     }
 
     pub(crate) fn diff(&self) -> Patch<'a> {
         let mut patch = Patch::new();
-        self.diff_recursive(&self.old.root, &self.new.root, &mut patch);
+        self.diff_recursive(&self.old.rendered.root,   &self.new.root, &mut patch);
         patch.optimize();
         patch
     }
@@ -85,7 +85,7 @@ impl<'a, A: App> Differ<'a, A> {
             }
             let old_node = old.children.get(k).unwrap();
             let new_node = new.children.get(k).unwrap();
-            ret |= self.diff_recursive(old_node, new_node, patch);
+            ret |= self.diff_recursive(old_node,  new_node, patch);
         }
 
         if n_old > n_new {
@@ -136,7 +136,8 @@ impl<'a, A: App> Differ<'a, A> {
                     let _new_id = (*elem_new).id;
                     ret |= self.diff_children(elem_old, elem_new, patch);
                     if !elem_old.id.is_empty() {
-                        patch.translate(elem_new.id, elem_old.id);
+                        let very_old_id = self.old.translations.get(&elem_old.id).unwrap_or(&elem_old.id);
+                        patch.translate(elem_new.id, *very_old_id);
                     }
                 }
             }
@@ -150,13 +151,13 @@ impl<'a, A: App> Differ<'a, A> {
                 if id_old == id_new && !self.rendered.contains(id_new) {
                     // TODO: skip this component, navigate to its children and diff those if they
                     // were rendered
-                    let old_vdom = self.old.get_component_vdom(id_old).unwrap();
+                    let old_vdom = self.old.rendered.get_component_vdom(id_old).unwrap();
                     let new_vdom = self.new.get_component_vdom(id_new).unwrap();
-                    self.diff_recursive(old_vdom, new_vdom, patch);
+                    self.diff_recursive(old_vdom,  new_vdom, patch);
                 } else if id_old == id_new {
-                    let old_vdom = self.old.get_component_vdom(id_old).unwrap();
+                    let old_vdom = self.old.rendered.get_component_vdom(id_old).unwrap();
                     let new_vdom = self.new.get_component_vdom(id_new).unwrap();
-                    self.diff_recursive(old_vdom, new_vdom, patch);
+                    self.diff_recursive(old_vdom,  new_vdom, patch);
                 } else {
                     // don't even bother diffing
                     let new_vdom = self.new.get_component_vdom(id_new).unwrap();

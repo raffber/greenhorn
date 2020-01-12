@@ -89,17 +89,6 @@ pub struct VElement {
     pub(crate) namespace: Option<String>,
 }
 
-impl VElement {
-    fn back_annotate(&mut self, translations: &HashMap<Id, Id>) {
-        if let Some(new_id) = translations.get(&self.id) {
-            self.id = *new_id;
-        }
-        self.children
-            .iter_mut()
-            .for_each(|x| x.back_annotate(translations));
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum VNode {
     Element(VElement),
@@ -114,14 +103,6 @@ impl VNode {
 
     pub fn element(elem: VElement) -> VNode {
         VNode::Element(elem)
-    }
-
-    pub fn back_annotate(&mut self, translations: &HashMap<Id, Id>) {
-        match self {
-            VNode::Element(elem) => elem.back_annotate(translations),
-            VNode::Text(_) => {}
-            _ => {}
-        }
     }
 
     pub fn replace(&mut self, path: &[usize], value: VNode) {
