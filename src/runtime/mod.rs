@@ -18,6 +18,9 @@ pub(crate) use crate::runtime::render::{RenderResult, Frame};
 mod service_runner;
 mod render;
 
+const DEFAULT_RENDER_INTERVAL: u64 = 30;
+const RENDER_RETRY_INTERVAL: u64 = 10;
+
 enum PendingEvent {
     Component(Emission),
 }
@@ -42,6 +45,7 @@ pub struct Runtime<A: 'static + App, P: Pipe> {
     invalidated_components: Option<HashSet<Id>>,
     components: HashMap<Id, ComponentContainer<A::Message>>,
     invalidate_all: bool,
+    not_applied_counter: i32,
     dirty: bool,
 }
 
@@ -87,14 +91,15 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             next_frame: None,
             dirty: false,
             invalidate_all: false,
-            current_frame: None
+            current_frame: None,
+            not_applied_counter: 0
         };
         let control = RuntimeControl { tx };
         (runtime, control)
     }
 
     pub async fn run(mut self) {
-        self.schedule_render();
+        self.schedule_render(DEFAULT_RENDER_INTERVAL);
         let (mailbox, receiver) = Mailbox::<A::Message>::new();
         self.app.mount(mailbox);
         self.handle_mailbox_result(receiver);
@@ -178,13 +183,13 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         }
     }
 
-    fn schedule_render(&mut self) {
+    fn schedule_render(&mut self, wait_time: u64) {
         if self.dirty {
             return;
         }
         let render_tx = self.render_tx.clone();
         task::spawn(async move {
-            let mut timer = Interval::platform_new(core::time::Duration::from_millis(30));
+            let mut timer = Interval::platform_new(core::time::Duration::from_millis(wait_time));
             timer.as_mut().await;
             timer.cancel();
             let _ = render_tx.unbounded_send(());
@@ -197,11 +202,11 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         let updated = self.app.update(msg, mailbox);
         if updated.should_render {
             self.invalidate_all = true;
-            self.schedule_render();
+            self.schedule_render(DEFAULT_RENDER_INTERVAL);
         } else if let Some(invalidated) = updated.components_render {
             let invalidated_components = self.invalidated_components.as_mut().unwrap();
             invalidated.iter().for_each(|x| { invalidated_components.insert(*x); });
-            self.schedule_render();
+            self.schedule_render(DEFAULT_RENDER_INTERVAL);
         };
         self.handle_mailbox_result(receiver);
     }
@@ -241,6 +246,13 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     }
 
     fn render_dom(&mut self) {
+        if self.next_frame.is_some() && self.current_frame.is_none() && self.not_applied_counter < 3 {
+            self.not_applied_counter += 1;
+            self.dirty = false;
+            self.schedule_render(RENDER_RETRY_INTERVAL);
+            return;
+        }
+        self.not_applied_counter = 0;
         let old_frame = self.current_frame.take();
         let dom = self.app.render();
         let updated = self.invalidated_components.take().unwrap();
@@ -266,7 +278,9 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         if patch.is_empty() {
             let translations = patch.translations;
             let frame = Frame::new(result, translations);
+            self.next_frame = None;
             self.rendered.apply(&frame);
+            self.current_frame = Some(frame);
         } else {
             let serialized = patch_serialize(&result, &patch);
             let translations = patch.translations;
