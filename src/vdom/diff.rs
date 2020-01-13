@@ -133,7 +133,6 @@ impl<'a, A: App> Differ<'a, A> {
                     patch.push(PatchItem::Replace(new))
                 } else {
                     ret |= self.diff_attrs(elem_old, elem_new, patch);
-                    let _new_id = (*elem_new).id;
                     ret |= self.diff_children(elem_old, elem_new, patch);
                     if !elem_old.id.is_empty() {
                         let very_old_id = self.old.translations.get(&elem_old.id).unwrap_or(&elem_old.id);

@@ -246,11 +246,14 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         let updated = self.invalidated_components.take().unwrap();
         self.invalidated_components = Some(HashSet::new());
 
-        let result = if let Some(old_frame) = &old_frame {
+        let result = if self.invalidate_all {
+            RenderResult::from_root(dom)
+        } else if let Some(old_frame) = &old_frame {
             RenderResult::from_frame(old_frame, &updated)
         } else {
             RenderResult::from_root(dom)
         };
+        self.invalidate_all = false;
 
         // create a patch
         let patch= if let Some(old_frame) = &old_frame {

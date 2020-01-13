@@ -239,7 +239,7 @@ impl<A: App> RenderResult<A> {
 
 pub(crate) struct Frame<A: App> {
     pub(crate) rendered: RenderResult<A>,
-    pub(crate) translations: HashMap<Id, Id>,
+    pub(crate) translations: HashMap<Id, Id>, // new -> old
 }
 
 impl<A: App> Frame<A> {
