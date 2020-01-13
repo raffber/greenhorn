@@ -30,8 +30,8 @@ struct ComponentDom<M: 'static> {
 }
 
 pub struct Runtime<A: 'static + App, P: Pipe> {
-    tx: UnboundedSender<RuntimeMsg<A::Message>>,
-    rx: UnboundedReceiver<RuntimeMsg<A::Message>>,
+    tx: UnboundedSender<RuntimeMsg<A>>,
+    rx: UnboundedReceiver<RuntimeMsg<A>>,
     app: A,
     sender: P::Sender,
     receiver: P::Receiver,
@@ -49,30 +49,32 @@ pub struct Runtime<A: 'static + App, P: Pipe> {
     dirty: bool,
 }
 
-pub struct RuntimeControl<M: 'static + Send> {
-    tx: UnboundedSender<RuntimeMsg<M>>,
+pub struct RuntimeControl<A: App> {
+    tx: UnboundedSender<RuntimeMsg<A>>,
 }
 
-impl<M: 'static + Send> RuntimeControl<M> {
+impl<A: App> RuntimeControl<A> {
     pub fn cancel(&self) {
         self.tx.unbounded_send(RuntimeMsg::Cancel).unwrap();
     }
 
-    pub fn update(&self, msg: M) {
+    pub fn update(&self, msg: A::Message) {
         self.tx.unbounded_send(RuntimeMsg::Update(msg)).unwrap();
     }
 }
 
-enum RuntimeMsg<M: 'static + Send> {
+enum RuntimeMsg<A: App> {
     Cancel,
-    Update(M)
+    Update(A::Message),
+    ApplyNextFrame(Frame<A>),
+    NextFrameRendering(Frame<A>),
 }
 
 
 
 impl<A: App, P: 'static + Pipe> Runtime<A, P> {
-    pub fn new(app: A, pipe: P) -> (Runtime<A, P>, RuntimeControl<A::Message>) {
-        let (tx, rx) = unbounded::<RuntimeMsg<A::Message>>();
+    pub fn new(app: A, pipe: P) -> (Runtime<A, P>, RuntimeControl<A>) {
+        let (tx, rx) = unbounded();
         let (sender, receiver) = pipe.split();
         let (render_tx, render_rx) = unbounded();
         let runtime = Runtime {
@@ -173,14 +175,23 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         true
     }
 
-    fn handle_msg(&mut self, msg: RuntimeMsg<A::Message>) -> bool {
+    fn handle_msg(&mut self, msg: RuntimeMsg<A>) -> bool {
         match msg {
-            RuntimeMsg::Cancel => false,
+            RuntimeMsg::Cancel => {return false;},
             RuntimeMsg::Update(msg) => {
                 self.update(msg);
-                true
+            }
+            RuntimeMsg::ApplyNextFrame(frame) => {
+                self.next_frame = None;
+                self.rendered.apply(&frame);
+                self.current_frame = Some(frame);
+            }
+            RuntimeMsg::NextFrameRendering(frame) => {
+                // schedule next frame
+                self.next_frame = Some(frame);
             }
         }
+        true
     }
 
     fn schedule_render(&mut self, wait_time: u64) {
@@ -278,16 +289,12 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         if patch.is_empty() {
             let translations = patch.translations;
             let frame = Frame::new(result, translations);
-            self.next_frame = None;
-            self.rendered.apply(&frame);
-            self.current_frame = Some(frame);
+            let _ = self.tx.unbounded_send(RuntimeMsg::ApplyNextFrame(frame));
         } else {
             let serialized = patch_serialize(&result, &patch);
             let translations = patch.translations;
             let frame = Frame::new(result, translations);
-
-            // schedule next frame
-            self.next_frame = Some(frame);
+            let _ = self.tx.unbounded_send(RuntimeMsg::NextFrameRendering(frame));
 
             // serialize the patch and send it to the client
             self.sender.send(TxMsg::Patch(serialized));
