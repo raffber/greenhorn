@@ -5,7 +5,7 @@ use crate::{App, Id};
 use crate::listener::Listener;
 use crate::event::Subscription;
 use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
+use std::sync::Arc;
 
 // TODO: currently an event cannot be subscribed to multiple times
 // since we store the event_id as the key to find a single subscription
@@ -116,9 +116,9 @@ struct TreeItem {
 pub(crate) struct RenderResult<A: App> {
     listeners: HashMap<ListenerKey, Listener<A::Message>>,
     subscriptions: HashMap<Id, Subscription<A::Message>>,
-    components: HashMap<Id, Rc<RenderedComponent<A>>>,
+    components: HashMap<Id, Arc<RenderedComponent<A>>>,
     root_components: HashSet<Id>,
-    pub(crate) root: Rc<VNode>,
+    pub(crate) root: Arc<VNode>,
 }
 
 impl<A: App> RenderResult<A> {
@@ -132,7 +132,7 @@ impl<A: App> RenderResult<A> {
             subscriptions: Default::default(),
             components: HashMap::default(),
             root_components: HashSet::new(),
-            root: Rc::new(vdom),
+            root: Arc::new(vdom),
         };
 
         for item in result.drain(..) {
@@ -155,7 +155,7 @@ impl<A: App> RenderResult<A> {
     fn render_component(&mut self, comp: ComponentContainer<A::Message>) {
         let id = comp.id();
         let (rendered, mut result) = RenderedComponent::new(comp);
-        self.components.insert(id, Rc::new(rendered));
+        self.components.insert(id, Arc::new(rendered));
 
         for item in result.drain(..) {
             match item {
@@ -194,7 +194,7 @@ impl<A: App> RenderResult<A> {
             return;
         }
         let (rendered_component, mut result) = RenderedComponent::new(comp);
-        self.components.insert(id, Rc::new(rendered_component));
+        self.components.insert(id, Arc::new(rendered_component));
         for item in result.drain(..) {
             match item {
                 ResultItem::Listener(listener) => {
@@ -218,7 +218,7 @@ impl<A: App> RenderResult<A> {
             subscriptions: Default::default(),
             components: HashMap::with_capacity(old.components.len() * 2 ),
             root_components: HashSet::new(),
-            root: Rc::new(VNode::Placeholder(Id::empty())),
+            root: Arc::new(VNode::Placeholder(Id::empty())),
         };
 
         let root_components = old.root_components.clone(); // XXX: workaround
