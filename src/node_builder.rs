@@ -3,7 +3,7 @@ use crate::dom_event::DomEvent;
 use crate::vdom::Attr;
 use crate::{Id, Render};
 use std::marker::PhantomData;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use crate::node::{Node, NodeElement};
 use crate::listener::Listener;
 
@@ -82,7 +82,7 @@ impl<T: 'static> ElementBuilder<T> {
         self.listeners.push(Listener {
             event_name: name.into(),
             node_id: self.id,
-            fun: Arc::new(fun),
+            fun: Arc::new(Mutex::new(Box::new(fun))),
             no_propagate: false,
             prevent_default: false,
         });
@@ -97,7 +97,7 @@ impl<T: 'static> ElementBuilder<T> {
         ListenerBuilder {
             parent: self,
             name: name.into(),
-            fun: Arc::new(fun),
+            fun: Arc::new(Mutex::new(Box::new(fun))),
             prevent_default: false,
             no_propagate: false,
         }
@@ -180,7 +180,7 @@ impl<T: 'static> ElementBuilder<T> {
 pub struct ListenerBuilder<T: 'static> {
     parent: ElementBuilder<T>,
     name: String,
-    fun: Arc<dyn Send + Fn(DomEvent) -> T>,
+    fun: Arc<Mutex<Box<dyn Send + Fn(DomEvent) -> T>>>,
     prevent_default: bool,
     no_propagate: bool,
 }
@@ -203,7 +203,7 @@ impl<T: 'static> ListenerBuilder<T> {
         self.parent.listeners.push(Listener {
             event_name: self.name,
             node_id: self.parent.id,
-            fun: self.fun,
+            fun: self.fun.clone(),
             no_propagate: self.no_propagate,
             prevent_default: self.prevent_default,
         });

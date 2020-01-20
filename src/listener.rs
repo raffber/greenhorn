@@ -1,11 +1,11 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use crate::Id;
 use crate::dom_event::DomEvent;
 
 pub struct Listener<T> {
     pub event_name: String,
     pub node_id: Id,
-    pub fun: Arc<dyn Fn(DomEvent) -> T + Send>,
+    pub fun: Arc<Mutex<Box<dyn Fn(DomEvent) -> T + Send>>>,
     pub no_propagate: bool,
     pub prevent_default: bool,
 }
