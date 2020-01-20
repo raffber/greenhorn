@@ -2,46 +2,53 @@ use std::any::Any;
 use std::marker::PhantomData;
 
 use crate::Id;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::fmt::{Debug, Formatter, Error};
+use std::sync::atomic::AtomicPtr;
 
 pub(crate) struct Emission {
     pub(crate) event_id: Id,
     pub(crate) data: Box<dyn Any>,
 }
 
-pub trait SubscriptionMap<T> {
+pub trait SubscriptionMap<T> : Send {
     fn call(&self, value: Box<dyn Any>) -> T;
     fn id(&self) -> Id;
 }
 
+struct SubscriptionMapImplContent<U, T> {
+    mapper: Box<dyn Send + Fn(U) -> T>,
+    child: Subscription<U>
+}
+
 struct SubscriptionMapImpl<U, T> {
-    mapper: Arc<dyn Fn(U) -> T>,
-    child: Subscription<U>,
+    content: Arc<Mutex<SubscriptionMapImplContent<U,T>>>
 }
 
 impl<U: 'static, T: 'static> SubscriptionMap<T> for SubscriptionMapImpl<U, T> {
     fn call(&self, value: Box<dyn Any>) -> T {
-        let ret = self.child.call(value);
-        (self.mapper)(ret)
+        let content = self.content.lock().unwrap();
+        let ret = content.child.call(value);
+        (content.mapper)(ret)
     }
 
     fn id(&self) -> Id {
-        self.child.id()
+        let content = self.content.lock().unwrap();
+        content.child.id()
     }
 }
 
-pub trait SubscriptionHandler<T> {
+pub trait SubscriptionHandler<T> : Send {
     fn call(&self, value: Box<dyn Any>) -> T;
 }
 
-struct SubscriptionHandlerImpl<T, V, F: Fn(V) -> T> {
+struct SubscriptionHandlerImpl<T, V, F: Send + Fn(V) -> T> {
     handler: F,
-    a: std::marker::PhantomData<T>,
-    b: std::marker::PhantomData<V>,
+    a: std::marker::PhantomData<AtomicPtr<T>>,
+    b: std::marker::PhantomData<AtomicPtr<V>>,
 }
 
-impl<T: 'static, V: 'static, F: Fn(V) -> T> SubscriptionHandler<T>
+impl<T: 'static, V: 'static, F: Send + Fn(V) -> T> SubscriptionHandler<T>
     for SubscriptionHandlerImpl<T, V, F>
 {
     fn call(&self, value: Box<dyn Any>) -> T {
@@ -51,8 +58,8 @@ impl<T: 'static, V: 'static, F: Fn(V) -> T> SubscriptionHandler<T>
 }
 
 pub enum Subscription<T> {
-    Mapper(Arc<dyn SubscriptionMap<T>>),
-    Handler(Id, Arc<dyn SubscriptionHandler<T>>),
+    Mapper(Arc<Mutex<dyn SubscriptionMap<T>>>),
+    Handler(Id, Arc<Mutex<dyn SubscriptionHandler<T>>>),
 }
 
 impl<T> Clone for Subscription<T> {
