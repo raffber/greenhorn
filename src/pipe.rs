@@ -23,7 +23,7 @@ pub enum RxMsg {
     Service(u64, RxServiceMessage),
 }
 
-pub trait Sender: Clone {
+pub trait Sender: Clone + Send {
     fn send(&self, msg: TxMsg);
     fn close(&self);
 }
