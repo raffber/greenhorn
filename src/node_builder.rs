@@ -75,7 +75,7 @@ impl<T: 'static> ElementBuilder<T> {
         }
     }
 
-    pub fn on<S: Into<String>, F: 'static + Fn(DomEvent) -> T>(mut self, name: S, fun: F) -> Self {
+    pub fn on<S: Into<String>, F: 'static + Send + Fn(DomEvent) -> T>(mut self, name: S, fun: F) -> Self {
         if self.id.is_empty() {
             self.id = Id::new();
         }
@@ -89,7 +89,7 @@ impl<T: 'static> ElementBuilder<T> {
         self
     }
 
-    pub fn listener<S: Into<String>, F: 'static + Fn(DomEvent) -> T>(
+    pub fn listener<S: Into<String>, F: 'static + Send + Fn(DomEvent) -> T>(
         self,
         name: S,
         fun: F,
@@ -180,7 +180,7 @@ impl<T: 'static> ElementBuilder<T> {
 pub struct ListenerBuilder<T: 'static> {
     parent: ElementBuilder<T>,
     name: String,
-    fun: Arc<dyn Fn(DomEvent) -> T>,
+    fun: Arc<dyn Send + Fn(DomEvent) -> T>,
     prevent_default: bool,
     no_propagate: bool,
 }
