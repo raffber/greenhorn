@@ -14,6 +14,7 @@ use std::collections::{HashMap, VecDeque, HashSet};
 use crate::node::{ComponentMap, ComponentContainer};
 use crate::runtime::render::RenderedState;
 pub(crate) use crate::runtime::render::{RenderResult, Frame};
+use std::thread;
 
 mod service_runner;
 mod render;
@@ -277,27 +278,34 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             RenderResult::from_root(dom)
         };
         self.invalidate_all = false;
-
-        // create a patch
-        let patch= if let Some(old_frame) = &old_frame {
-            Differ::new(&old_frame, &result, updated).diff()
-        } else {
-            Patch::from_dom(&result.root)
-        };
-
         self.dirty = false;
-        if patch.is_empty() {
-            let translations = patch.translations;
-            let frame = Frame::new(result, translations);
-            let _ = self.tx.unbounded_send(RuntimeMsg::ApplyNextFrame(frame));
-        } else {
-            let serialized = patch_serialize(&result, &patch);
-            let translations = patch.translations;
-            let frame = Frame::new(result, translations);
-            let _ = self.tx.unbounded_send(RuntimeMsg::NextFrameRendering(frame));
+        let tx = self.tx.clone();
+        let sender = self.sender.clone();
 
-            // serialize the patch and send it to the client
-            self.sender.send(TxMsg::Patch(serialized));
-        }
+
+
+
+        thread::spawn(move || {
+            // create a patch
+            let patch= if let Some(old_frame) = &old_frame {
+                Differ::new(&old_frame, &result, updated).diff()
+            } else {
+                Patch::from_dom(&result.root)
+            };
+
+            if patch.is_empty() {
+                let translations = patch.translations;
+                let frame = Frame::new(result, translations);
+                let _ = tx.unbounded_send(RuntimeMsg::ApplyNextFrame(frame));
+            } else {
+                let serialized = patch_serialize(&result, &patch);
+                let translations = patch.translations;
+                let frame = Frame::new(result, translations);
+                let _ = tx.unbounded_send(RuntimeMsg::NextFrameRendering(frame));
+
+                // serialize the patch and send it to the client
+                sender.send(TxMsg::Patch(serialized));
+            }
+        });
     }
 }
