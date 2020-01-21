@@ -16,25 +16,20 @@ pub trait SubscriptionMap<T> : Send {
     fn id(&self) -> Id;
 }
 
-struct SubscriptionMapImplContent<U, T> {
-    mapper: Box<dyn Send + Fn(U) -> T>,
-    child: Subscription<U>
-}
-
 struct SubscriptionMapImpl<U, T> {
-    content: Arc<Mutex<SubscriptionMapImplContent<U,T>>>
+    mapper: Arc<Mutex<Box<dyn Send + Fn(U) -> T>>>,
+    child: Subscription<U>
 }
 
 impl<U: 'static, T: 'static> SubscriptionMap<T> for SubscriptionMapImpl<U, T> {
     fn call(&self, value: Box<dyn Any>) -> T {
-        let content = self.content.lock().unwrap();
-        let ret = content.child.call(value);
-        (content.mapper)(ret)
+        let mapper = self.mapper.lock().unwrap();
+        let ret = self.child.call(value);
+        (mapper)(ret)
     }
 
     fn id(&self) -> Id {
-        let content = self.content.lock().unwrap();
-        content.child.id()
+        self.child.id()
     }
 }
 
@@ -43,7 +38,7 @@ pub trait SubscriptionHandler<T> : Send {
 }
 
 struct SubscriptionHandlerImpl<T, V, F: Send + Fn(V) -> T> {
-    handler: F,
+    handler: Mutex<F>,
     a: std::marker::PhantomData<AtomicPtr<T>>,
     b: std::marker::PhantomData<AtomicPtr<V>>,
 }
@@ -53,7 +48,7 @@ impl<T: 'static, V: 'static, F: Send + Fn(V) -> T> SubscriptionHandler<T>
 {
     fn call(&self, value: Box<dyn Any>) -> T {
         let v = value.downcast::<V>().unwrap();
-        (self.handler)(*v)
+        (self.handler.lock().unwrap())(*v)
     }
 }
 
@@ -78,23 +73,23 @@ impl<T: 'static> Debug for Subscription<T> {
 }
 
 impl<T: 'static> Subscription<T> {
-    pub(crate) fn map<U: 'static>(self, fun: Arc<dyn Fn(T) -> U>) -> Subscription<U> {
-        Subscription::Mapper(Arc::new(SubscriptionMapImpl {
+    pub(crate) fn map<U: 'static>(self, fun: Arc<Mutex<Box<dyn Send + Fn(T) -> U>>>) -> Subscription<U> {
+        Subscription::Mapper(Arc::new(Mutex::new(SubscriptionMapImpl {
             mapper: fun,
-            child: self,
-        }))
+            child: self
+        })))
     }
 
     pub(crate) fn call(&self, value: Box<dyn Any>) -> T {
         match self {
-            Subscription::Mapper(map) => map.call(value),
-            Subscription::Handler(_, fun) => fun.call(value),
+            Subscription::Mapper(map) => map.lock().unwrap().call(value),
+            Subscription::Handler(_, fun) => fun.lock().unwrap().call(value),
         }
     }
 
     pub(crate) fn id(&self) -> Id {
         match self {
-            Subscription::Mapper(map) => map.id(),
+            Subscription::Mapper(map) => map.lock().unwrap().id(),
             Subscription::Handler(id, _) => *id,
         }
     }
@@ -122,14 +117,14 @@ impl<T: Any> Event<T> {
         }
     }
 
-    pub fn subscribe<M: 'static, F: 'static + Fn(T) -> M>(&self, fun: F) -> Subscription<M> {
+    pub fn subscribe<M: 'static, F: 'static + Send + Fn(T) -> M>(&self, fun: F) -> Subscription<M> {
         Subscription::Handler(
             self.id,
-            Arc::new(SubscriptionHandlerImpl {
-                handler: fun,
+            Arc::new(Mutex::new(SubscriptionHandlerImpl {
+                handler: Mutex::new(fun),
                 a: PhantomData,
                 b: PhantomData,
-            }),
+            })),
         )
     }
 }
