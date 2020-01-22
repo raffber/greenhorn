@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::DerefMut;
 
 use crate::mailbox::Mailbox;
 use crate::Id;
@@ -120,14 +120,14 @@ impl<T: 'static + Render> Component<T> {
 
     pub fn update<R, F: FnOnce(&mut T) -> R>(&mut self, fun: F) -> R {
         let mut data = self.lock();
-        fun(&mut data.deref())
+        fun(data.deref_mut())
     }
 }
 
 impl<T: 'static + App> Component<T> {
     pub fn update_app(&mut self, msg: T::Message, mailbox: Mailbox<T::Message>) -> Updated {
         let mut borrow = self.lock();
-        let data = &mut borrow.deref();
+        let data = borrow.deref_mut();
         let mut ret = data.update(msg, mailbox);
         if ret.should_render {
             // improve reporting accuracy

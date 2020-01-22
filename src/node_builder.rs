@@ -42,7 +42,7 @@ impl<T: 'static> NodeBuilder<T> {
     where
         ChildMsg: 'static + Send,
         R: 'static + Render<Message = ChildMsg>,
-        Mapper: 'static + Fn(ChildMsg) -> T,
+        Mapper: 'static + Send + Fn(ChildMsg) -> T,
     {
         comp.render().map(mapper)
     }
@@ -120,7 +120,7 @@ impl<T: 'static> ElementBuilder<T> {
         where
             ChildMsg: 'static + Send,
             R: 'static + Render<Message = ChildMsg>,
-            Mapper: 'static + Fn(ChildMsg) -> T,
+            Mapper: 'static + Send + Fn(ChildMsg) -> T,
     {
         self.children.push(comp.render().map(mapper));
         self

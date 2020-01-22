@@ -2,7 +2,7 @@ use crate::{Id, Render, Component};
 use crate::vdom::Attr;
 use std::fmt::{Debug, Formatter, Error};
 use crate::listener::Listener;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use crate::event::Subscription;
 use crate::node_builder::NodeBuilder;
 
@@ -36,18 +36,18 @@ impl<T: 'static> Node<T> {
         NodeBuilder::new_with_ns("http://www.w3.org/2000/svg")
     }
 
-    pub fn map<U: 'static, F: 'static + Fn(T) -> U>(self, fun: F) -> Node<U> {
-        let fun = Arc::new(fun);
-        self.map_arc(fun)
+    pub fn map<U: 'static, F: 'static + Send + Fn(T) -> U>(self, fun: F) -> Node<U> {
+        let fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>> = Arc::new(Mutex::new(Box::new(fun)));
+        self.map_shared(fun)
     }
 
-    pub(crate) fn map_arc<U: 'static>(self, fun: Arc<dyn Fn(T) -> U>) -> Node<U> {
+    pub(crate) fn map_shared<U: 'static>(self, fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>) -> Node<U> {
         match self {
             Node::ElementMap(inner) => {
                 let ret = ElementRemap::new_box(fun, inner);
                 Node::ElementMap(ret)
             }
-            Node::Component(inner) => Node::Component(ComponentRemap::new_arc(fun, inner.inner)),
+            Node::Component(inner) => Node::Component(ComponentRemap::new_container(fun, inner.inner)),
             Node::Text(text) => Node::Text(text),
             Node::Element(elem) => Node::ElementMap(ElementMapDirect::new_box(fun, elem)),
             Node::EventSubscription(id, evt) => Node::EventSubscription(id, evt.map(fun)),
@@ -220,7 +220,7 @@ impl<T: 'static> ElementMap<T> for NodeElement<T> {
 }
 
 struct ElementMapDirect<T: 'static, U> {
-    fun: Arc<dyn Fn(T) -> U>,
+    fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>,
     inner: NodeElement<T>,
 }
 
@@ -231,7 +231,7 @@ impl<T, U> Debug for ElementMapDirect<T, U> {
 }
 
 impl<T: 'static, U: 'static> ElementMapDirect<T, U> {
-    fn new_box(fun: Arc<dyn Fn(T) -> U>, inner: NodeElement<T>) -> Box<dyn ElementMap<U>> {
+    fn new_box(fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>, inner: NodeElement<T>) -> Box<dyn ElementMap<U>> {
         Box::new(ElementMapDirect { fun, inner })
     }
 }
@@ -253,7 +253,7 @@ impl<T: 'static, U: 'static> ElementMap<U> for ElementMapDirect<T, U> {
             .take()
             .expect("children taken multiple times")
             .drain(..)
-            .map(|x| x.map_arc(self.fun.clone()))
+            .map(|x| x.map_shared(self.fun.clone()))
             .collect()
     }
 
@@ -275,7 +275,7 @@ impl<T: 'static, U: 'static> ElementMap<U> for ElementMapDirect<T, U> {
 }
 
 struct ElementRemap<T, U> {
-    fun: Arc<dyn Fn(T) -> U>,
+    fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>,
     inner: Box<dyn ElementMap<T>>,
 }
 
@@ -286,7 +286,7 @@ impl<T, U> Debug for ElementRemap<T, U> {
 }
 
 impl<T: 'static, U: 'static> ElementRemap<T, U> {
-    fn new_box(fun: Arc<dyn Fn(T) -> U>, inner: Box<dyn ElementMap<T>>) -> Box<dyn ElementMap<U>> {
+    fn new_box(fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>, inner: Box<dyn ElementMap<T>>) -> Box<dyn ElementMap<U>> {
         Box::new(ElementRemap { fun, inner })
     }
 }
@@ -304,7 +304,7 @@ impl<T: 'static, U: 'static> ElementMap<U> for ElementRemap<T, U> {
         self.inner
             .take_children()
             .drain(..)
-            .map(|x| x.map_arc(self.fun.clone()))
+            .map(|x| x.map_shared(self.fun.clone()))
             .collect()
     }
 
@@ -326,7 +326,7 @@ impl<T: 'static, U: 'static> ElementMap<U> for ElementRemap<T, U> {
 }
 
 pub struct ComponentContainer<T> {
-    inner: Arc<dyn ComponentMap<T>>,
+    inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>,
 }
 
 impl<T> Clone for ComponentContainer<T> {
@@ -336,7 +336,7 @@ impl<T> Clone for ComponentContainer<T> {
 }
 
 impl<T> ComponentContainer<T> {
-   pub(crate) fn new(inner: Arc<dyn ComponentMap<T>>) -> Self {
+   pub(crate) fn new(inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>) -> Self {
         ComponentContainer {
             inner
         }
@@ -351,39 +351,39 @@ impl<T> Debug for ComponentContainer<T> {
 
 impl<T> ComponentMap<T> for ComponentContainer<T> {
     fn render(&self) -> Node<T> {
-        self.inner.render()
+        self.inner.lock().unwrap().render()
     }
 
     fn id(&self) -> Id {
-        self.inner.id()
+        self.inner.lock().unwrap().id()
     }
 }
 
-pub trait ComponentMap<T> : Debug {
+pub trait ComponentMap<T> : Debug + Send {
     fn render(&self) -> Node<T>;
     fn id(&self) -> Id;
 }
 
-struct ComponentMapDirect<R: Render, U> {
-    fun: Arc<dyn Fn(R::Message) -> U>,
+struct ComponentMapDirect<R: Send + Render, U> {
+    fun: Arc<Mutex<Box<dyn Send + Fn(R::Message) -> U>>>,
     inner: Component<R>,
 }
 
-impl<R: Render, U> Debug for ComponentMapDirect<R, U> {
+impl<R: Send + Render, U> Debug for ComponentMapDirect<R, U> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         self.inner.fmt(f)
     }
 }
 
-impl<R: 'static + Render, U: 'static> ComponentMapDirect<R, U> {
-    fn new_box(fun: Arc<dyn Fn(R::Message) -> U>, inner: Component<R>) -> Box<dyn ComponentMap<U>> {
+impl<R: 'static + Send + Render, U: 'static> ComponentMapDirect<R, U> {
+    fn new_box(fun: Arc<Mutex<Box<dyn 'static + Send + Fn(R::Message) -> U>>>, inner: Component<R>) -> Box<dyn ComponentMap<U>> {
         Box::new(Self { fun, inner })
     }
 }
 
-impl<R: 'static + Render, U: 'static> ComponentMap<U> for ComponentMapDirect<R, U> {
+impl<R: 'static + Send + Render, U: 'static> ComponentMap<U> for ComponentMapDirect<R, U> {
     fn render(&self) -> Node<U> {
-        self.inner.render().map_arc(self.fun.clone())
+        self.inner.lock().render().map_shared(self.fun.clone())
     }
 
     fn id(&self) -> Id {
@@ -392,8 +392,8 @@ impl<R: 'static + Render, U: 'static> ComponentMap<U> for ComponentMapDirect<R, 
 }
 
 struct ComponentRemap<T, U> {
-    fun: Arc<dyn Fn(T) -> U>,
-    inner: Arc<dyn ComponentMap<T>>,
+    fun: Arc<Mutex<Box<dyn Send + Fn(T) -> U>>>,
+    inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>,
 }
 
 impl<T, U> Debug for ComponentRemap<T, U> {
@@ -403,23 +403,23 @@ impl<T, U> Debug for ComponentRemap<T, U> {
 }
 
 impl<T: 'static, U: 'static> ComponentRemap<T, U> {
-    fn new_arc(
-        fun: Arc<dyn Fn(T) -> U>,
-        inner: Arc<dyn ComponentMap<T>>,
+    fn new_container(
+        fun: Arc<Mutex<Box<dyn Send + Fn(T) -> U>>>,
+        inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>,
     ) -> ComponentContainer<U> {
         ComponentContainer {
-            inner: Arc::new(Self { fun, inner })
+            inner: Arc::new(Mutex::new(Box::new(Self { fun, inner })))
         }
     }
 }
 
 impl<T: 'static, U: 'static> ComponentMap<U> for ComponentRemap<T, U> {
     fn render(&self) -> Node<U> {
-        self.inner.render().map_arc(self.fun.clone())
+        self.inner.lock().unwrap().render().map_shared(self.fun.clone())
     }
 
     fn id(&self) -> Id {
-        self.inner.id()
+        self.inner.lock().unwrap().id()
     }
 }
 
