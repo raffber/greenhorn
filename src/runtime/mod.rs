@@ -14,7 +14,6 @@ use std::collections::{HashMap, VecDeque, HashSet};
 use crate::node::{ComponentMap, ComponentContainer};
 use crate::runtime::render::RenderedState;
 pub(crate) use crate::runtime::render::{RenderResult, Frame};
-use std::thread;
 
 mod service_runner;
 mod render;
@@ -282,10 +281,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         let tx = self.tx.clone();
         let sender = self.sender.clone();
 
-
-
-
-        thread::spawn(move || {
+        async_std::task::spawn_blocking(move || {
             // create a patch
             let patch= if let Some(old_frame) = &old_frame {
                 Differ::new(&old_frame, &result, updated).diff()
