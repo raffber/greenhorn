@@ -1,6 +1,4 @@
-use std::cell::{Ref, RefCell, RefMut};
 use std::ops::Deref;
-use std::rc::Rc;
 
 use crate::mailbox::Mailbox;
 use crate::Id;
@@ -8,6 +6,7 @@ use std::fmt::{Debug, Formatter, Error};
 use crate::node::Node;
 use std::collections::HashSet;
 use std::collections::hash_map::RandomState;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 pub struct Updated {
     pub(crate) should_render: bool,
@@ -76,7 +75,7 @@ impl From<bool> for Updated {
 
 pub struct Component<T: Render> {
     id: Id,
-    comp: Rc<RefCell<T>>,
+    comp: Arc<Mutex<T>>,
 }
 
 impl<T: Render> Debug for Component<T> {
@@ -98,16 +97,12 @@ impl<T: 'static + Render> Component<T> {
     pub fn new(inner: T) -> Self {
         Self {
             id: Id::new(),
-            comp: Rc::new(RefCell::new(inner)),
+            comp: Arc::new(Mutex::new(inner)),
         }
     }
 
-    pub fn borrow_mut(&mut self) -> RefMut<T> {
-        self.comp.borrow_mut()
-    }
-
-    pub fn borrow(&self) -> Ref<T> {
-        self.comp.borrow()
+    pub fn lock(&self) -> MutexGuard<T> {
+        self.comp.lock().unwrap()
     }
 
     pub fn id(&self) -> Id {
@@ -115,25 +110,24 @@ impl<T: 'static + Render> Component<T> {
     }
 
     pub fn render(&self) -> Node<T::Message> {
-        self.comp.deref().borrow().render()
+        self.lock().render()
     }
 
     pub fn map<R, F: Fn(&T) -> R>(&self, fun: F) -> R {
-        let data = self.comp.deref().borrow();
+        let data = self.lock();
         fun(&data)
     }
 
     pub fn update<R, F: FnOnce(&mut T) -> R>(&mut self, fun: F) -> R {
-        let mut borrow = self.comp.deref().borrow_mut();
-        let data = &mut borrow;
-        fun(data)
+        let mut data = self.lock();
+        fun(&mut data.deref())
     }
 }
 
 impl<T: 'static + App> Component<T> {
     pub fn update_app(&mut self, msg: T::Message, mailbox: Mailbox<T::Message>) -> Updated {
-        let mut borrow = self.comp.deref().borrow_mut();
-        let data = &mut borrow;
+        let mut borrow = self.lock();
+        let data = &mut borrow.deref();
         let mut ret = data.update(msg, mailbox);
         if ret.should_render {
             // improve reporting accuracy
