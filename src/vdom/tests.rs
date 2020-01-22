@@ -2,6 +2,33 @@ use super::*;
 
 use assert_matches::assert_matches;
 use std::fs;
+use crate::runtime::{Frame, RenderResult};
+use std::collections::HashSet;
+use crate::{App, Updated, Render};
+use crate::mailbox::Mailbox;
+use crate::node::Node;
+use std::ops::Deref;
+
+struct DummyApp;
+
+impl App for DummyApp {
+    fn update(&mut self, _msg: Self::Message, _mailbox: Mailbox<Self::Message>) -> Updated {
+        unimplemented!()
+    }
+}
+
+impl Render for DummyApp {
+    type Message = ();
+
+    fn render(&self) -> Node<Self::Message> {
+        unimplemented!()
+    }
+}
+
+fn diff<'a, A: App>(old: &'a Frame<A>, new: &'a RenderResult<A>) -> Patch<'a> {
+    let patch = Differ::new(old, new, HashSet::new());
+    patch.diff()
+}
 
 #[test]
 fn test_remove_attr() {
@@ -24,10 +51,12 @@ fn test_remove_attr() {
         children: vec![],
         namespace: None,
     });
+    let old = Frame::<DummyApp>::from_vnode(elem_a);
+    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let patch = diff(&old, &new);
 
-    let patch = diff(Some(&elem_a), &elem_b);
     assert_eq!(patch.translations.len(), 1);
-    assert_eq!(patch.translations[0], (id_b, id_a));
+    assert_eq!(patch.translations.get(&id_b).unwrap(), &id_a);
     assert_eq!(patch.items.len(), 1);
     if let PatchItem::RemoveAttribute(x) = &patch.items[0] {
         assert_eq!(&"foo".to_string(), x);
@@ -58,9 +87,12 @@ fn test_add_attr() {
         namespace: None,
     });
 
-    let patch = diff(Some(&elem_a), &elem_b);
+    let old = Frame::<DummyApp>::from_vnode(elem_a);
+    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let patch = diff(&old, &new);
+
     assert_eq!(patch.translations.len(), 1);
-    assert_eq!(patch.translations[0], (id_b, id_a));
+    assert_eq!(patch.translations.get(&id_b).unwrap(), &id_a);
     assert_eq!(patch.items.len(), 1);
     if let PatchItem::AddAtrribute(key, value) = &patch.items[0] {
         assert_eq!(&"foo".to_string(), key);
@@ -92,9 +124,12 @@ fn test_change_attr() {
         namespace: None,
     });
 
-    let patch = diff(Some(&elem_a), &elem_b);
+    let old = Frame::<DummyApp>::from_vnode(elem_a);
+    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let patch = diff(&old, &new);
+
     assert_eq!(patch.translations.len(), 1);
-    assert_eq!(patch.translations[0], (id_b, id_a));
+    assert_eq!(patch.translations.get(&id_b).unwrap(), &id_a);
     assert_eq!(patch.items.len(), 1);
     if let PatchItem::ReplaceAttribute(key, value) = &patch.items[0] {
         assert_eq!(&"foo".to_string(), key);
@@ -124,11 +159,14 @@ fn test_change_tag() {
         namespace: None,
     });
 
-    let patch = diff(Some(&elem_a), &elem_b);
+    let old = Frame::<DummyApp>::from_vnode(elem_a);
+    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let patch = diff(&old, &new);
+
     assert_eq!(patch.translations.len(), 0);
     assert_eq!(patch.items.len(), 1);
     if let PatchItem::Replace(VNode::Element(node)) = &patch.items[0] {
-        assert_eq!(node.id, elem_b.id());
+        assert_eq!(node.id, new.root.id());
         assert_eq!(node.tag, "bar");
     } else {
         panic!()
@@ -159,7 +197,10 @@ fn test_add_event() {
         namespace: None,
     });
 
-    let patch = diff(Some(&elem_a), &elem_b);
+    let old = Frame::<DummyApp>::from_vnode(elem_a);
+    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let patch = diff(&old, &new);
+
     assert_eq!(patch.items.len(), 1);
     if let PatchItem::Replace(_) = patch.items[0] {
     } else {
@@ -194,7 +235,10 @@ fn test_add_child() {
         namespace: None,
     });
 
-    let patch = diff(Some(&elem_a), &elem_b);
+    let old = Frame::<DummyApp>::from_vnode(elem_a);
+    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let patch = diff(&old, &new);
+
     assert_eq!(patch.translations.len(), 1);
     assert_eq!(patch.items.len(), 2);
     assert_matches!(&patch.items[0], PatchItem::Descend());
@@ -236,7 +280,8 @@ fn test_output_patch() {
         namespace: None,
     });
 
-    let patch = diff(None, &elem_b);
-    let serialized = serialize(patch);
+    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let patch = Patch::from_dom(new.root.deref());
+    let serialized = serialize(&new, &patch);
     fs::write("test_patch.bin", serialized).expect("Unable to write file!");
 }

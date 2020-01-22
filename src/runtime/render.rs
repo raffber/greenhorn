@@ -122,6 +122,16 @@ pub(crate) struct RenderResult<A: App> {
 }
 
 impl<A: App> RenderResult<A> {
+    pub(crate) fn from_vnode(root: VNode) -> Self {
+        Self {
+            listeners: Default::default(),
+            subscriptions: Default::default(),
+            components: Default::default(),
+            root_components: Default::default(),
+            root: Arc::new(root)
+        }
+    }
+
     pub(crate) fn from_root(root_rendered: Node<A::Message>) -> Self {
         let mut result = Vec::new();
         let vdom = RenderedComponent::<A>::render_recursive(root_rendered, &mut result)
@@ -245,6 +255,13 @@ pub(crate) struct Frame<A: App> {
 impl<A: App> Frame<A> {
     pub(crate) fn new(rendered: RenderResult<A>, translations: HashMap<Id, Id>) -> Self {
         Self { rendered, translations }
+    }
+
+    pub(crate) fn from_vnode(vdom: VNode) -> Self {
+        Self {
+            rendered: RenderResult::from_vnode(vdom),
+            translations: Default::default()
+        }
     }
 }
 

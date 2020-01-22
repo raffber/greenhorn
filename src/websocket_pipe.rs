@@ -216,7 +216,7 @@ impl Stream for WebsocketReceiver {
 mod tests {
     use super::*;
     use assert_matches::assert_matches;
-    use async_tungstenite::connect_async;
+    use async_tungstenite::async_std::connect_async;
     use std::str::FromStr;
     use url::Url;
 
