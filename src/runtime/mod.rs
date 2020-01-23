@@ -237,10 +237,12 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                 MailboxMsg::Propagate(prop) => {
                     self.sender.send(TxMsg::Propagate(prop));
                 },
+                MailboxMsg::Subscription(service) => {
+                    self.services.spawn(service);
+                }
+                MailboxMsg::Future(_fut) => {}
+                MailboxMsg::Stream(_stream) => {}
             }
-        }
-        while let Ok(service) = receiver.services.try_recv() {
-            self.services.spawn(service);
         }
     }
 

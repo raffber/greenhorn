@@ -8,6 +8,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use futures::{Stream, StreamExt};
+use std::pin::Pin;
 
 enum MapSender<T> {
     Direct(Sender<T>),
@@ -103,11 +104,11 @@ pub(crate) enum MailboxMsg<T: 'static + Send> {
     RunJs(String),
     Propagate(EventPropagate),
     Subscription(ServiceSubscription<T>),
-    Future(Box<dyn Future<Output=T> + Unpin>),
-    Stream(Box<dyn Stream<Item=T>>),
+    Future(Pin<Box<dyn Future<Output=T>>>),
+    Stream(Pin<Box<dyn Stream<Item=T>>>),
 }
 
-impl<T: 'static + Send> MailboxMsg<T> {
+impl<T: Send + 'static> MailboxMsg<T> {
     pub fn map<U, Mapper>(self, mapper: Arc<Mapper>) -> MailboxMsg<U>
     where
         U: 'static + Send,
@@ -116,19 +117,19 @@ impl<T: 'static + Send> MailboxMsg<T> {
         match self {
             MailboxMsg::Subscription(subs) => MailboxMsg::Subscription(subs.map(mapper)),
             MailboxMsg::Future(fut) => {
-                MailboxMsg::Future(Box::new(async move {
+                MailboxMsg::Future(Box::pin(async move {
                     (mapper)(fut.await)
                 }))
             },
             MailboxMsg::Stream(stream) => {
-                MailboxMsg::Stream(Box::new(stream.map(move |x| (mapper)(x))))
+                MailboxMsg::Stream(Box::pin(stream.map(move |x| (mapper)(x))))
             },
             _ => panic!()
         }
     }
 }
 
-impl<T: 'static> Mailbox<T> {
+impl<T: Send + 'static> Mailbox<T> {
     pub(crate) fn new() -> (Self, MailboxReceiver<T>) {
         let (tx, rx) = channel();
         (
@@ -143,15 +144,15 @@ impl<T: 'static> Mailbox<T> {
 
     pub fn emit<D: Any>(&self, event: &Event<D>, data: D) {
         let emission = event.emit(data);
-        self.tx.send(MailboxMsg::Emission(emission)).unwrap();
+        self.tx.send(MailboxMsg::Emission(emission));
     }
 
     pub fn load_css<Css: Into<String>>(&self, css: Css) {
-        self.tx.send(MailboxMsg::LoadCss(css.into())).unwrap();
+        self.tx.send(MailboxMsg::LoadCss(css.into()));
     }
 
     pub fn run_js<Js: Into<String>>(&self, js: Js) {
-        self.tx.send(MailboxMsg::RunJs(js.into())).unwrap();
+        self.tx.send(MailboxMsg::RunJs(js.into()));
     }
 
     pub fn run_service<S, F>(&self, service: S, fun: F)
@@ -161,15 +162,15 @@ impl<T: 'static> Mailbox<T> {
         F: 'static + Fn(S::Data) -> T + Send,
     {
         let subs = ServiceSubscription::new(service, fun);
-        self.services.send(subs);
+        self.tx.send(MailboxMsg::Subscription(subs));
     }
 
-    pub fn spawn<Fut: Future<Output=T>>(&self, fut: Fut) {
-        self.tx.send(MailboxMsg::Future(Box::new(fut)));
+    pub fn spawn<Fut: 'static + Future<Output=T>>(&self, fut: Fut) {
+        self.tx.send(MailboxMsg::Future(Box::pin(fut)));
     }
 
-    pub fn subscribe<S: Stream<Item=T>>(&self, stream: S) {
-        self.tx.send(MailboxMsg::Stream(Box::new(stream)));
+    pub fn subscribe<S: 'static + Stream<Item=T>>(&self, stream: S) {
+        self.tx.send(MailboxMsg::Stream(Box::pin(stream)));
     }
 
     pub fn map<U: Send + 'static, F: 'static + Send + Sync + Fn(U) -> T>(
@@ -177,7 +178,7 @@ impl<T: 'static> Mailbox<T> {
         fun: F,
     ) -> Mailbox<U> {
         let mapper = Arc::new(fun);
-        let new_sender = self.services.clone();
+        let new_sender = self.tx.clone();
         let mapped = new_sender.map(move |msg: MailboxMsg<U>| msg.map(mapper.clone()));
         Mailbox {
             tx: mapped,
@@ -190,8 +191,7 @@ impl<T: 'static> Mailbox<T> {
                 event: e,
                 propagate: true,
                 default_action: false,
-            }))
-            .unwrap();
+            }));
     }
 
     pub fn default_action(&self, e: DomEvent) {
@@ -200,8 +200,7 @@ impl<T: 'static> Mailbox<T> {
                 event: e,
                 propagate: false,
                 default_action: true,
-            }))
-            .unwrap();
+            }));
     }
 
     pub fn propagate_and_default(&self, e: DomEvent) {
@@ -210,8 +209,7 @@ impl<T: 'static> Mailbox<T> {
                 event: e,
                 propagate: true,
                 default_action: true,
-            }))
-            .unwrap();
+            }));
     }
 }
 
