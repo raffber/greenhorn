@@ -68,6 +68,7 @@ enum RuntimeMsg<A: App> {
     Update(A::Message),
     ApplyNextFrame(Frame<A>),
     NextFrameRendering(Frame<A>),
+    AsyncMsg(A::Message),
 }
 
 
@@ -189,6 +190,9 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             RuntimeMsg::NextFrameRendering(frame) => {
                 // schedule next frame
                 self.next_frame = Some(frame);
+            },
+            RuntimeMsg::AsyncMsg(msg) => {
+                self.update(msg);
             }
         }
         true
@@ -240,8 +244,18 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
                 MailboxMsg::Subscription(service) => {
                     self.services.spawn(service);
                 }
-                MailboxMsg::Future(_fut) => {}
-                MailboxMsg::Stream(_stream) => {}
+                MailboxMsg::Future(fut) => {
+                    let tx = self.tx.clone();
+                    async_std::task::spawn(async move {
+                        let result = fut.await;
+                        let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(result));
+                    });
+                }
+                MailboxMsg::Stream(_stream) => {
+                    async_std::task::spawn(async move {
+                        todo!();
+                    });
+                }
             }
         }
     }

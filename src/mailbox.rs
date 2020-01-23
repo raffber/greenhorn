@@ -104,8 +104,8 @@ pub(crate) enum MailboxMsg<T: 'static + Send> {
     RunJs(String),
     Propagate(EventPropagate),
     Subscription(ServiceSubscription<T>),
-    Future(Pin<Box<dyn Future<Output=T>>>),
-    Stream(Pin<Box<dyn Stream<Item=T>>>),
+    Future(Pin<Box<dyn Send + Future<Output=T>>>),
+    Stream(Pin<Box<dyn Send + Stream<Item=T>>>),
 }
 
 impl<T: Send + 'static> MailboxMsg<T> {
@@ -165,11 +165,11 @@ impl<T: Send + 'static> Mailbox<T> {
         self.tx.send(MailboxMsg::Subscription(subs));
     }
 
-    pub fn spawn<Fut: 'static + Future<Output=T>>(&self, fut: Fut) {
+    pub fn spawn<Fut: 'static + Send + Future<Output=T>>(&self, fut: Fut) {
         self.tx.send(MailboxMsg::Future(Box::pin(fut)));
     }
 
-    pub fn subscribe<S: 'static + Stream<Item=T>>(&self, stream: S) {
+    pub fn subscribe<S: 'static + Send + Stream<Item=T>>(&self, stream: S) {
         self.tx.send(MailboxMsg::Stream(Box::pin(stream)));
     }
 
