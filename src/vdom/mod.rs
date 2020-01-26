@@ -9,6 +9,7 @@ use std::collections::HashMap;
 pub(crate) use serialize::serialize as patch_serialize;
 use std::hash::{Hash, Hasher};
 use crate::listener::Listener;
+use crate::node::Blob;
 
 
 #[derive(Clone)]
@@ -147,6 +148,8 @@ pub enum PatchItem<'a> {
     RemoveAttribute(&'a str),
     AddAtrribute(&'a str, &'a str),
     ReplaceAttribute(&'a str, &'a str),
+    AddBlob(Blob),
+    RemoveBlob(Id),
 }
 
 impl<'a> PatchItem<'a> {

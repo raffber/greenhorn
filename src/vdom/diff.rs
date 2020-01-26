@@ -14,11 +14,31 @@ impl<'a, A: App> Differ<'a, A> {
         Self { old, new, rendered }
     }
 
-    pub(crate) fn diff(&self) -> Patch<'a> {
+    pub(crate) fn diff(self) -> Patch<'a> {
         let mut patch = Patch::new();
         self.diff_recursive(&self.old.rendered.root,   &self.new.root, &mut patch);
         patch.optimize();
+        self.diff_blobs(&mut patch);
         patch
+    }
+
+    fn diff_blobs(&self, patch: &mut Patch<'a>) {
+        for (k, _) in &self.old.rendered.blobs {
+            if !self.new.blobs.contains_key(k) {
+                patch.push(PatchItem::RemoveBlob(*k));
+            }
+        }
+        for (k, v) in &self.new.blobs {
+            if let Some(blob) = self.old.rendered.blobs.get(k) {
+                if blob.hash() != v.hash() {
+                    patch.push(PatchItem::RemoveBlob(*k));
+                    patch.push(PatchItem::AddBlob(v.clone()));
+                }
+            } else {
+                // blob missing, add it
+                patch.push(PatchItem::AddBlob(v.clone()));
+            }
+        }
     }
 
     fn diff_attrs(&self, old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) -> bool {

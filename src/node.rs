@@ -23,7 +23,7 @@ impl<T: 'static> Debug for Node<T> {
             Node::Text(text) => {f.write_str(&text)},
             Node::Element(elem) => {elem.fmt(f)},
             Node::EventSubscription(_, subs) => {subs.fmt(f)},
-            Node::Blob(blob) => {f.write_str(&format!("<Blob id={} hash={}>", blob.id, blob.hash))}
+            Node::Blob(blob) => {blob.fmt(f)}
         }
     }
 }
@@ -95,7 +95,7 @@ impl<T: 'static> Node<T> {
             Node::Text(_) => Id::empty(),
             Node::Element(elem) => elem.id,
             Node::EventSubscription(id, _) => *id,
-            Node::Blob(blob) => blob.id,
+            Node::Blob(blob) => blob.id(),
         }
     }
 
@@ -428,11 +428,38 @@ impl<T: 'static, U: 'static> ComponentMap<U> for ComponentRemap<T, U> {
     }
 }
 
-#[derive(Clone)]
-pub struct Blob {
-    pub hash: u64,
-    pub id: Id,
-    pub data: Vec<u8>,
-    pub mime_type: String,
+pub struct BlobData {
+    hash: u64,
+    id: Id,
+    data: Vec<u8>,
+    mime_type: String,
 }
 
+#[derive(Clone)]
+pub struct Blob {
+    inner: Arc<BlobData>
+}
+
+impl Blob {
+    pub fn id(&self) -> Id {
+        self.inner.id
+    }
+
+    pub fn hash(&self) -> u64 {
+        self.inner.hash
+    }
+
+    pub fn data(&self) -> &Vec<u8> {
+        &self.inner.data
+    }
+
+    pub fn mime_type(&self) -> &str {
+        &self.inner.mime_type
+    }
+}
+
+impl Debug for Blob {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        f.write_str(&format!("<Blob id={} hash={}>", self.id(), self.hash()))
+    }
+}

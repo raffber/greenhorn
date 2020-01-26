@@ -52,7 +52,7 @@ impl<A: App> RenderedComponent<A> {
                     children.push(comp.id())
                 },
                 ResultItem::Blob(blob) => {
-                    blobs.push(blob.id);
+                    blobs.push(blob.id());
                 }
             }
         }
@@ -125,10 +125,10 @@ struct TreeItem {
 
 pub(crate) struct RenderResult<A: App> {
     listeners: HashMap<ListenerKey, Listener<A::Message>>,
-    subscriptions: HashMap<Id, Subscription<A::Message>>,
-    blobs: Vec<Blob>,
+    pub(crate) subscriptions: HashMap<Id, Subscription<A::Message>>,
+    pub(crate) blobs: HashMap<Id, Blob>,
     components: HashMap<Id, Arc<RenderedComponent<A>>>,
-    root_components: HashSet<Id>,
+    pub(crate) root_components: HashSet<Id>,
     pub(crate) root: Arc<VNode>,
 }
 
@@ -137,7 +137,7 @@ impl<A: App> RenderResult<A> {
         Self {
             listeners: Default::default(),
             subscriptions: Default::default(),
-            blobs: vec![],
+            blobs: Default::default(),
             components: Default::default(),
             root_components: Default::default(),
             root: Arc::new(root)
@@ -152,7 +152,7 @@ impl<A: App> RenderResult<A> {
         let mut ret = Self {
             listeners: Default::default(),
             subscriptions: Default::default(),
-            blobs: vec![],
+            blobs: Default::default(),
             components: HashMap::default(),
             root_components: HashSet::new(),
             root: Arc::new(vdom),
@@ -171,7 +171,7 @@ impl<A: App> RenderResult<A> {
                     ret.render_component(comp);
                 }
                 ResultItem::Blob(blob) => {
-                    ret.blobs.push(blob);
+                    ret.blobs.insert(blob.id(), blob);
                 }
             }
         }
@@ -195,7 +195,7 @@ impl<A: App> RenderResult<A> {
                     self.render_component(comp);
                 }
                 ResultItem::Blob(blob) => {
-                    self.blobs.push(blob);
+                    self.blobs.insert(blob.id(), blob);
                 }
             }
         }
@@ -219,6 +219,10 @@ impl<A: App> RenderResult<A> {
                 let subs = old.subscriptions.get(&event_id).unwrap();
                 self.subscriptions.insert(*event_id, subs.clone());
             }
+            for blob_id in &old_render.blobs {
+                let blob = old.blobs.get(&blob_id).unwrap();
+                self.blobs.insert(*blob_id, blob.clone());
+            }
             self.components.insert(id, old_render.clone());
             return;
         }
@@ -236,7 +240,7 @@ impl<A: App> RenderResult<A> {
                     self.render_component_from_old(old, comp, rendered);
                 },
                 ResultItem::Blob(blob) => {
-                    self.blobs.push(blob);
+                    self.blobs.insert(blob.id(), blob);
                 }
             }
         }
@@ -248,10 +252,10 @@ impl<A: App> RenderResult<A> {
         let mut ret = Self {
             listeners: Default::default(),
             subscriptions: Default::default(),
-            blobs: vec![],
+            blobs: Default::default(),
             components: HashMap::with_capacity(old.components.len() * 2 ),
             root_components: HashSet::new(),
-            root: Arc::new(VNode::Placeholder(Id::empty())),
+            root: old.root.clone(),
         };
 
         let root_components = old.root_components.clone(); // XXX: workaround
