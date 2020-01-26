@@ -32,7 +32,6 @@ function serializeMouseEvent(id, name, evt) {
         "button": evt.button,
         "buttons": evt.buttons,
         "client": serializePoint(evt.clientX, evt.clientY),
-        "movement": serializePoint(evt.movementX, evt.movementY),
         "offset": serializePoint(evt.offsetX, evt.offsetY),
         "page": serializePoint(evt.pageX, evt.pageY),
         "screen": serializePoint(evt.screenX, evt.screenY)
