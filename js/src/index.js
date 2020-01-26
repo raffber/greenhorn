@@ -275,7 +275,9 @@ export class Pipe {
         } else if (msg.hasOwnProperty("LoadCss")) {
             loadCss(msg.LoadCss);
         } else if (msg.hasOwnProperty("RunJs")) {
-            eval(msg.RunJs);
+            (function() {
+                eval(msg.RunJs);
+            })();
         } else if (msg.hasOwnProperty("Propagate")) {
             let event = msg.Propagate.event;
             let prop = msg.Propagate.propagate;
