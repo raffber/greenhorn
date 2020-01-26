@@ -4,12 +4,13 @@ mod diff;
 #[cfg(test)] mod tests;
 
 pub(crate) use diff::Differ;
-use crate::Id;
+use crate::{Id, App};
 use std::collections::HashMap;
 pub(crate) use serialize::serialize as patch_serialize;
 use std::hash::{Hash, Hasher};
 use crate::listener::Listener;
 use crate::node::Blob;
+use crate::runtime::RenderResult;
 
 
 #[derive(Clone)]
@@ -177,9 +178,12 @@ impl<'a> Patch<'a> {
         }
     }
 
-    pub fn from_dom(vnode: &'a VNode) -> Self {
+    pub(crate) fn from_dom<A: App>(rendered: &'a RenderResult<A>) -> Self {
         let mut patch = Patch::new();
-        patch.push(PatchItem::Replace(vnode));
+        patch.push(PatchItem::Replace(&rendered.root));
+        for (_, v) in &rendered.blobs {
+            patch.push(PatchItem::AddBlob(v.clone()));
+        }
         patch
     }
 

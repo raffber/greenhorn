@@ -71,8 +71,6 @@ enum RuntimeMsg<A: App> {
     AsyncMsg(A::Message),
 }
 
-
-
 impl<A: App, P: 'static + Pipe> Runtime<A, P> {
     pub fn new(app: A, pipe: P) -> (Runtime<A, P>, RuntimeControl<A>) {
         let (tx, rx) = unbounded();
@@ -306,7 +304,7 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
             let patch= if let Some(old_frame) = &old_frame {
                 Differ::new(&old_frame, &result, updated).diff()
             } else {
-                Patch::from_dom(&result.root)
+                Patch::from_dom(&result)
             };
 
             if patch.is_empty() {

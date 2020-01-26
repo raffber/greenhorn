@@ -361,7 +361,7 @@ export class Application {
     onPatch(patch_data) {
         let patch = new Patch(patch_data, this.root_element.firstElementChild, this);
         patch.apply();
-        for (cb in this.afterRender) {
+        for (const cb of this.afterRender) {
             cb(this);
         }
     }
@@ -565,8 +565,9 @@ export class Patch {
         let mime_type = this.deserializeString();
         let len = this.patch.getUint32(this.offset, true);
         let view = new Uint8Array(this.buffer, this.offset + 4, len);
-        let blob = new Blob(view, mime_type);
-        this.app[id] = blob;
+        let blob = new Blob(view, {"type": mime_type});
+        this.offset += len + 4;
+        this.app.blobs[id] = blob;
     }
 
     removeBlob() {

@@ -4,7 +4,7 @@ use std::fmt::{Debug, Formatter, Error};
 use crate::listener::Listener;
 use std::sync::{Arc, Mutex};
 use crate::event::Subscription;
-use crate::node_builder::NodeBuilder;
+use crate::node_builder::{NodeBuilder, BlobBuilder};
 
 pub enum Node<T: 'static> {
     ElementMap(Box<dyn ElementMap<T>>),
@@ -441,6 +441,15 @@ pub struct Blob {
 }
 
 impl Blob {
+    pub fn build(id: Id, hash: u64) -> BlobBuilder {
+        BlobBuilder {
+            id,
+            hash,
+            mime_type: "".to_string(),
+            data: vec![]
+        }
+    }
+
     pub fn id(&self) -> Id {
         self.inner.id
     }
@@ -461,5 +470,24 @@ impl Blob {
 impl Debug for Blob {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         f.write_str(&format!("<Blob id={} hash={}>", self.id(), self.hash()))
+    }
+}
+
+impl From<BlobBuilder> for Blob {
+    fn from(builder: BlobBuilder) -> Self {
+        Blob {
+            inner: Arc::new(BlobData {
+                hash: builder.hash,
+                id: builder.id,
+                data: builder.data,
+                mime_type: builder.mime_type
+            }),
+        }
+    }
+}
+
+impl<T: 'static> From<Blob> for Node<T> {
+    fn from(blob: Blob) -> Self {
+        Node::Blob(blob)
     }
 }

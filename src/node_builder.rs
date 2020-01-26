@@ -6,6 +6,7 @@ use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 use crate::node::{Node, NodeElement};
 use crate::listener::Listener;
+use crate::node::Blob;
 
 pub struct NodeBuilder<T> {
     namespace: Option<String>,
@@ -38,6 +39,15 @@ impl<T: 'static> NodeBuilder<T> {
         Node::Text(text.into())
     }
 
+    pub fn blob(&self, id: Id, hash: u64) -> BlobBuilder {
+        BlobBuilder {
+            id,
+            hash,
+            mime_type: "".to_string(),
+            data: vec![]
+        }
+    }
+
     pub fn mount<ChildMsg, R, Mapper>(&self, comp: &Component<R>, mapper: Mapper) -> Node<T>
     where
         ChildMsg: 'static + Send,
@@ -53,6 +63,30 @@ impl<T: 'static> Default for NodeBuilder<T> {
         NodeBuilder::new()
     }
 }
+
+pub struct BlobBuilder {
+    pub id: Id,
+    pub hash: u64,
+    pub mime_type: String,
+    pub data: Vec<u8>,
+}
+
+impl BlobBuilder {
+    pub fn mime_type<S: Into<String>>(mut self, mime_type: S) -> Self {
+        self.mime_type = mime_type.into();
+        self
+    }
+
+    pub fn data(mut self, data: Vec<u8>) -> Self {
+        self.data = data;
+        self
+    }
+
+    pub fn build(self) -> Blob {
+        self.into()
+    }
+}
+
 
 pub struct ElementBuilder<T: 'static> {
     id: Id,

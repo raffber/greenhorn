@@ -32,6 +32,7 @@ pub mod prelude {
     pub use crate::runtime::{Runtime, RuntimeControl};
     pub use crate::websocket_pipe::WebsocketPipe;
     pub use crate::node_builder::{NodeBuilder, ElementBuilder};
+    pub use crate::node::Blob;
 }
 
 pub use crate::component::{App, Component, Render, Updated};
