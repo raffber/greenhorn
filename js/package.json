@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "webpack-dev-server --config ./webpack.config.js --mode development",
-    "build-prod": "webpack --config ./webpack.config.js",
-    "build-dev": "webpack --config ./webpack.config.js --mode development",
+    "build-prod": "webpack --config ./webpack.config.js --mode production && cp dist/bundle.js ../web_view/res/",
+    "build-dev": "webpack --config ./webpack.config.js --mode development && cp dist/bundle.js ../web_view/res/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

@@ -341,6 +341,16 @@ export class Application {
         this.pipe.onRunJsMsg = (id, js) => {
             self.onRunJsMsg(id, js);
         }
+        this.afterRender = [];
+        this.blobs = {}
+    }
+
+    getBlob(blob_id) {
+        this.blobs[blob_id]
+    }
+
+    registerAfterRender(fun) {
+        this.afterRender.push(fun);
     }
 
     onRunJsMsg(id, js) {
@@ -351,6 +361,9 @@ export class Application {
     onPatch(patch_data) {
         let patch = new Patch(patch_data, this.root_element.firstElementChild, this);
         patch.apply();
+        for (cb in this.afterRender) {
+            cb(this);
+        }
     }
 
     close() {
@@ -381,6 +394,8 @@ export class Patch {
             10: Patch.prototype.removeAttribute,
             11: Patch.prototype.addAttribute,
             12: Patch.prototype.replaceAttribute,
+            13: Patch.prototype.addBlob,
+            14: Patch.prototype.removeBlob,
         }
     }
 
@@ -545,5 +560,17 @@ export class Patch {
         return new EventHandler(name, no_prop, prevent_default);
     }
 
-    
+    addBlob() {
+        let id = this.deserializeId();
+        let mime_type = this.deserializeString();
+        let len = this.patch.getUint32(this.offset, true);
+        let view = new Uint8Array(this.buffer, this.offset + 4, len);
+        let blob = new Blob(view, mime_type);
+        this.app[id] = blob;
+    }
+
+    removeBlob() {
+        let id = this.deserializeId();
+        delete this.app.blobs[id];
+    }
 }

@@ -31,7 +31,8 @@ impl<'a, A: App> Differ<'a, A> {
         for (k, v) in &self.new.blobs {
             if let Some(blob) = self.old.rendered.blobs.get(k) {
                 if blob.hash() != v.hash() {
-                    patch.push(PatchItem::RemoveBlob(*k));
+                    // NOTE: RemoveBlob is not required, blob will
+                    // simply be overwritten
                     patch.push(PatchItem::AddBlob(v.clone()));
                 }
             } else {
