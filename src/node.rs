@@ -11,6 +11,7 @@ pub enum Node<T: 'static> {
     Component(ComponentContainer<T>),
     Text(String),
     Element(NodeElement<T>),
+    Blob(Blob),
     EventSubscription(Id, Subscription<T>),
 }
 
@@ -22,12 +23,12 @@ impl<T: 'static> Debug for Node<T> {
             Node::Text(text) => {f.write_str(&text)},
             Node::Element(elem) => {elem.fmt(f)},
             Node::EventSubscription(_, subs) => {subs.fmt(f)},
+            Node::Blob(blob) => {f.write_str(&format!("<Blob id={} hash={}>", blob.id, blob.hash))}
         }
     }
 }
 
 impl<T: 'static> Node<T> {
-
     pub fn html() -> NodeBuilder<T> {
         NodeBuilder::new()
     }
@@ -51,6 +52,7 @@ impl<T: 'static> Node<T> {
             Node::Text(text) => Node::Text(text),
             Node::Element(elem) => Node::ElementMap(ElementMapDirect::new_box(fun, elem)),
             Node::EventSubscription(id, evt) => Node::EventSubscription(id, evt.map(fun)),
+            Node::Blob(blob) => Node::Blob(blob)
         }
     }
 
@@ -82,6 +84,7 @@ impl<T: 'static> Node<T> {
                 })
             },
             Node::EventSubscription(_, _) => panic!(),
+            Node::Blob(blob) => Node::Blob(blob),
         }
     }
 
@@ -92,6 +95,7 @@ impl<T: 'static> Node<T> {
             Node::Text(_) => Id::empty(),
             Node::Element(elem) => elem.id,
             Node::EventSubscription(id, _) => *id,
+            Node::Blob(blob) => blob.id,
         }
     }
 
@@ -105,6 +109,7 @@ impl<T: 'static> Node<T> {
                 }
             },
             Node::Text(txt) => Some(Node::Text(txt.clone())),
+            Node::Blob(blob) => Some(Node::Blob(blob.clone())),
             _ => None
         }
     }
@@ -421,5 +426,13 @@ impl<T: 'static, U: 'static> ComponentMap<U> for ComponentRemap<T, U> {
     fn id(&self) -> Id {
         self.inner.lock().unwrap().id()
     }
+}
+
+#[derive(Clone)]
+pub struct Blob {
+    pub hash: u64,
+    pub id: Id,
+    pub data: Vec<u8>,
+    pub mime_type: String,
 }
 

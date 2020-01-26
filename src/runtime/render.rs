@@ -1,5 +1,5 @@
 use crate::vdom::{EventHandler, VElement, VNode};
-use crate::node::{Node, ComponentContainer, ElementMap, ComponentMap};
+use crate::node::{Node, ComponentContainer, ElementMap, ComponentMap, Blob};
 
 use crate::{App, Id};
 use crate::listener::Listener;
@@ -15,6 +15,7 @@ pub(crate) enum ResultItem<A: App> {
     Listener( Listener<A::Message> ),
     Subscription( Id, Subscription<A::Message> ),
     Component( ComponentContainer<A::Message> ),
+    Blob( Blob )
 }
 
 struct RenderedComponent<A: App> {
@@ -23,6 +24,7 @@ struct RenderedComponent<A: App> {
     listeners: Vec<ListenerKey>,
     subscriptions: Vec<Id>,
     children: Vec<Id>,
+    blobs: Vec<Id>,
 }
 
 impl<A: App> RenderedComponent<A> {
@@ -35,6 +37,7 @@ impl<A: App> RenderedComponent<A> {
         let mut subs = Vec::with_capacity(result.len());
         let mut listeners = Vec::with_capacity(result.len());
         let mut children = Vec::with_capacity(result.len());
+        let mut blobs = Vec::with_capacity(result.len());
 
         for item in &result {
             match item {
@@ -48,12 +51,15 @@ impl<A: App> RenderedComponent<A> {
                 ResultItem::Component(comp) => {
                     children.push(comp.id())
                 },
+                ResultItem::Blob(blob) => {
+                    blobs.push(blob.id);
+                }
             }
         }
 
         (Self {
             component: comp, vdom, listeners,
-            subscriptions: subs, children
+            subscriptions: subs, children, blobs,
         }, result)
     }
 
@@ -77,6 +83,10 @@ impl<A: App> RenderedComponent<A> {
             Node::Element(mut elem) => Self::render_element(&mut elem, result),
             Node::EventSubscription(event_id, subs) => {
                 result.push( ResultItem::Subscription(event_id, subs) );
+                None
+            }
+            Node::Blob(blob) => {
+                result.push( ResultItem::Blob(blob) );
                 None
             }
         }
@@ -116,6 +126,7 @@ struct TreeItem {
 pub(crate) struct RenderResult<A: App> {
     listeners: HashMap<ListenerKey, Listener<A::Message>>,
     subscriptions: HashMap<Id, Subscription<A::Message>>,
+    blobs: Vec<Blob>,
     components: HashMap<Id, Arc<RenderedComponent<A>>>,
     root_components: HashSet<Id>,
     pub(crate) root: Arc<VNode>,
@@ -126,6 +137,7 @@ impl<A: App> RenderResult<A> {
         Self {
             listeners: Default::default(),
             subscriptions: Default::default(),
+            blobs: vec![],
             components: Default::default(),
             root_components: Default::default(),
             root: Arc::new(root)
@@ -140,6 +152,7 @@ impl<A: App> RenderResult<A> {
         let mut ret = Self {
             listeners: Default::default(),
             subscriptions: Default::default(),
+            blobs: vec![],
             components: HashMap::default(),
             root_components: HashSet::new(),
             root: Arc::new(vdom),
@@ -156,6 +169,9 @@ impl<A: App> RenderResult<A> {
                 ResultItem::Component(comp) => {
                     ret.root_components.insert(comp.id());
                     ret.render_component(comp);
+                }
+                ResultItem::Blob(blob) => {
+                    ret.blobs.push(blob);
                 }
             }
         }
@@ -177,6 +193,9 @@ impl<A: App> RenderResult<A> {
                 },
                 ResultItem::Component(comp) => {
                     self.render_component(comp);
+                }
+                ResultItem::Blob(blob) => {
+                    self.blobs.push(blob);
                 }
             }
         }
@@ -216,6 +235,9 @@ impl<A: App> RenderResult<A> {
                 ResultItem::Component(comp) => {
                     self.render_component_from_old(old, comp, rendered);
                 },
+                ResultItem::Blob(blob) => {
+                    self.blobs.push(blob);
+                }
             }
         }
     }
@@ -226,6 +248,7 @@ impl<A: App> RenderResult<A> {
         let mut ret = Self {
             listeners: Default::default(),
             subscriptions: Default::default(),
+            blobs: vec![],
             components: HashMap::with_capacity(old.components.len() * 2 ),
             root_components: HashSet::new(),
             root: Arc::new(VNode::Placeholder(Id::empty())),
