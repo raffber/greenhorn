@@ -139,6 +139,10 @@ impl<A: App, P: 'static + Pipe> Runtime<A, P> {
         }
     }
 
+    pub fn run_blocking(self) {
+        async_std::task::block_on(self.run());
+    }
+
     fn handle_service_msg(&mut self, msg: ServiceMessage<A::Message>) {
         match msg {
             ServiceMessage::Update(msg) => self.update(msg),
