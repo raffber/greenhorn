@@ -346,7 +346,7 @@ export class Application {
     }
 
     getBlob(blob_id) {
-        this.blobs[blob_id]
+        return this.blobs[blob_id];
     }
 
     registerAfterRender(fun) {
@@ -412,7 +412,6 @@ export class Patch {
             fun.call(this);
         }
     }
-
 
     deserializeNode() {
         let x = this.popU8();
@@ -545,6 +544,13 @@ export class Patch {
         return lo + (2**32)*hi;
     }
 
+    deserializeU64() {
+        let lo = this.patch.getUint32(this.offset, true);
+        let hi = this.patch.getUint32(this.offset + 4, true);
+        this.offset += 8;
+        return lo + (2**32)*hi;
+    }
+
     deserializeString() {
         let len = this.patch.getUint32(this.offset, true);
         let view = new Uint8Array(this.buffer, this.offset + 4, len);
@@ -562,10 +568,11 @@ export class Patch {
 
     addBlob() {
         let id = this.deserializeId();
+        let hash = this.deserializeU64();
         let mime_type = this.deserializeString();
         let len = this.patch.getUint32(this.offset, true);
         let view = new Uint8Array(this.buffer, this.offset + 4, len);
-        let blob = new Blob(view, {"type": mime_type});
+        let blob = {'blob': new Blob(view, {"type": mime_type}), 'hash': hash};
         this.offset += len + 4;
         this.app.blobs[id] = blob;
     }

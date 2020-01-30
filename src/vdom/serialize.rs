@@ -62,6 +62,13 @@ impl PatchSerialize for u32 {
     }
 }
 
+impl PatchSerialize for u64 {
+    fn serialize(&self, output: &mut Vec<u8>) {
+        let data = self.to_le_bytes();
+        output.extend_from_slice(&data);
+    }
+}
+
 impl PatchSerialize for Vec<u8> {
     fn serialize(&self, output: &mut Vec<u8>) {
         (self.len() as u32).serialize(output);
@@ -148,6 +155,7 @@ pub(crate) fn serialize<A: App>(rendered: &RenderResult<A>, patch: &Patch) -> Ve
             PatchItem::AddBlob(blob) => {
                 output.push(13);
                 blob.id().serialize(&mut output);
+                blob.hash().serialize(&mut output);
                 blob.mime_type().serialize(&mut output);
                 blob.data().serialize(&mut output);
             }
