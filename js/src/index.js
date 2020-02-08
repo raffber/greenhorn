@@ -572,7 +572,7 @@ export class Patch {
         let mime_type = this.deserializeString();
         let len = this.patch.getUint32(this.offset, true);
         let view = new Uint8Array(this.buffer, this.offset + 4, len);
-        let blob = {'blob': new Blob(view, {"type": mime_type}), 'hash': hash};
+        let blob = {'blob': new Blob([view], {"type": mime_type}), 'hash': hash};
         this.offset += len + 4;
         this.app.blobs[id] = blob;
     }
