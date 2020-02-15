@@ -6,3 +6,5 @@ test_patch\.bin
 parser/target/
 
 js/dist/
+
+html_macro/target/
