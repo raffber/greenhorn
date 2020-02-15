@@ -163,6 +163,20 @@ pub(crate) fn serialize<A: App>(rendered: &RenderResult<A>, patch: &Patch) -> Ve
                 output.push(14);
                 blob_id.serialize(&mut output);
             }
+            PatchItem::RemoveJsEvent(key) => {
+                output.push(15);
+                key.serialize(&mut output);
+            }
+            PatchItem::AddJsEvent(key, value) => {
+                output.push(16);
+                key.serialize(&mut output);
+                value.serialize(&mut output);
+            }
+            PatchItem::ReplaceJsEvent(key, value) => {
+                output.push(17);
+                key.serialize(&mut output);
+                value.serialize(&mut output);
+            }
         }
     }
     output

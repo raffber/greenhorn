@@ -86,6 +86,7 @@ pub struct VElement {
     pub(crate) id: Id,
     pub(crate) tag: String,
     pub(crate) attr: Vec<Attr>,
+    pub(crate) js_events: Vec<Attr>,
     pub(crate) events: Vec<EventHandler>,
     pub(crate) children: Vec<VNode>,
     pub(crate) namespace: Option<String>,
@@ -151,6 +152,10 @@ pub enum PatchItem<'a> {
     ReplaceAttribute(&'a str, &'a str),
     AddBlob(Blob),
     RemoveBlob(Id),
+
+    RemoveJsEvent(&'a str),
+    AddJsEvent(&'a str, &'a str),
+    ReplaceJsEvent(&'a str, &'a str),
 }
 
 impl<'a> PatchItem<'a> {

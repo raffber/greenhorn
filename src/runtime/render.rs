@@ -110,6 +110,7 @@ impl<A: App> RenderedComponent<A> {
             id: elem.id(),
             tag: elem.take_tag(),
             attr: elem.take_attrs(),
+            js_events: elem.take_js_events(),
             events,
             children,
             namespace: elem.take_namespace(),

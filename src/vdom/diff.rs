@@ -79,6 +79,44 @@ impl<'a, A: App> Differ<'a, A> {
         ret
     }
 
+
+    fn diff_js_events(&self, old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) -> bool {
+        let mut ret = false;
+
+        let mut old_kv = HashMap::with_capacity(old.js_events.len());
+        for attr in old.js_events.iter() {
+            old_kv.insert(&attr.key, &attr.value);
+        }
+        let mut new_kv = HashMap::with_capacity(new.js_events.len());
+        for attr in new.js_events.iter() {
+            new_kv.insert(&attr.key, &attr.value);
+        }
+
+        for attr in new.js_events.iter() {
+            if let Some(&old_v) = old_kv.get(&attr.key) {
+                if old_v != &attr.value {
+                    ret = true;
+                    let p = PatchItem::ReplaceJsEvent(&attr.key, &attr.value);
+                    patch.push(p);
+                }
+            } else {
+                ret = true;
+                let p = PatchItem::AddJsEvent(&attr.key, &attr.value);
+                patch.push(p);
+            }
+        }
+
+        for attr in old.js_events.iter() {
+            if !new_kv.contains_key(&attr.key) {
+                ret = true;
+                let p = PatchItem::RemoveJsEvent(&attr.key);
+                patch.push(p);
+            }
+        }
+
+        ret
+    }
+
     #[allow(clippy::comparison_chain)]
     fn diff_children(&self, old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) -> bool {
         if old.children.is_empty() && new.children.is_empty() {
@@ -154,6 +192,7 @@ impl<'a, A: App> Differ<'a, A> {
                     patch.push(PatchItem::Replace(new))
                 } else {
                     ret |= self.diff_attrs(elem_old, elem_new, patch);
+                    ret |= self.diff_js_events(elem_old, elem_new, patch);
                     ret |= self.diff_children(elem_old, elem_new, patch);
                     if !elem_old.id.is_empty() {
                         let very_old_id = self.old.translations.get(&elem_old.id).unwrap_or(&elem_old.id);

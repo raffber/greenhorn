@@ -396,6 +396,9 @@ export class Patch {
             12: Patch.prototype.replaceAttribute,
             13: Patch.prototype.addBlob,
             14: Patch.prototype.removeBlob,
+            15: Patch.prototype.removeJsEvent,
+            16: Patch.prototype.addJsEvent,
+            17: Patch.prototype.replaceJsEvent,
         }
     }
 
@@ -484,6 +487,39 @@ export class Patch {
         let key = this.deserializeString();
         let value = this.deserializeString();
         this.element.setAttribute(key, value);
+    }
+
+    removeJsEvent() {
+        let attr = this.deserializeString();
+        let attr_key = '__' + attr;
+        let attr_value = this.element[attr_key];
+        this.element.removeEventListener(attr_value);
+        this.element[attr_key] = undefined;
+    }
+
+    addJsEvent() {
+        let key = this.deserializeString();
+        let value = this.deserializeString();
+        let app = this.app;
+        let fun = function() {
+            eval(value)
+        }();
+        this.element['__' + key] = fun;
+        this.element.addEventListener(key, fun);
+    }
+
+    replaceJsEvent() {
+        let key = this.deserializeString();
+        let value = this.deserializeString();
+        let app = this.app;
+        let fun = function() {
+            eval(value)
+        }();
+        let key_attr = '__' + key;
+        let attr_value = this.element[key_attr];
+        this.element.removeEventListener(attr_value);
+        this.element[key_attr] = fun;
+        this.element.addEventListener(key, fun);
     }
 
     deserializeElement() {
