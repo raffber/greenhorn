@@ -109,7 +109,6 @@ function deserializeEvent(event) {
 function addEvent(app, id, elem, evt) {
     // TODO: also support once
     // TODO: also support useCapture
-    // TODO: let passive = !evt.prevent_default;
     elem.addEventListener(evt.name, function(e) {
         if (e.hasOwnProperty("__dispatch__")) {
             return;
@@ -121,7 +120,7 @@ function addEvent(app, id, elem, evt) {
             e.stopPropagation();
         }
         app.sendEvent(id, evt.name, e);
-    });
+    }, {'passive': !evt.prevent_default});
 }
 
 class Element {
