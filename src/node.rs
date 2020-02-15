@@ -78,6 +78,7 @@ impl<T: 'static> Node<T> {
                     id: elem.id,
                     tag: elem.tag,
                     attrs: elem.attrs,
+                    js_events: elem.js_events,
                     listeners: Some(vec![]),
                     children,
                     namespace: elem.namespace
@@ -137,6 +138,7 @@ pub struct NodeElement<T: 'static> {
     pub id: Id,
     pub tag: Option<String>,
     pub attrs: Option<Vec<Attr>>,
+    pub js_events: Option<Vec<Attr>>,
     pub listeners: Option<Vec<Listener<T>>>,
     pub children: Option<Vec<Node<T>>>,
     pub namespace: Option<String>,
@@ -161,6 +163,7 @@ impl<T: 'static> NodeElement<T> {
             id: self.id.clone(),
             tag: self.tag.clone(),
             attrs: self.attrs.clone(),
+            js_events: self.js_events.clone(),
             listeners: self.listeners.clone(),
             children,
             namespace: self.namespace.clone()
@@ -196,6 +199,7 @@ pub trait ElementMap<T> : Debug {
     fn take_attrs(&mut self) -> Vec<Attr>;
     fn take_tag(&mut self) -> String;
     fn take_namespace(&mut self) -> Option<String>;
+    fn take_js_events(&mut self) -> Vec<Attr>;
 }
 
 impl<T: 'static> ElementMap<T> for NodeElement<T> {
@@ -221,6 +225,10 @@ impl<T: 'static> ElementMap<T> for NodeElement<T> {
 
     fn take_namespace(&mut self) -> Option<String> {
         self.namespace.take()
+    }
+
+    fn take_js_events(&mut self) -> Vec<Attr> {
+        self.js_events.take().unwrap()
     }
 }
 
@@ -277,6 +285,10 @@ impl<T: 'static, U: 'static> ElementMap<U> for ElementMapDirect<T, U> {
     fn take_namespace(&mut self) -> Option<String> {
         self.inner.namespace.take()
     }
+
+    fn take_js_events(&mut self) -> Vec<Attr> {
+        self.inner.js_events.take().expect("js_events cannot be taken multiple times")
+    }
 }
 
 struct ElementRemap<T, U> {
@@ -327,6 +339,10 @@ impl<T: 'static, U: 'static> ElementMap<U> for ElementRemap<T, U> {
 
     fn take_namespace(&mut self) -> Option<String> {
         self.inner.take_namespace()
+    }
+
+    fn take_js_events(&mut self) -> Vec<Attr> {
+        self.inner.take_js_events()
     }
 }
 

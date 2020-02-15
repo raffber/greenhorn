@@ -92,6 +92,7 @@ pub struct ElementBuilder<T: 'static> {
     id: Id,
     tag: String,
     attrs: Vec<Attr>,
+    js_events: Vec<Attr>,
     listeners: Vec<Listener<T>>,
     children: Vec<Node<T>>,
     namespace: Option<String>,
@@ -103,6 +104,7 @@ impl<T: 'static> ElementBuilder<T> {
             id: Id::empty(),
             tag,
             attrs: Vec::new(),
+            js_events: Vec::new(),
             listeners: Vec::new(),
             children: Vec::new(),
             namespace,
@@ -138,6 +140,14 @@ impl<T: 'static> ElementBuilder<T> {
     }
 
     pub fn attr<R: Into<String>, S: Into<String>>(mut self, key: R, value: S) -> Self {
+        self.attrs.push(Attr {
+            key: key.into(),
+            value: value.into(),
+        });
+        self
+    }
+
+    pub fn js_event<R: Into<String>, S: Into<String>>(mut self, key: R, value: S) -> Self {
         self.attrs.push(Attr {
             key: key.into(),
             value: value.into(),
@@ -204,6 +214,7 @@ impl<T: 'static> ElementBuilder<T> {
             id: self.id,
             tag: Some(self.tag),
             attrs: Some(self.attrs),
+            js_events: Some(self.js_events),
             listeners: Some(self.listeners),
             children: Some(self.children),
             namespace: self.namespace,
