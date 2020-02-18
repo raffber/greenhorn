@@ -73,6 +73,15 @@ impl From<bool> for Updated {
     }
 }
 
+impl From<Id> for Updated {
+    fn from(id: Id) -> Self {
+        Updated {
+            should_render: false,
+            components_render: Some(vec![id]),
+        }
+    }
+}
+
 pub struct Component<T: Render> {
     id: Id,
     comp: Arc<Mutex<T>>,

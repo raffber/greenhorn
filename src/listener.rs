@@ -10,7 +10,6 @@ pub struct Listener<T> {
     pub prevent_default: bool,
 }
 
-// TODO: derive(Clone) failed for some reason?!
 impl<T> Clone for Listener<T> {
     fn clone(&self) -> Self {
         Listener {
@@ -32,7 +31,6 @@ impl<T: 'static> Listener<T> {
             let ret: U = (fun.lock().unwrap())(inner_result);
             ret
         };
-//        let new_fun: Arc<Mutex<Box<dyn >>> = Arc::new(Mutex::new(Box::new(new_fun)));
         let new_fun: Arc<Mutex<Box<dyn Fn(DomEvent) -> U + Send>>> = Arc::new(Mutex::new(Box::new(new_fun)));
         Listener {
             event_name: self.event_name,
@@ -48,3 +46,32 @@ impl<T: 'static> Listener<T> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug)]
+    enum MsgInner {
+        Event(DomEvent),
+    }
+
+    #[derive(Debug)]
+    enum MsgOuter {
+        Inner(MsgInner),
+    }
+
+    #[test]
+    fn map_listener() {
+        let listener = Listener {
+            event_name: "".to_string(),
+            node_id: Id::new(),
+            fun: Arc::new(Mutex::new(Box::new(MsgInner::Event))),
+            no_propagate: false,
+            prevent_default: false
+        };
+        let mapped = listener.map(Arc::new(Mutex::new(Box::new(MsgOuter::Inner))));
+        let evt = DomEvent::Base(Id::new(), "foo".into());
+        let msg = mapped.call(evt);
+        assert_matches::assert_matches!(msg, MsgOuter::Inner(MsgInner::Event(_)))
+    }
+}

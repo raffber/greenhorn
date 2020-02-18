@@ -135,3 +135,22 @@ impl<T: Any> Default for Event<T> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use assert_matches::assert_matches;
+
+    #[derive(Debug)]
+    enum Msg {
+        Event(i32),
+    }
+
+    #[test]
+    fn event_subscription() {
+        let event = Event::<i32>::new();
+        let subs = event.subscribe(Msg::Event);
+        let emission = event.emit(3);
+        let msg = subs.call(emission.data);
+        assert_matches!(msg, Msg::Event(3));
+    }
+}
