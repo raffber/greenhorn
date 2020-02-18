@@ -222,6 +222,7 @@ mod tests {
     use futures::{Stream, StreamExt};
     use std::pin::Pin;
     use crate::service::ServiceMailbox;
+    use crate::mailbox::MailboxMsg::Subscription;
 
     #[derive(Debug)]
     enum MsgA {
@@ -259,7 +260,7 @@ mod tests {
         let mapped = mb.map(MsgA::ItemA);
         let service = MyService {};
         mapped.run_service(service, ItemB);
-        if let Ok(mut subs) = rx.rx.recv() {
+        if let Ok(Subscription(mut subs)) = rx.rx.recv() {
             let result = async_std::task::block_on(subs.next());
             assert_matches!(result, Some(MsgA::ItemA(MsgB::ItemB(1))));
         } else {

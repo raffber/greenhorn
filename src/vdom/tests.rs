@@ -7,7 +7,6 @@ use std::collections::HashSet;
 use crate::{App, Updated, Render};
 use crate::mailbox::Mailbox;
 use crate::node::Node;
-use std::ops::Deref;
 
 struct DummyApp;
 
@@ -38,6 +37,7 @@ fn test_remove_attr() {
         id: id_a,
         tag: "foo".into(),
         attr: vec![Attr::new("foo", "bar")],
+        js_events: vec![],
         events: vec![],
         children: vec![],
         namespace: None,
@@ -47,6 +47,7 @@ fn test_remove_attr() {
         id: id_b,
         tag: "foo".into(),
         attr: vec![],
+        js_events: vec![],
         events: vec![],
         children: vec![],
         namespace: None,
@@ -73,6 +74,7 @@ fn test_add_attr() {
         id: id_a,
         tag: "foo".into(),
         attr: vec![],
+        js_events: vec![],
         events: vec![],
         children: vec![],
         namespace: None,
@@ -82,6 +84,7 @@ fn test_add_attr() {
         id: id_b,
         tag: "foo".into(),
         attr: vec![Attr::new("foo", "bar")],
+        js_events: vec![],
         events: vec![],
         children: vec![],
         namespace: None,
@@ -110,6 +113,7 @@ fn test_change_attr() {
         id: id_a,
         tag: "foo".into(),
         attr: vec![Attr::new("foo", "bla")],
+        js_events: vec![],
         events: vec![],
         children: vec![],
         namespace: None,
@@ -119,6 +123,7 @@ fn test_change_attr() {
         id: id_b,
         tag: "foo".into(),
         attr: vec![Attr::new("foo", "bar")],
+        js_events: vec![],
         events: vec![],
         children: vec![],
         namespace: None,
@@ -145,6 +150,7 @@ fn test_change_tag() {
         id: Id::new(),
         tag: "foo".into(),
         attr: vec![],
+        js_events: vec![],
         events: vec![],
         children: vec![],
         namespace: None,
@@ -154,6 +160,7 @@ fn test_change_tag() {
         id: Id::new(),
         tag: "bar".into(),
         attr: vec![],
+        js_events: vec![],
         events: vec![],
         children: vec![],
         namespace: None,
@@ -179,6 +186,7 @@ fn test_add_event() {
         id: Id::new(),
         tag: "foo".into(),
         attr: vec![],
+        js_events: vec![],
         events: vec![],
         children: vec![],
         namespace: None,
@@ -188,6 +196,7 @@ fn test_add_event() {
         id: Id::new(),
         tag: "foo".into(),
         attr: vec![],
+        js_events: vec![],
         events: vec![EventHandler {
             name: "click".to_string(),
             no_propagate: true,
@@ -214,6 +223,7 @@ fn test_add_child() {
         id: Id::new(),
         tag: "foo".into(),
         attr: vec![],
+        js_events: vec![],
         events: vec![],
         children: vec![],
         namespace: None,
@@ -223,11 +233,13 @@ fn test_add_child() {
         id: Id::new(),
         tag: "foo".into(),
         attr: vec![],
+        js_events: vec![],
         events: vec![],
         children: vec![VNode::element(VElement {
             id: Id::new(),
             tag: "bla".into(),
             attr: vec![],
+            js_events: vec![],
             events: vec![],
             children: vec![],
             namespace: None,
@@ -257,6 +269,7 @@ fn test_output_patch() {
         id: Id::new(),
         tag: "div".into(),
         attr: vec![Attr::new("class", "foo"), Attr::new("id", "bar")],
+        js_events: vec![],
         events: vec![
             EventHandler {
                 name: "click".to_string(),
@@ -273,6 +286,7 @@ fn test_output_patch() {
             id: Id::new(),
             tag: "span".into(),
             attr: vec![],
+            js_events: vec![],
             events: vec![],
             children: vec![VNode::text("Hello, World")],
             namespace: None,
@@ -281,7 +295,7 @@ fn test_output_patch() {
     });
 
     let new = RenderResult::<DummyApp>::from_vnode(elem_b);
-    let patch = Patch::from_dom(new.root.deref());
+    let patch = Patch::from_dom(&new);
     let serialized = serialize(&new, &patch);
     fs::write("test_patch.bin", serialized).expect("Unable to write file!");
 }

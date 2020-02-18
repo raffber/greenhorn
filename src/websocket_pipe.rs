@@ -292,7 +292,6 @@ mod tests {
                 // receive one message, then terminate
                 match msg.unwrap() {
                     Message::Close(None) => {
-                        stream.close(None).await.unwrap();
                         break;
                     }
                     _ => panic!(),

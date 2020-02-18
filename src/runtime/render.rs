@@ -118,12 +118,6 @@ impl<A: App> RenderedComponent<A> {
     }
 }
 
-struct TreeItem {
-    dirty: bool,
-    component_id: Id
-}
-
-
 pub(crate) struct RenderResult<A: App> {
     listeners: HashMap<ListenerKey, Listener<A::Message>>,
     pub(crate) subscriptions: HashMap<Id, Subscription<A::Message>>,
