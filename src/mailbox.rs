@@ -3,7 +3,7 @@ use crate::event::{Emission, Event};
 use crate::service::{Service, ServiceSubscription};
 use std::any::Any;
 use std::marker::PhantomData;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{channel, Receiver, Sender, RecvError};
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
@@ -96,6 +96,12 @@ impl<T: 'static + Send> Clone for Mailbox<T> {
 
 pub(crate) struct MailboxReceiver<T: 'static + Send> {
     pub(crate) rx: Receiver<MailboxMsg<T>>,
+}
+
+impl<T: 'static + Send> MailboxReceiver<T> {
+    fn recv(&self) -> Result<MailboxMsg<T>, RecvError> {
+        self.rx.recv()
+    }
 }
 
 pub(crate) enum MailboxMsg<T: 'static + Send> {
@@ -223,6 +229,7 @@ mod tests {
     use std::pin::Pin;
     use crate::service::ServiceMailbox;
     use crate::mailbox::MailboxMsg::Subscription;
+    use crate::mailbox::tests::MsgA::ItemA;
 
     #[derive(Debug)]
     enum MsgA {
@@ -260,24 +267,52 @@ mod tests {
         let mapped = mb.map(MsgA::ItemA);
         let service = MyService {};
         mapped.run_service(service, ItemB);
-        if let Ok(Subscription(mut subs)) = rx.rx.recv() {
+        if let Ok(Subscription(mut subs)) = rx.recv() {
             let result = async_std::task::block_on(subs.next());
             assert_matches!(result, Some(MsgA::ItemA(MsgB::ItemB(1))));
         } else {
             panic!();
         }
     }
-//
-//    #[test]
-//    fn test_future() {
-//        let fut = async {
-//            MsgB::ItemB(123)
-//        };
-//
-//        let (mb, rx) = Mailbox::<MsgA>::new();
-//        let mapped = mb.map(MsgA::ItemA);
-//        mapped.spawn(fut);
-//        if let Ok(mut fut) = rx.rx
-//        if let Ok(mut )
-//    }
+
+    #[test]
+    fn test_future() {
+        let fut = async {
+            MsgB::ItemB(123)
+        };
+
+        let (mb, rx) = Mailbox::<MsgA>::new();
+        let mapped = mb.map(MsgA::ItemA);
+        mapped.spawn(fut);
+        if let Ok(MailboxMsg::Future(fut)) = rx.recv() {
+            let result = async_std::task::block_on(fut);
+            assert_matches!(result, MsgA::ItemA(MsgB::ItemB(123)));
+        } else {
+            panic!();
+        }
+    }
+
+    #[test]
+    fn test_stream() {
+        let stream = futures::stream::unfold(0, |state| async move {
+            if state <= 2 {
+                let next_state = state + 1;
+                Some((MsgB::ItemB(state), next_state))
+            } else {
+                None
+            }
+        });
+        let (mb, rx) = Mailbox::<MsgA>::new();
+        let mapped = mb.map(MsgA::ItemA);
+        mapped.subscribe(stream);
+        if let Ok(MailboxMsg::Stream(stream)) = rx.recv() {
+            let data: Vec<MsgA> = async_std::task::block_on(stream.collect::<Vec<MsgA>>());
+            assert_eq!(data.len(), 3);
+            assert_matches!(data[0], ItemA(ItemB(0)));
+            assert_matches!(data[1], ItemA(ItemB(1)));
+            assert_matches!(data[2], ItemA(ItemB(2)));
+        } else {
+            panic!();
+        }
+    }
 }
