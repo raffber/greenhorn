@@ -36,6 +36,7 @@
 
 
 mod tree;
+mod matches;
 
 extern crate proc_macro;
 
@@ -47,12 +48,10 @@ use tree::Element;
 use proc_macro_error::proc_macro_error;
 
 
-use syn::Expr;
-
 #[proc_macro_error]
 #[proc_macro_hack]
 pub fn html(input: TokenStream) -> TokenStream {
-    let root = parse_macro_input!(input as Expr);
+    let root = parse_macro_input!(input as Element);
     TokenStream::from(quote! {#root})
 }
 
