@@ -139,24 +139,59 @@ impl Match for ElementAttribute {
 
 
 pub(crate) struct Element {
+    tag: String,
+    attributes: Vec<ElementAttribute>,
+    children: Vec<Element>,
+}
+
+
+impl Element {
+
+    fn parse_children(tag_name: &str) -> (Vec<Element>, Cursor) {
+        todo!()
+    }
 
 }
 
 impl SynParse for Element {
     fn parse(input: ParseStream) -> SynResult<Self> {
         let cursor = input.cursor();
-        if let Some((elem_start, cursor)) = ElementStart::matches(cursor) {
-            type AttributesMatch = MatchSequence<ElementAttribute>;
-            if let Some((attributes, cursor)) = AttributesMatch::matches(cursor) {
-                let attributes: Vec<ElementAttribute> = attributes;
-                todo!()
-            }
-            todo!()
-            // match tag close, either > or />
-        } else {
-            panic!("HTML block must start with an element")
-        }
-        todo!()
+
+        // match opening tag of the form <some-name
+        let (elem_start, cursor) = ElementStart::matches(cursor).expect("Expected an opening tag");
+
+        // parse all element attributes
+        let (attribtues, cursor) =
+            MatchSequence::<ElementAttribute>::matches(cursor)
+                .unwrap_or((Vec::new(), cursor));
+
+        // now expect a ">" or a "/>",
+        // in case there was only a ">", we continue parsing children
+        let (punct, cursor) = cursor.punct().expect("Expected one of `>` or `/>`");
+        let punct = punct.as_char();
+        let (children, cursor) = match punct {
+            '/' => {
+                // element is already done, expect a `>` and return no children
+                if let Some((punct, cursor)) = cursor.punct() {
+                    let punct = punct.as_char();
+                    if punct != '>' {
+                        panic!("Expected > after /");
+                    }
+                }
+                (Vec::new(), cursor)
+            },
+            '>' => {
+                // this was only a start tag, parse children....
+                Element::parse_children(&elem_start.tag)
+            },
+            _ => panic!("Expected one of `>` or `/>`")
+        };
+
+        Ok(Element {
+            tag: elem_start.tag,
+            attributes: attribtues,
+            children
+        })
     }
 }
 
