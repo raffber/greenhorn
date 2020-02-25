@@ -24,7 +24,7 @@
 ///         let mouse_move_js_handler = "function(evt) { console.log(evt); }";
 ///         html!{
 ///             <div .class_name #my_id other_attribute="attribute_value" @mousemove=mouse_move_js_handler @mousedown={Msg::MouseDown}>
-///                 Some text <{mount(self.component, Msg::ComponentMsg)} /> and more text... and {"some rust code"}
+///                 Some text {mount(self.component, Msg::ComponentMsg)} and more text... and {"some rust code"}
 ///                 {self.nested_view_function()}
 ///             </div>
 ///         }
