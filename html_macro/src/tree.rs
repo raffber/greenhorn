@@ -7,6 +7,8 @@ use proc_macro_error::*;
 use syn::Expr;
 
 use crate::matches::{Match, MatchTwo, MatchSequence};
+use proc_macro2::Delimiter;
+use proc_macro2::{Literal, Span};
 
 pub struct HtmlName(String);
 
@@ -86,21 +88,48 @@ impl Match for ElementStart {
     }
 }
 
-pub(crate) enum AttributeValue {
-    String(String),
-    Expr(Expr)
-}
-
 pub(crate) struct HtmlAttribute {
     key: String,
     value: AttributeValue,
+}
+
+
+pub struct Group {
+    // cursor: Cursor<'a>,
+    span: Span,
+}
+
+pub enum AttributeValue {
+    Literal(Literal),
+    HtmlName(String),
+    Group(Group),
 }
 
 impl Match for HtmlAttribute {
     type Output = HtmlAttribute;
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
-        todo!()
+        let (name, cursor) = HtmlName::matches(cursor)?;
+        let (punct, cursor) = cursor.punct()?;
+        if punct.as_char() != '=' {
+            return None;
+        }
+        let value = if let Some((literal, cursor)) = cursor.literal() {
+            Some(AttributeValue::Literal(literal))
+        } else if let Some((value, cursor)) = HtmlName::matches( cursor) {
+            Some(AttributeValue::HtmlName(value))
+        } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Bracket) {
+            Some(AttributeValue::Group(Group {
+                span: grp,
+            }))
+        } else {
+            None
+        }?;
+        let ret = HtmlAttribute {
+            key: name,
+            value
+        };
+        Some((ret, cursor))
     }
 }
 
@@ -163,7 +192,7 @@ impl SynParse for Element {
         // parse all element attributes
         let (attribtues, cursor) =
             MatchSequence::<ElementAttribute>::matches(cursor)
-                .unwrap_or((Vec::new(), cursor));
+                .unwrap_or_else(|| (Vec::new(), cursor));
 
         // now expect a ">" or a "/>",
         // in case there was only a ">", we continue parsing children
