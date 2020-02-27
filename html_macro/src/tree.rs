@@ -95,7 +95,7 @@ pub(crate) struct HtmlAttribute {
 
 
 pub struct Group {
-    // cursor: Cursor<'a>,
+    stream: TokenStream,
     span: Span,
 }
 
@@ -120,6 +120,7 @@ impl Match for HtmlAttribute {
             Some(AttributeValue::HtmlName(value))
         } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Bracket) {
             Some(AttributeValue::Group(Group {
+                stream: grp_cursor.token_stream(),
                 span: grp,
             }))
         } else {
