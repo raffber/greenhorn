@@ -163,7 +163,59 @@ impl Match for ElementAttribute {
     type Output = ElementAttribute;
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
-        todo!()
+        if let Some((attr, cursor)) = HtmlAttribute::matches(cursor) {
+            Some((ElementAttribute::HtmlAttribute(attr), cursor))
+        } else if let Some((attr, cursor)) = ClassAttribute::matches(cursor) {
+            Some((ElementAttribute::ClassAttribute(attr), cursor))
+        } else {
+            None
+        }
+    }
+}
+
+
+pub(crate) struct ClosingTag {
+
+}
+
+impl ClosingTag {
+    pub(crate) fn matches<'a>(tag_name: &str, cursor: Cursor<'a>) -> Option<Cursor<'a>> {
+        // allow </> and <tag_name />
+
+        // match starting < which is in common
+        let (punct, cursor) = cursor.punct()?;
+        if punct.as_char() != '<' {
+            return None;
+        }
+
+        // match either / or tag_name
+        if let Some((punct, cursor)) = cursor.punct() {
+            // try to match a </> styled end-tag
+            if punct.as_char() != '/' {
+                return None;
+            }
+            let (punct, cursor) = cursor.punct()?;
+            if punct.as_char() != '>' {
+                return None;
+            }
+            Some(cursor)
+        } else if let Some((name, cursor)) = HtmlName::matches(cursor) {
+            if &name != tag_name {
+                return None;
+            }
+            // try to match a <tag_name /> styled end-tag
+            let (punct, cursor) = cursor.punct()?;
+            if punct.as_char() != '/' {
+                return None;
+            }
+            let (punct, cursor) = cursor.punct()?;
+            if punct.as_char() != '>' {
+                return None;
+            }
+            Some(cursor)
+        } else {
+            None
+        }
     }
 }
 
@@ -176,11 +228,27 @@ pub(crate) struct Element {
 
 
 impl Element {
-
-    fn parse_children(tag_name: &str) -> (Vec<Element>, Cursor) {
+    fn parse_children<'a>(tag_name: &str, cursor: Cursor<'a>) -> (Vec<Element>, Cursor<'a>) {
+        let mut children = Vec::<Element>::new();
+        loop {
+            if let Some(cursor) = ClosingTag::matches(tag_name, cursor) {
+                break;
+            } else if let Some((punct, cursor)) = cursor.punct() {
+                if punct.as_char() == '<' {
+                    todo!()
+//                    children.push(Element::parse(cursor).unwrap() )
+                } else {
+                    panic!("Expected tag or expression");
+                }
+            } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Bracket) {
+                let grp = Group {
+                    stream: cursor.token_stream(),
+                    span: grp
+                };
+            }
+        }
         todo!()
     }
-
 }
 
 impl SynParse for Element {
@@ -212,7 +280,7 @@ impl SynParse for Element {
             },
             '>' => {
                 // this was only a start tag, parse children....
-                Element::parse_children(&elem_start.tag)
+                Element::parse_children(&elem_start.tag, cursor)
             },
             _ => panic!("Expected one of `>` or `/>`")
         };
