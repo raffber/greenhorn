@@ -51,7 +51,8 @@ use proc_macro_error::proc_macro_error;
 #[proc_macro_error]
 #[proc_macro_hack]
 pub fn html(input: TokenStream) -> TokenStream {
-    let root = parse_macro_input!(input as Element);
-    TokenStream::from(quote! {#root})
+    let root = syn::parse::<Element>(input);
+    println!("html - macro input parsed");
+    TokenStream::from(quote! { 1 + 1 })
 }
 
