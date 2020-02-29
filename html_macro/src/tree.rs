@@ -110,16 +110,20 @@ impl Match for HtmlAttribute {
     type Output = HtmlAttribute;
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+        println!("HtmlAttribute::matches - start");
         let (name, cursor) = HtmlName::matches(cursor)?;
         let (punct, cursor) = cursor.punct()?;
         if punct.as_char() != '=' {
             return None;
         }
         let (value, cursor) = if let Some((literal, cursor)) = cursor.literal() {
+            println!("HtmlAttribute::matches - literal");
             Some( (AttributeValue::Literal(literal), cursor) )
         } else if let Some((value, cursor)) = HtmlName::matches( cursor) {
+            println!("HtmlAttribute::matches - html-name");
             Some( (AttributeValue::HtmlName(value), cursor) )
-        } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Bracket) {
+        } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Brace) {
+            println!("HtmlAttribute::matches - group");
             Some( (AttributeValue::Group(Group {
                 stream: grp_cursor.token_stream(),
                 span: grp,
@@ -131,6 +135,7 @@ impl Match for HtmlAttribute {
             key: name,
             value
         };
+        println!("HtmlAttribute::matches - done");
         Some((ret, cursor))
     }
 }
