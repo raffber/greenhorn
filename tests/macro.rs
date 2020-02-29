@@ -9,3 +9,10 @@ fn test_opening_closing_macro() {
     let x = html! ( <div /> );
     assert_eq!(x, 2);
 }
+
+#[test]
+fn test_attr() {
+    let x = html! ( <div foo=bar> </div> );
+    assert_eq!(x, 2);
+}
+

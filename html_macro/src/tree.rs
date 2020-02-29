@@ -115,15 +115,15 @@ impl Match for HtmlAttribute {
         if punct.as_char() != '=' {
             return None;
         }
-        let value = if let Some((literal, cursor)) = cursor.literal() {
-            Some(AttributeValue::Literal(literal))
+        let (value, cursor) = if let Some((literal, cursor)) = cursor.literal() {
+            Some( (AttributeValue::Literal(literal), cursor) )
         } else if let Some((value, cursor)) = HtmlName::matches( cursor) {
-            Some(AttributeValue::HtmlName(value))
+            Some( (AttributeValue::HtmlName(value), cursor) )
         } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Bracket) {
-            Some(AttributeValue::Group(Group {
+            Some( (AttributeValue::Group(Group {
                 stream: grp_cursor.token_stream(),
                 span: grp,
-            }))
+            }), cursor) )
         } else {
             None
         }?;
@@ -265,15 +265,19 @@ impl SynParse for Element {
     fn parse(input: ParseStream) -> SynResult<Self> {
         let cursor = input.cursor();
 
+        println!("Elemenet::parse - start");
+
         // match opening tag of the form <some-name
         let (elem_start, cursor) = ElementStart::matches(cursor).expect("Expected an opening tag");
 
+        println!("Elemenet::parse - element started");
 
         // parse all element attributes
         let (attribtues, cursor) =
             MatchSequence::<ElementAttribute>::matches(cursor)
                 .unwrap_or_else(|| (Vec::new(), cursor));
 
+        println!("Elemenet::parse - attributes matched");
 
         // now expect a ">" or a "/>",
         // in case there was only a ">", we continue parsing children

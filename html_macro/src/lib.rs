@@ -53,6 +53,7 @@ use proc_macro_error::proc_macro_error;
 pub fn html(input: TokenStream) -> TokenStream {
     let root = syn::parse::<Element>(input);
     println!("html - macro input parsed");
+    println!("---------------------------");
     TokenStream::from(quote! { 1 + 1 })
 }
 

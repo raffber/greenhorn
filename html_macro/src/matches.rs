@@ -33,7 +33,7 @@ impl<T: Match> Match for MatchSequence<T> {
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
         let mut c = cursor;
         let mut ret = Vec::new();
-        while let Some((out, cursor)) = T::matches(cursor) {
+        while let Some((out, cursor)) = T::matches(c) {
             ret.push(out);
             c = cursor;
         }
