@@ -5,7 +5,7 @@ use proc_macro2::TokenStream;
 use syn::buffer::Cursor;
 use proc_macro_error::*;
 
-use crate::matches::{Match, MatchTwo, MatchSequence};
+use crate::matches::{Matches, MatchTwo, MatchSequence};
 use proc_macro2::Delimiter;
 use proc_macro2::{Literal, Span};
 
@@ -14,7 +14,7 @@ pub struct HtmlName(String);
 
 struct SmallerSign;
 
-impl Match for SmallerSign {
+impl Matches for SmallerSign {
     type Output = ();
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
@@ -29,7 +29,7 @@ impl Match for SmallerSign {
 
 struct Dash;
 
-impl Match for Dash {
+impl Matches for Dash {
     type Output = ();
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
@@ -44,7 +44,7 @@ impl Match for Dash {
 
 struct HtmlNamePart;
 
-impl Match for HtmlNamePart {
+impl Matches for HtmlNamePart {
     type Output = String;
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
@@ -54,7 +54,7 @@ impl Match for HtmlNamePart {
 }
 
 
-impl Match for HtmlName {
+impl Matches for HtmlName {
     type Output = String;
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
@@ -85,7 +85,7 @@ pub(crate) struct ElementStart {
     tag: String,
 }
 
-impl Match for ElementStart {
+impl Matches for ElementStart {
     type Output = ElementStart;
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
@@ -115,7 +115,7 @@ pub enum AttributeValue {
     Group(Group),
 }
 
-impl Match for HtmlAttribute {
+impl Matches for HtmlAttribute {
     type Output = HtmlAttribute;
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
@@ -153,7 +153,7 @@ pub(crate) struct ClassAttribute {
     value: String,
 }
 
-impl Match for ClassAttribute {
+impl Matches for ClassAttribute {
     type Output = ClassAttribute;
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
@@ -174,7 +174,7 @@ pub(crate) enum ElementAttribute {
     ClassAttribute(ClassAttribute),
 }
 
-impl Match for ElementAttribute {
+impl Matches for ElementAttribute {
     type Output = ElementAttribute;
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {

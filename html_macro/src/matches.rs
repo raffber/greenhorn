@@ -2,18 +2,18 @@ use std::marker::PhantomData;
 use syn::buffer::Cursor;
 
 
-pub(crate) trait Match {
+pub(crate) trait Matches {
     type Output;
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)>;
 }
 
-pub(crate)struct MatchTwo<A: Match, B: Match> {
+pub(crate)struct MatchTwo<A: Matches, B: Matches> {
     a: PhantomData<A>,
     b: PhantomData<B>,
 }
 
-impl<A: Match, B: Match> Match for MatchTwo<A, B> {
+impl<A: Matches, B: Matches> Matches for MatchTwo<A, B> {
     type Output = (A::Output, B::Output);
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
@@ -23,11 +23,11 @@ impl<A: Match, B: Match> Match for MatchTwo<A, B> {
     }
 }
 
-pub(crate) struct MatchSequence<T: Match> {
+pub(crate) struct MatchSequence<T: Matches> {
     t: PhantomData<T>
 }
 
-impl<T: Match> Match for MatchSequence<T> {
+impl<T: Matches> Matches for MatchSequence<T> {
     type Output = Vec<T::Output>;
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
