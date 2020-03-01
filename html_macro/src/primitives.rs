@@ -2,67 +2,31 @@ use crate::matches::Matches;
 use syn::buffer::Cursor;
 use crate::matches::{MatchSequence, MatchTwo};
 
-pub(crate) struct SmallerSign;
 
-impl Matches for SmallerSign {
-    type Output = ();
+macro_rules! make_punct {
+    ( $name:ident, $sign:expr) => {
+        pub(crate) struct $name;
 
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
-        let (punct, cursor) = cursor.punct()?;
-        if punct.as_char() == '<' {
-            Some(((), cursor))
-        } else {
-            None
+        impl Matches for $name {
+            type Output = ();
+
+            fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+                let (punct, cursor) = cursor.punct()?;
+                if punct.as_char() == $sign {
+                    Some(((), cursor))
+                } else {
+                    None
+                }
+            }
         }
-    }
+    };
 }
 
+make_punct!(Hash, '#');
+make_punct!(SmallerSign, '<');
+make_punct!(AtSign, '@');
+make_punct!(Dash, '-');
 
-pub(crate) struct Hash;
-
-impl Matches for Hash {
-    type Output = ();
-
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
-        let (punct, cursor) = cursor.punct()?;
-        if punct.as_char() == '#' {
-            Some(((), cursor))
-        } else {
-            None
-        }
-    }
-}
-
-
-pub(crate) struct AtSign;
-
-impl Matches for AtSign {
-    type Output = ();
-
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
-        let (punct, cursor) = cursor.punct()?;
-        if punct.as_char() == '@' {
-            Some(((), cursor))
-        } else {
-            None
-        }
-    }
-}
-
-struct Dash;
-
-impl Matches for Dash {
-    type Output = ();
-
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
-        let (punct, cursor) = cursor.punct()?;
-        if punct.as_char() == '-' {
-            Some(((), cursor))
-        } else {
-            None
-        }
-    }
-}
 
 struct HtmlNamePart;
 
