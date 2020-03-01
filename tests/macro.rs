@@ -34,6 +34,13 @@ fn test_class_attr() {
     assert_eq!(x, 2);
 }
 
+
+#[test]
+fn test_id_attr() {
+    let x = html! ( <div #foo> </div> );
+    assert_eq!(x, 2);
+}
+
 #[test]
 fn test_dashed_name() {
     let x = html! ( <foo-bar /> );

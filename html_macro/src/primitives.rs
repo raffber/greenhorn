@@ -17,6 +17,22 @@ impl Matches for SmallerSign {
     }
 }
 
+
+pub(crate) struct Hash;
+
+impl Matches for Hash {
+    type Output = ();
+
+    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+        let (punct, cursor) = cursor.punct()?;
+        if punct.as_char() == '#' {
+            Some(((), cursor))
+        } else {
+            None
+        }
+    }
+}
+
 struct Dash;
 
 impl Matches for Dash {

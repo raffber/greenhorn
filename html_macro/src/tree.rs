@@ -9,7 +9,7 @@ use crate::matches::{Matches, MatchSequence};
 use proc_macro2::Delimiter;
 use proc_macro2::{Literal, Span};
 
-use crate::primitives::{HtmlName, SmallerSign};
+use crate::primitives::{HtmlName, SmallerSign, Hash};
 
 pub(crate) struct ElementStart {
     tag: String,
@@ -98,10 +98,27 @@ impl Matches for ClassAttribute {
     }
 }
 
+pub(crate) struct IdAttribute {
+    value: String,
+}
+
+
+impl Matches for IdAttribute {
+    type Output = IdAttribute;
+
+    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+        let (_, cursor) = Hash::matches(cursor)?;
+        let (name, cursor) = HtmlName::matches(cursor)?;
+        Some((IdAttribute {
+            value: name.to_string()
+        }, cursor))
+    }
+}
 
 pub(crate) enum ElementAttribute {
-    HtmlAttribute(HtmlAttribute),
-    ClassAttribute(ClassAttribute),
+    Html(HtmlAttribute),
+    Class(ClassAttribute),
+    Id(IdAttribute)
 }
 
 impl Matches for ElementAttribute {
@@ -109,9 +126,11 @@ impl Matches for ElementAttribute {
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
         if let Some((attr, cursor)) = HtmlAttribute::matches(cursor) {
-            Some((ElementAttribute::HtmlAttribute(attr), cursor))
+            Some((ElementAttribute::Html(attr), cursor))
         } else if let Some((attr, cursor)) = ClassAttribute::matches(cursor) {
-            Some((ElementAttribute::ClassAttribute(attr), cursor))
+            Some((ElementAttribute::Class(attr), cursor))
+        } else if let Some((attr, cursor)) = IdAttribute::matches(cursor) {
+            Some((ElementAttribute::Id(attr), cursor))
         } else {
             None
         }
