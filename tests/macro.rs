@@ -1,13 +1,23 @@
 use greenhorn::html;
 use greenhorn::prelude::{ElementBuilder, Node};
 
+
+fn check_node_as_div(node: ElementBuilder<()>) {
+    let node = node.into();
+    match node {
+        Node::Element(elem) => {
+            assert_eq!(elem.tag.unwrap(), "div");
+            assert!(elem.namespace.is_none());
+        },
+        _ => panic!()
+    }
+}
+
 #[test]
 fn test_opening_closing_macro() {
-    let x: ElementBuilder<()> = html! ( <div> </div> );
-    let x: Node<()> = x.into();
-    println!("{:?}", x);
-//    let x = html! ( <div> </> );
-//    let x = html! ( <div /> );
+    check_node_as_div(html! ( <div> </div> ));
+    check_node_as_div(html! ( <div> </> ));
+    check_node_as_div(html! ( <div /> ));
 }
 
 #[test]

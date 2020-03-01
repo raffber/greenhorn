@@ -351,8 +351,14 @@ impl ToTokens for Element {
 impl ToTokens for HtmlElement {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let tag_name = &self.tag;
-        let ret = quote! {
-            NodeBuilder::new().elem(#tag_name)
+        let ret = if let Some(ns) = &self.namespace {
+            quote! {
+                NodeBuilder::new_with_ns(#ns).elem(#tag_name)
+            }
+        } else {
+            quote! {
+                NodeBuilder::new().elem(#tag_name)
+            }
         };
         tokens.extend(ret);
     }
