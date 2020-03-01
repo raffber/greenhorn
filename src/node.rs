@@ -135,13 +135,13 @@ impl<T: 'static> From<Subscription<T>> for Node<T> {
 }
 
 pub struct NodeElement<T: 'static> {
-    pub(crate) id: Id,
-    pub(crate) tag: Option<String>,
-    pub(crate) attrs: Option<Vec<Attr>>,
-    pub(crate) js_events: Option<Vec<Attr>>,
-    pub(crate) listeners: Option<Vec<Listener<T>>>,
-    pub(crate) children: Option<Vec<Node<T>>>,
-    pub(crate) namespace: Option<String>,
+    pub id: Id,
+    pub tag: Option<String>,
+    pub attrs: Option<Vec<Attr>>,
+    pub js_events: Option<Vec<Attr>>,
+    pub listeners: Option<Vec<Listener<T>>>,
+    pub children: Option<Vec<Node<T>>>,
+    pub namespace: Option<String>,
 }
 
 impl<T: 'static> NodeElement<T> {
