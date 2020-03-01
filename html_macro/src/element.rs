@@ -213,6 +213,7 @@ pub(crate) struct HtmlElement {
     tag: String,
     attributes: Vec<ElementAttribute>,
     children: Vec<Element>,
+    namespace: Option<String>,
 }
 
 pub(crate) struct ElementExpression {
@@ -222,6 +223,19 @@ pub(crate) struct ElementExpression {
 
 
 impl Element {
+    pub(crate) fn setup_namespace(&mut self, ns: &str) {
+        match self {
+            Element::Html(ref mut elem) => {
+                elem.namespace = Some(ns.to_string());
+                for child in &mut elem.children {
+                    child.setup_namespace(ns);
+                }
+            },
+            _ => {}
+        }
+
+    }
+
     fn parse_children<'a>(tag_name: &str, cursor: Cursor<'a>) -> (Vec<Element>, Cursor<'a>) {
         let mut children = Vec::<Element>::new();
         let start_cursor = cursor;
@@ -304,7 +318,8 @@ impl Matches for Element {
         let ret = Element::Html(HtmlElement {
             tag: elem_start.tag,
             attributes: attribtues,
-            children
+            children,
+            namespace: None
         });
         Some((ret, cursor))
     }
@@ -321,7 +336,7 @@ impl ToTokens for Element {
         let ts = match self {
             Element::Html(html) => {
                 quote! {
-                    use greenhorn::prelude::Node;
+                    use greenhorn::prelude::NodeBuilder;
                     #html
                 }
             },
@@ -337,7 +352,7 @@ impl ToTokens for HtmlElement {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let tag_name = &self.tag;
         let ret = quote! {
-            Node::html().elem(#tag_name)
+            NodeBuilder::new().elem(#tag_name)
         };
         tokens.extend(ret);
     }

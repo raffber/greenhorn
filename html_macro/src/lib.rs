@@ -35,7 +35,7 @@
 ///
 
 
-mod tree;
+mod element;
 mod matches;
 mod primitives;
 
@@ -44,7 +44,7 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro_hack::proc_macro_hack;
 use quote::quote;
-use tree::Element;
+use element::Element;
 use proc_macro_error::proc_macro_error;
 
 
@@ -52,6 +52,18 @@ use proc_macro_error::proc_macro_error;
 #[proc_macro_hack]
 pub fn html(input: TokenStream) -> TokenStream {
     if let Ok(root) = syn::parse::<Element>(input) {
+        println!("---------------------------");
+        TokenStream::from(quote! { #root })
+    } else {
+        panic!("Invalid macro inputs.");
+    }
+}
+
+#[proc_macro_error]
+#[proc_macro_hack]
+pub fn svg(input: TokenStream) -> TokenStream {
+    if let Ok(mut root) = syn::parse::<Element>(input) {
+        root.setup_namespace("http://www.w3.org/2000/svg");
         println!("---------------------------");
         TokenStream::from(quote! { #root })
     } else {
