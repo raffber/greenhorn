@@ -59,16 +59,18 @@ impl Match for HtmlName {
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
         let (part, cursor) = cursor.ident()?;
-        type Rest = MatchSequence<MatchTwo<HtmlNamePart, Dash>>;
+        type Rest = MatchSequence<MatchTwo<Dash, HtmlNamePart>>;
         if let Some((rest, cursor)) = Rest::matches(cursor) {
-            let mut rest: Vec<(String, ())> = rest;
-            let strings: Vec<String> = rest.drain(..).map(|x| x.0.to_ascii_lowercase()).collect();
+            println!("HtmlName::matches - dashed string");
+            let mut rest: Vec<((), String)> = rest;
+            let strings: Vec<String> = rest.drain(..).map(|x| x.1.to_ascii_lowercase()).collect();
             let ret = strings.join("-");
             if !ret.is_ascii() {
                 return None;
             }
             Some((ret,cursor))
         } else {
+            println!("HtmlName::matches - simple string");
             let part = part.to_string();
             if !part.is_ascii() {
                 return None;
@@ -88,10 +90,9 @@ impl Match for ElementStart {
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
         let (_, cursor) = SmallerSign::matches(cursor)?;
-        let (ident, cursor) = cursor.ident()?;
-//        let (name, cursor) = HtmlName::matches(cursor)?;
+        let (name, cursor) = HtmlName::matches(cursor)?;
         let ret = ElementStart {
-            tag: ident.to_string()
+            tag: name
         };
         Some((ret, cursor))
     }
