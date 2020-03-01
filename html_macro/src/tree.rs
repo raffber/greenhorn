@@ -166,10 +166,20 @@ impl ClosingTag {
 }
 
 
-pub(crate) struct Element {
+pub(crate) enum Element {
+    Html(HtmlElement),
+    Expr(ElementExpression),
+}
+
+pub(crate) struct HtmlElement {
     tag: String,
     attributes: Vec<ElementAttribute>,
     children: Vec<Element>,
+}
+
+pub(crate) struct ElementExpression {
+    tokens: TokenStream,
+    span: Span,
 }
 
 
@@ -191,10 +201,11 @@ impl Element {
                 }
                 cursor
             } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Bracket) {
-                let grp = Group {
-                    stream: grp_cursor.token_stream(),
+                let expr = ElementExpression {
+                    tokens: grp_cursor.token_stream(),
                     span: grp
                 };
+                children.push(Element::Expr(expr));
                 cursor
             } else if cursor.eof() {
                 panic!("No closing tag");
@@ -251,11 +262,11 @@ impl SynParse for Element {
         };
 
         println!("Elemenet::parse - done");
-        Ok(Element {
+        Ok(Element::Html(HtmlElement {
             tag: elem_start.tag,
             attributes: attribtues,
             children
-        })
+        }))
     }
 }
 
