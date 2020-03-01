@@ -46,6 +46,35 @@ pub enum AttributeValue {
     Group(Group),
 }
 
+
+impl Matches for AttributeValue {
+    type Output = Self;
+
+    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+        if let Some((literal, cursor)) = cursor.literal() {
+            println!("AttributeValue::matches - literal");
+            Some( (AttributeValue::Literal(literal), cursor) )
+        } else if let Some((value, cursor)) = HtmlName::matches( cursor) {
+            println!("AttributeValue::matches - html-name");
+            Some( (AttributeValue::HtmlName(value), cursor) )
+        } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Brace) {
+            println!("AttributeValue::matches - group");
+            Some( (AttributeValue::Group(Group {
+                stream: grp_cursor.token_stream(),
+                span: grp,
+            }), cursor) )
+        } else {
+            None
+        }
+    }
+}
+
+impl ToTokens for AttributeValue {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        // todo!()
+    }
+}
+
 impl Matches for HtmlAttribute {
     type Output = HtmlAttribute;
 
@@ -56,21 +85,7 @@ impl Matches for HtmlAttribute {
         if punct.as_char() != '=' {
             return None;
         }
-        let (value, cursor) = if let Some((literal, cursor)) = cursor.literal() {
-            println!("HtmlAttribute::matches - literal");
-            Some( (AttributeValue::Literal(literal), cursor) )
-        } else if let Some((value, cursor)) = HtmlName::matches( cursor) {
-            println!("HtmlAttribute::matches - html-name");
-            Some( (AttributeValue::HtmlName(value), cursor) )
-        } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Brace) {
-            println!("HtmlAttribute::matches - group");
-            Some( (AttributeValue::Group(Group {
-                stream: grp_cursor.token_stream(),
-                span: grp,
-            }), cursor) )
-        } else {
-            None
-        }?;
+        let (value, cursor) = AttributeValue::matches(cursor)?;
         let ret = HtmlAttribute {
             key: name,
             value
@@ -81,7 +96,7 @@ impl Matches for HtmlAttribute {
 }
 
 pub(crate) struct ClassAttribute {
-    value: String,
+    value: AttributeValue,
 }
 
 impl Matches for ClassAttribute {
@@ -92,15 +107,15 @@ impl Matches for ClassAttribute {
         if punct.as_char() != '.' {
             return None;
         }
-        let (name, cursor) = HtmlName::matches(cursor)?;
+        let (name, cursor) = AttributeValue::matches(cursor)?;
         Some((ClassAttribute {
-            value: name.to_string()
+            value: name
         }, cursor))
     }
 }
 
 pub(crate) struct IdAttribute {
-    value: String,
+    value: AttributeValue,
 }
 
 
@@ -109,9 +124,9 @@ impl Matches for IdAttribute {
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
         let (_, cursor) = Hash::matches(cursor)?;
-        let (name, cursor) = HtmlName::matches(cursor)?;
+        let (name, cursor) = AttributeValue::matches(cursor)?;
         Some((IdAttribute {
-            value: name.to_string()
+            value: name
         }, cursor))
     }
 }
@@ -351,7 +366,7 @@ impl ToTokens for Element {
 impl ToTokens for HtmlElement {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let tag_name = &self.tag;
-        let ret = if let Some(ns) = &self.namespace {
+        let mut ret = if let Some(ns) = &self.namespace {
             quote! {
                 NodeBuilder::new_with_ns(#ns).elem(#tag_name)
             }
@@ -360,6 +375,74 @@ impl ToTokens for HtmlElement {
                 NodeBuilder::new().elem(#tag_name)
             }
         };
+        let attrs = CollectedAttribute::collect(&self.attributes);
+        for attr in &attrs {
+            ret.extend(quote! {
+                .attr(#attr)
+            })
+        }
         tokens.extend(ret);
+    }
+}
+
+enum CollectedAttribute {
+    Attribute(String, TokenStream),
+    Listener(),
+}
+
+impl CollectedAttribute {
+    fn collect(attrs: &[ElementAttribute]) -> Vec<CollectedAttribute> {
+        let mut attrs = attrs;
+        let mut ret = Vec::new();
+        let mut classes = Vec::new();
+        let mut id = None;
+        for attr in attrs {
+            match attr {
+                ElementAttribute::Html(html) => {
+                    if html.key == "class" {
+                        let v = &html.value;
+                        let ts = quote! { #v };
+                        classes.push(ts);
+                    } else if html.key == "id" {
+                        if id.is_some() {
+                            panic!("ID set twice!");
+                        }
+                        id = Some(html.value);
+                    } else {
+                        let v = &html.value;
+                        let ts: proc_macro2::TokenStream = quote! { #v };
+                        ret.push(CollectedAttribute::Attribute(html.key.clone(), ts ));
+                    }
+                },
+                ElementAttribute::Class(cls) => {
+                    let v = &cls.value;
+                    classes.push(quote! { #v } )
+                },
+                ElementAttribute::Id(attr) => {
+                    if id.is_some() {
+                        panic!("ID set twice!");
+                    }
+                    let v = &attr.value;
+                    id = Some( quote! { v } );
+                },
+                ElementAttribute::Listener(_) => {
+                    // todo!()
+                },
+            }
+        }
+        if classes.len() != 0 {
+            let classes = classes.join(" ");
+            ret.push(CollectedAttribute::Attributes("class".into(), classes));
+        }
+        if let Some(id) = id {
+            ret.push(CollectedAttribute::Attributes("id".into(), id));
+        }
+        ret
+    }
+}
+
+impl ToTokens for CollectedAttribute {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        todo!()
     }
 }

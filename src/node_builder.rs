@@ -139,18 +139,18 @@ impl<T: 'static> ElementBuilder<T> {
         }
     }
 
-    pub fn attr<R: Into<String>, S: Into<String>>(mut self, key: R, value: S) -> Self {
+    pub fn attr<R: ToString, S: ToString>(mut self, key: R, value: S) -> Self {
         self.attrs.push(Attr {
-            key: key.into(),
-            value: value.into(),
+            key: key.to_string(),
+            value: value.to_string(),
         });
         self
     }
 
-    pub fn js_event<R: Into<String>, S: Into<String>>(mut self, key: R, value: S) -> Self {
+    pub fn js_event<R: ToString, S: ToString>(mut self, key: R, value: S) -> Self {
         self.attrs.push(Attr {
-            key: key.into(),
-            value: value.into(),
+            key: key.to_string(),
+            value: value.to_string(),
         });
         self
     }
