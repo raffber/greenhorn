@@ -1,5 +1,5 @@
 [package]
-name = "greenhorn-web-view"
+name = "greenhorn_web_view"
 version = "0.1.0"
 authors = ["Raphael Bernhard <beraphae@gmail.com>"]
 edition = "2018"
