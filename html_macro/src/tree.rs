@@ -9,7 +9,7 @@ use crate::matches::{Matches, MatchSequence};
 use proc_macro2::Delimiter;
 use proc_macro2::{Literal, Span};
 
-use crate::primitives::{HtmlName, SmallerSign, Hash};
+use crate::primitives::{HtmlName, SmallerSign, Hash, AtSign};
 
 pub(crate) struct ElementStart {
     tag: String,
@@ -115,10 +115,28 @@ impl Matches for IdAttribute {
     }
 }
 
+pub(crate) struct ListenerAttribute {
+    value: String,
+}
+
+
+impl Matches for ListenerAttribute  {
+    type Output = ListenerAttribute ;
+
+    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+        let (_, cursor) = AtSign::matches(cursor)?;
+        let (name, cursor) = HtmlName::matches(cursor)?;
+        Some((ListenerAttribute  {
+            value: name.to_string()
+        }, cursor))
+    }
+}
+
 pub(crate) enum ElementAttribute {
     Html(HtmlAttribute),
     Class(ClassAttribute),
-    Id(IdAttribute)
+    Id(IdAttribute),
+    Listener(ListenerAttribute),
 }
 
 impl Matches for ElementAttribute {
@@ -131,6 +149,8 @@ impl Matches for ElementAttribute {
             Some((ElementAttribute::Class(attr), cursor))
         } else if let Some((attr, cursor)) = IdAttribute::matches(cursor) {
             Some((ElementAttribute::Id(attr), cursor))
+        } else if let Some((attr, cursor)) = ListenerAttribute::matches(cursor) {
+            Some((ElementAttribute::Listener(attr), cursor))
         } else {
             None
         }
@@ -138,9 +158,7 @@ impl Matches for ElementAttribute {
 }
 
 
-pub(crate) struct ClosingTag {
-
-}
+pub(crate) struct ClosingTag;
 
 impl ClosingTag {
     pub(crate) fn matches<'a>(tag_name: &str, cursor: Cursor<'a>) -> Option<Cursor<'a>> {

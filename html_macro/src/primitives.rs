@@ -33,6 +33,22 @@ impl Matches for Hash {
     }
 }
 
+
+pub(crate) struct AtSign;
+
+impl Matches for AtSign {
+    type Output = ();
+
+    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+        let (punct, cursor) = cursor.punct()?;
+        if punct.as_char() == '@' {
+            Some(((), cursor))
+        } else {
+            None
+        }
+    }
+}
+
 struct Dash;
 
 impl Matches for Dash {
