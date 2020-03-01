@@ -37,12 +37,12 @@
 
 mod tree;
 mod matches;
+mod primitives;
 
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use proc_macro_hack::proc_macro_hack;
-use syn::parse_macro_input;
 use quote::quote;
 use tree::Element;
 use proc_macro_error::proc_macro_error;
@@ -51,7 +51,7 @@ use proc_macro_error::proc_macro_error;
 #[proc_macro_error]
 #[proc_macro_hack]
 pub fn html(input: TokenStream) -> TokenStream {
-    let root = syn::parse::<Element>(input);
+    let _root = syn::parse::<Element>(input);
     println!("html - macro input parsed");
     println!("---------------------------");
     TokenStream::from(quote! { 1 + 1 })
