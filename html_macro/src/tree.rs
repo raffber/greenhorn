@@ -49,7 +49,6 @@ impl Match for HtmlNamePart {
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
         let (part, cursor) = cursor.ident()?;
-        // TODO: check for valid html-identifier
         Some((part.to_string(), cursor))
     }
 }
@@ -60,13 +59,22 @@ impl Match for HtmlName {
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
         let (part, cursor) = cursor.ident()?;
-        Some((part.to_string(), cursor))
-//        type Rest = MatchSequence<MatchTwo<HtmlNamePart, Dash>>;
-//        let (rest, cursor) = Rest::matches(cursor)?;
-//        let mut rest: Vec<(String, ())> = rest;
-//        let strings: Vec<String> = rest.drain(..).map(|x| x.0).collect();
-//        let ret = strings.join("-");
-//        Some((ret,cursor))
+        type Rest = MatchSequence<MatchTwo<HtmlNamePart, Dash>>;
+        if let Some((rest, cursor)) = Rest::matches(cursor) {
+            let mut rest: Vec<(String, ())> = rest;
+            let strings: Vec<String> = rest.drain(..).map(|x| x.0.to_ascii_lowercase()).collect();
+            let ret = strings.join("-");
+            if !ret.is_ascii() {
+                return None;
+            }
+            Some((ret,cursor))
+        } else {
+            let part = part.to_string();
+            if !part.is_ascii() {
+                return None;
+            }
+            Some((part,cursor))
+        }
     }
 }
 
