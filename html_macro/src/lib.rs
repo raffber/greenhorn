@@ -51,9 +51,11 @@ use proc_macro_error::proc_macro_error;
 #[proc_macro_error]
 #[proc_macro_hack]
 pub fn html(input: TokenStream) -> TokenStream {
-    let _root = syn::parse::<Element>(input);
-    println!("html - macro input parsed");
-    println!("---------------------------");
-    TokenStream::from(quote! { 1 + 1 })
+    if let Ok(root) = syn::parse::<Element>(input) {
+        println!("---------------------------");
+        TokenStream::from(quote! { #root })
+    } else {
+        panic!("Invalid macro inputs.");
+    }
 }
 

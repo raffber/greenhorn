@@ -1,13 +1,14 @@
-use syn::parse::{Parse as SynParse, ParseStream};
+use syn::parse::{Parse, ParseStream};
 use syn::parse::Result as SynResult;
 use quote::ToTokens;
 use proc_macro2::TokenStream;
 use syn::buffer::Cursor;
 use proc_macro_error::*;
 
-use crate::matches::{Matches, MatchSequence};
+use crate::matches::{Matches, MatchSequence, ParseAdapter};
 use proc_macro2::Delimiter;
 use proc_macro2::{Literal, Span};
+use quote::quote;
 
 use crate::primitives::{HtmlName, SmallerSign, Hash, AtSign};
 
@@ -253,14 +254,14 @@ impl Element {
     }
 }
 
-impl SynParse for Element {
-    fn parse(input: ParseStream) -> SynResult<Self> {
-        let cursor = input.cursor();
+impl Matches for Element {
+    type Output = Self;
 
+    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
         println!("Elemenet::parse - start");
 
         // match opening tag of the form <some-name
-        let (elem_start, cursor) = ElementStart::matches(cursor).expect("Expected an opening tag");
+        let (elem_start, cursor) = ElementStart::matches(cursor)?;
 
         println!("Elemenet::parse - element started");
 
@@ -273,15 +274,15 @@ impl SynParse for Element {
 
         // now expect a ">" or a "/>",
         // in case there was only a ">", we continue parsing children
-        let (punct, cursor) = cursor.punct().expect("Expected one of `>` or `/>`");
+        let (punct, cursor) = cursor.punct()?;
         let punct = punct.as_char();
-        let (children, _cursor) = match punct {
+        let (children, cursor) = match punct {
             '/' => {
                 // element is already done, expect a `>` and return no children
                 let cursor = if let Some((punct, cursor)) = cursor.punct() {
                     let punct = punct.as_char();
                     if punct != '>' {
-                        panic!("Expected > after /");
+                        return None;
                     }
                     cursor
                 } else {
@@ -299,16 +300,45 @@ impl SynParse for Element {
         };
 
         println!("Elemenet::parse - done");
-        Ok(Element::Html(HtmlElement {
+
+        let ret = Element::Html(HtmlElement {
             tag: elem_start.tag,
             attributes: attribtues,
             children
-        }))
+        });
+        Some((ret, cursor))
+    }
+}
+
+impl Parse for Element {
+    fn parse(input: ParseStream) -> SynResult<Self> {
+        ParseAdapter::<Self>::parse(input).map(|x| x.unwrap())
     }
 }
 
 impl ToTokens for Element {
-    fn to_tokens(&self, _tokens: &mut TokenStream) {
-        unimplemented!()
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let ts = match self {
+            Element::Html(html) => {
+                quote! {
+                    use greenhorn::prelude::Node;
+                    #html
+                }
+            },
+            Element::Expr(_) => {
+                todo!()
+            },
+        };
+        tokens.extend(ts);
+    }
+}
+
+impl ToTokens for HtmlElement {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let tag_name = &self.tag;
+        let ret = quote! {
+            Node::html().elem(#tag_name)
+        };
+        tokens.extend(ret);
     }
 }

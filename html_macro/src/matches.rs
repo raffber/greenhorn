@@ -1,5 +1,8 @@
 use std::marker::PhantomData;
 use syn::buffer::Cursor;
+use syn::parse::Parse;
+use syn::Error;
+use syn::parse::ParseBuffer;
 
 
 pub(crate) trait Matches {
@@ -45,3 +48,28 @@ impl<T: Matches> Matches for MatchSequence<T> {
     }
 }
 
+pub(crate) struct ParseAdapter<T: Matches> {
+    value: T::Output
+}
+
+impl<T: Matches> ParseAdapter<T> {
+    pub(crate) fn unwrap(self) -> T::Output {
+        self.value
+    }
+}
+
+impl<T: Matches> Parse for ParseAdapter<T> {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        input.step(|cursor| {
+            let cursor = *cursor;
+            if let Some((value, cursor)) = T::matches(cursor) {
+                let ret = Self {
+                    value
+                };
+                Ok((ret, cursor))
+            } else {
+                Err(Error::new(cursor.span(), "Whoops"))
+            }
+        })
+    }
+}
