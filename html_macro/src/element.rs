@@ -34,6 +34,12 @@ pub(crate) struct HtmlAttribute {
     value: AttributeValue,
 }
 
+impl ToTokens for HtmlAttribute {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        todo!()
+    }
+}
+
 
 pub struct Group {
     stream: TokenStream,
@@ -99,6 +105,12 @@ pub(crate) struct ClassAttribute {
     value: AttributeValue,
 }
 
+impl ToTokens for ClassAttribute {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        todo!()
+    }
+}
+
 impl Matches for ClassAttribute {
     type Output = ClassAttribute;
 
@@ -118,6 +130,11 @@ pub(crate) struct IdAttribute {
     value: AttributeValue,
 }
 
+impl ToTokens for IdAttribute {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        todo!()
+    }
+}
 
 impl Matches for IdAttribute {
     type Output = IdAttribute;
@@ -375,74 +392,29 @@ impl ToTokens for HtmlElement {
                 NodeBuilder::new().elem(#tag_name)
             }
         };
-        let attrs = CollectedAttribute::collect(&self.attributes);
-        for attr in &attrs {
-            ret.extend(quote! {
-                .attr(#attr)
-            })
+        for attr in &self.attributes {
+            match attr {
+                ElementAttribute::Html(attr) => {
+                    ret.extend(quote! {
+                        .attr(#attr)
+                    })
+                },
+                ElementAttribute::Class(attr) => {
+                    ret.extend(quote! {
+                        .class(#attr)
+                    })
+                },
+                ElementAttribute::Id(attr) => {
+                    ret.extend(quote! {
+                        .id(#attr)
+                    })
+                },
+                ElementAttribute::Listener(attr) => {
+                    todo!()
+                },
+            }
         }
         tokens.extend(ret);
     }
 }
 
-enum CollectedAttribute {
-    Attribute(String, TokenStream),
-    Listener(),
-}
-
-impl CollectedAttribute {
-    fn collect(attrs: &[ElementAttribute]) -> Vec<CollectedAttribute> {
-        let mut attrs = attrs;
-        let mut ret = Vec::new();
-        let mut classes = Vec::new();
-        let mut id = None;
-        for attr in attrs {
-            match attr {
-                ElementAttribute::Html(html) => {
-                    if html.key == "class" {
-                        let v = &html.value;
-                        let ts = quote! { #v };
-                        classes.push(ts);
-                    } else if html.key == "id" {
-                        if id.is_some() {
-                            panic!("ID set twice!");
-                        }
-                        id = Some(html.value);
-                    } else {
-                        let v = &html.value;
-                        let ts: proc_macro2::TokenStream = quote! { #v };
-                        ret.push(CollectedAttribute::Attribute(html.key.clone(), ts ));
-                    }
-                },
-                ElementAttribute::Class(cls) => {
-                    let v = &cls.value;
-                    classes.push(quote! { #v } )
-                },
-                ElementAttribute::Id(attr) => {
-                    if id.is_some() {
-                        panic!("ID set twice!");
-                    }
-                    let v = &attr.value;
-                    id = Some( quote! { v } );
-                },
-                ElementAttribute::Listener(_) => {
-                    // todo!()
-                },
-            }
-        }
-        if classes.len() != 0 {
-            let classes = classes.join(" ");
-            ret.push(CollectedAttribute::Attributes("class".into(), classes));
-        }
-        if let Some(id) = id {
-            ret.push(CollectedAttribute::Attributes("id".into(), id));
-        }
-        ret
-    }
-}
-
-impl ToTokens for CollectedAttribute {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        todo!()
-    }
-}

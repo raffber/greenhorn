@@ -96,6 +96,8 @@ pub struct ElementBuilder<T: 'static> {
     listeners: Vec<Listener<T>>,
     children: Vec<Node<T>>,
     namespace: Option<String>,
+    classes: Vec<String>,
+    html_id: Option<String>,
 }
 
 impl<T: 'static> ElementBuilder<T> {
@@ -108,6 +110,8 @@ impl<T: 'static> ElementBuilder<T> {
             listeners: Vec::new(),
             children: Vec::new(),
             namespace,
+            classes: vec![],
+            html_id: None
         }
     }
 
@@ -194,22 +198,24 @@ impl<T: 'static> ElementBuilder<T> {
     }
 
     pub fn id<S: Into<String>>(mut self, id: S) -> Self {
-        self.attrs.push(Attr {
-            key: "id".into(),
-            value: id.into(),
-        });
+        self.html_id = Some(id.into());
         self
     }
 
     pub fn class<S: Into<String>>(mut self, class: S) -> Self {
-        self.attrs.push(Attr {
-            key: "class".into(),
-            value: class.into(),
-        });
+        self.classes.push(class.into());
         self
     }
 
-    pub fn build(self) -> Node<T> {
+    pub fn build(mut self) -> Node<T> {
+        if self.classes.len() != 0 {
+            let cls = self.classes.join(" ");
+            self.attrs.push(Attr { key: "class".to_string(), value: cls });
+        }
+        self.html_id.take().map(|x| {
+            self.attrs.push(Attr { key: "id".to_string(), value: x })
+        });
+
         Node::Element(NodeElement {
             id: self.id,
             tag: Some(self.tag),

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 ///
 /// This crates complements greenhorn by adding a html!{} macro
 /// to simplify creating view functions:
