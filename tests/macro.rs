@@ -20,29 +20,71 @@ fn test_opening_closing_macro() {
     check_node_as_div(html! ( <div /> ));
 }
 
+
+fn check_attr(node: Node<()>, data: &str) {
+    match node {
+        Node::Element(elem) => {
+            assert_eq!(elem.tag.unwrap(), "div");
+            let attrs = elem.attrs.as_ref().unwrap();
+            assert_eq!(attrs.len(), 1);
+            let attr = &attrs[0];
+            assert_eq!(attr.key, "foo");
+            assert_eq!(attr.value, data);
+        },
+        _ => panic!()
+    }
+}
+
 #[test]
 fn test_attr() {
-//    let x = html! ( <div foo=bar> </div> );
-//    let x = html! ( <div foo="bar"> </div> );
-//    let x = html! ( <div foo=123> </div> );
+    check_attr(html! ( <div foo=bar> </div> ).into(), "bar");
+    check_attr(html! ( <div foo="bar"> </div> ).into(), "bar");
+    check_attr(html! ( <div foo=123> </div> ).into(), "123");
 }
 
 
 #[test]
 fn test_expr_attr() {
-//    let x = html! ( <div foo={"foo"}> </div> );
+    let x: Node<()> = html! ( <div foo={"bar"}> </div> ).into();
+    check_attr(x, "bar");
+
+    let y = 23;
+    let x: Node<()> = html! ( <div foo={100 + y}> </div> ).into();
+    check_attr(x, "123");
 }
 
 
 #[test]
 fn test_class_attr() {
-//    let x = html! ( <div .foo> </div> );
+    let node: Node<()> = html! ( <div .foo> </div> ).into();
+    match node {
+        Node::Element(elem) => {
+            assert_eq!(elem.tag.unwrap(), "div");
+            let attrs = elem.attrs.as_ref().unwrap();
+            assert_eq!(attrs.len(), 1);
+            let attr = &attrs[0];
+            assert_eq!(attr.key, "class");
+            assert_eq!(attr.value, "foo");
+        },
+        _ => panic!()
+    }
 }
 
 
 #[test]
 fn test_id_attr() {
-//    let x = html! ( <div #foo> </div> );
+    let node: Node<()> = html! ( <div #foo> </div> ).into();
+    match node {
+        Node::Element(elem) => {
+            assert_eq!(elem.tag.unwrap(), "div");
+            let attrs = elem.attrs.as_ref().unwrap();
+            assert_eq!(attrs.len(), 1);
+            let attr = &attrs[0];
+            assert_eq!(attr.key, "id");
+            assert_eq!(attr.value, "foo");
+        },
+        _ => panic!()
+    }
 }
 
 
@@ -53,5 +95,11 @@ fn test_listener_attr() {
 
 #[test]
 fn test_dashed_name() {
-//    let x = html! ( <foo-bar /> );
+    let node: Node<()> = html! ( <foo-bar /> ).into();
+    match node {
+        Node::Element(elem) => {
+            assert_eq!(elem.tag.unwrap(), "foo-bar");
+        },
+        _ => panic!()
+    }
 }

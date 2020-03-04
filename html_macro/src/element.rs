@@ -34,13 +34,6 @@ pub(crate) struct HtmlAttribute {
     value: AttributeValue,
 }
 
-impl ToTokens for HtmlAttribute {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        todo!()
-    }
-}
-
-
 pub struct Group {
     stream: TokenStream,
     span: Span,
@@ -77,7 +70,19 @@ impl Matches for AttributeValue {
 
 impl ToTokens for AttributeValue {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        // todo!()
+        match self {
+            AttributeValue::Literal(lit) => {
+                lit.to_tokens(tokens);
+            },
+            AttributeValue::HtmlName(name) => {
+                let lit = Literal::string(&name);
+                lit.to_tokens(tokens);
+            },
+            AttributeValue::Group(grp) => {
+                let stream = grp.stream.clone();
+                tokens.extend(stream);
+            },
+        }
     }
 }
 
@@ -107,7 +112,8 @@ pub(crate) struct ClassAttribute {
 
 impl ToTokens for ClassAttribute {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        todo!()
+        let value = &self.value;
+        tokens.extend(quote!{ #value });
     }
 }
 
@@ -132,7 +138,8 @@ pub(crate) struct IdAttribute {
 
 impl ToTokens for IdAttribute {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        todo!()
+        let value = &self.value;
+        tokens.extend(quote!{ #value });
     }
 }
 
@@ -395,8 +402,10 @@ impl ToTokens for HtmlElement {
         for attr in &self.attributes {
             match attr {
                 ElementAttribute::Html(attr) => {
+                    let name = &attr.key;
+                    let value = &attr.value;
                     ret.extend(quote! {
-                        .attr(#attr)
+                        .attr(#name, #value)
                     })
                 },
                 ElementAttribute::Class(attr) => {
