@@ -162,7 +162,7 @@ impl Matches for ListenerAttribute  {
         let (_, cursor) = AtSign::matches(cursor)?;
         let (name, cursor) = HtmlName::matches(cursor)?;
         let (_, cursor) = Equal::matches(cursor)?;
-        let (grp_cursor, _grp, cursor) = cursor.group(Delimiter::Bracket)?;
+        let (grp_cursor, _grp, cursor) = cursor.group(Delimiter::Brace)?;
         Some((ListenerAttribute  { 
             name,
             value: grp_cursor.token_stream(),

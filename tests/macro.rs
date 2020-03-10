@@ -1,5 +1,5 @@
-use greenhorn::html;
-use greenhorn::prelude::{ElementBuilder, Node};
+use greenhorn::{html, Id};
+use greenhorn::prelude::{ElementBuilder, Node, DomEvent};
 
 
 fn check_node_as_div(node: ElementBuilder<()>) {
@@ -110,6 +110,24 @@ fn test_dashed_name() {
     match node {
         Node::Element(elem) => {
             assert_eq!(elem.tag.unwrap(), "foo-bar");
+        },
+        _ => panic!()
+    }
+}
+
+#[test]
+fn test_listener() {
+    let node: Node<u32> = html! ( <foo @bar={|e| 12u32} /> ).into();
+    match node {
+        Node::Element(elem) => {
+            assert_eq!(elem.tag.unwrap(), "foo");
+            let listeners = elem.listeners.unwrap();
+            assert_eq!(listeners.len(), 1);
+            let fun = listeners[0].fun.clone();
+            let fun = fun.lock().unwrap();
+            let dom_event = DomEvent::Base(Id::new(), "foo".to_string());
+            let result = (fun)(dom_event);
+            assert_eq!(result, 12u32);
         },
         _ => panic!()
     }
