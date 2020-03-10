@@ -184,7 +184,7 @@ impl ToTokens for ListenerAttribute {
 
 pub(crate) struct JsEvent {
     name: String,
-    literal: Literal,
+    value: String,
 }
 
 impl Matches for JsEvent {
@@ -195,9 +195,18 @@ impl Matches for JsEvent {
         let (name, cursor) = HtmlName::matches(cursor)?;
         let (_, cursor) = Equal::matches(cursor)?;
         let (lit, cursor) = cursor.literal()?;
+        let value = lit.to_string();
+        for b in value.bytes() {
+            if b != b'"' {
+                panic!("Invalid non-string literal");
+            }
+            break;
+        }
+        let value = value[1..value.len()-1].to_string();
+
         let ret = JsEvent {
             name,
-            literal: lit, 
+            value, 
         };
         Some((ret, cursor))
     } 
@@ -205,10 +214,10 @@ impl Matches for JsEvent {
 
 impl ToTokens for JsEvent {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let lit = self.literal.clone();
-        let name = self.name.clone();
+        let name = &self.name;
+        let value = &self.value;
         let ret = quote! {
-            .js_event(#name, #lit)
+            .js_event(#name, #value)
         }; 
         tokens.extend(ret);
     } 
@@ -467,7 +476,6 @@ impl ToTokens for HtmlElement {
                     ret.extend(attr.to_token_stream());
                 },
                 Attribute::Js(evt) => {
-                    println!("Serializing JS Event!!!!!!!!");
                     ret.extend(evt.to_token_stream());
                 }
             }
