@@ -152,7 +152,7 @@ impl<T: 'static> ElementBuilder<T> {
     }
 
     pub fn js_event<R: ToString, S: ToString>(mut self, key: R, value: S) -> Self {
-        self.attrs.push(Attr {
+        self.js_events.push(Attr {
             key: key.to_string(),
             value: value.to_string(),
         });

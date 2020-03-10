@@ -25,7 +25,10 @@ macro_rules! make_punct {
 make_punct!(Hash, '#');
 make_punct!(SmallerSign, '<');
 make_punct!(AtSign, '@');
+make_punct!(DollarSign, '$');
 make_punct!(Dash, '-');
+make_punct!(Equal, '=');
+make_punct!(Dot, '.');
 
 
 struct HtmlNamePart;
@@ -50,7 +53,8 @@ impl Matches for HtmlName {
         if let Some((rest, cursor)) = Rest::matches(cursor) {
             println!("HtmlName::matches - dashed string");
             let mut rest: Vec<((), String)> = rest;
-            let strings: Vec<String> = rest.drain(..).map(|x| x.1.to_ascii_lowercase()).collect();
+            let mut strings: Vec<String> = rest.drain(..).map(|x| x.1.to_ascii_lowercase()).collect();
+            strings.insert(0, part.to_string());
             let ret = strings.join("-");
             if !ret.is_ascii() {
                 return None;

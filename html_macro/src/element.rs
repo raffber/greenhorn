@@ -10,7 +10,7 @@ use proc_macro2::Delimiter;
 use proc_macro2::{Literal, Span};
 use quote::quote;
 
-use crate::primitives::{HtmlName, SmallerSign, Hash, AtSign};
+use crate::primitives::{HtmlName, SmallerSign, Hash, AtSign, DollarSign, Equal, Dot};
 
 pub(crate) struct ElementStart {
     tag: String,
@@ -92,10 +92,7 @@ impl Matches for HtmlAttribute {
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
         println!("HtmlAttribute::matches - start");
         let (name, cursor) = HtmlName::matches(cursor)?;
-        let (punct, cursor) = cursor.punct()?;
-        if punct.as_char() != '=' {
-            return None;
-        }
+        let (_, cursor) = Equal::matches(cursor)?;
         let (value, cursor) = AttributeValue::matches(cursor)?;
         let ret = HtmlAttribute {
             key: name,
@@ -121,10 +118,7 @@ impl Matches for ClassAttribute {
     type Output = ClassAttribute;
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
-        let (punct, cursor) = cursor.punct()?;
-        if punct.as_char() != '.' {
-            return None;
-        }
+        let (_, cursor) = Dot::matches(cursor)?;
         let (name, cursor) = AttributeValue::matches(cursor)?;
         Some((ClassAttribute {
             value: name
@@ -156,7 +150,8 @@ impl Matches for IdAttribute {
 }
 
 pub(crate) struct ListenerAttribute {
-    value: String,
+    name: String,
+    value: TokenStream,
 }
 
 
@@ -166,31 +161,81 @@ impl Matches for ListenerAttribute  {
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
         let (_, cursor) = AtSign::matches(cursor)?;
         let (name, cursor) = HtmlName::matches(cursor)?;
-        Some((ListenerAttribute  {
-            value: name.to_string()
+        let (_, cursor) = Equal::matches(cursor)?;
+        let (grp_cursor, _grp, cursor) = cursor.group(Delimiter::Bracket)?;
+        Some((ListenerAttribute  { 
+            name,
+            value: grp_cursor.token_stream(),
         }, cursor))
     }
 }
 
-pub(crate) enum ElementAttribute {
+impl ToTokens for ListenerAttribute {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let name: &str = &self.name;
+        let ts = &self.value; 
+        let ret = quote! {
+            .on(#name, #ts)
+        };
+        tokens.extend(ret);
+    } 
+}
+
+
+pub(crate) struct JsEvent {
+    name: String,
+    literal: Literal,
+}
+
+impl Matches for JsEvent {
+    type Output = JsEvent;
+
+    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+        let (_, cursor) = DollarSign::matches(cursor)?;
+        let (name, cursor) = HtmlName::matches(cursor)?;
+        let (_, cursor) = Equal::matches(cursor)?;
+        let (lit, cursor) = cursor.literal()?;
+        let ret = JsEvent {
+            name,
+            literal: lit, 
+        };
+        Some((ret, cursor))
+    } 
+} 
+
+impl ToTokens for JsEvent {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let lit = self.literal.clone();
+        let name = self.name.clone();
+        let ret = quote! {
+            .js_event(#name, #lit)
+        }; 
+        tokens.extend(ret);
+    } 
+}
+
+pub(crate) enum Attribute {
     Html(HtmlAttribute),
     Class(ClassAttribute),
     Id(IdAttribute),
     Listener(ListenerAttribute),
+    Js(JsEvent)
 }
 
-impl Matches for ElementAttribute {
-    type Output = ElementAttribute;
+impl Matches for Attribute {
+    type Output = Attribute;
 
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
         if let Some((attr, cursor)) = HtmlAttribute::matches(cursor) {
-            Some((ElementAttribute::Html(attr), cursor))
+            Some((Attribute::Html(attr), cursor))
         } else if let Some((attr, cursor)) = ClassAttribute::matches(cursor) {
-            Some((ElementAttribute::Class(attr), cursor))
+            Some((Attribute::Class(attr), cursor))
         } else if let Some((attr, cursor)) = IdAttribute::matches(cursor) {
-            Some((ElementAttribute::Id(attr), cursor))
+            Some((Attribute::Id(attr), cursor))
         } else if let Some((attr, cursor)) = ListenerAttribute::matches(cursor) {
-            Some((ElementAttribute::Listener(attr), cursor))
+            Some((Attribute::Listener(attr), cursor))
+        } else if let Some((evt, cursor)) = JsEvent::matches(cursor) {
+            Some((Attribute::Js(evt), cursor))
         } else {
             None
         }
@@ -250,7 +295,7 @@ pub(crate) enum Element {
 
 pub(crate) struct HtmlElement {
     tag: String,
-    attributes: Vec<ElementAttribute>,
+    attributes: Vec<Attribute>,
     children: Vec<Element>,
     namespace: Option<String>,
 }
@@ -320,7 +365,7 @@ impl Matches for Element {
 
         // parse all element attributes
         let (attribtues, cursor) =
-            MatchSequence::<ElementAttribute>::matches(cursor)
+            MatchSequence::<Attribute>::matches(cursor)
                 .unwrap_or_else(|| (Vec::new(), cursor));
 
         println!("Elemenet::parse - attributes matched");
@@ -401,26 +446,30 @@ impl ToTokens for HtmlElement {
         };
         for attr in &self.attributes {
             match attr {
-                ElementAttribute::Html(attr) => {
+                Attribute::Html(attr) => {
                     let name = &attr.key;
                     let value = &attr.value;
                     ret.extend(quote! {
                         .attr(#name, #value)
                     })
                 },
-                ElementAttribute::Class(attr) => {
+                Attribute::Class(attr) => {
                     ret.extend(quote! {
                         .class(#attr)
                     })
                 },
-                ElementAttribute::Id(attr) => {
+                Attribute::Id(attr) => {
                     ret.extend(quote! {
                         .id(#attr)
                     })
                 },
-                ElementAttribute::Listener(attr) => {
-                    todo!()
+                Attribute::Listener(attr) => {
+                    ret.extend(attr.to_token_stream());
                 },
+                Attribute::Js(evt) => {
+                    println!("Serializing JS Event!!!!!!!!");
+                    ret.extend(evt.to_token_stream());
+                }
             }
         }
         tokens.extend(ret);

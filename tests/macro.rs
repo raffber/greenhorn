@@ -90,7 +90,18 @@ fn test_id_attr() {
 
 #[test]
 fn test_listener_attr() {
-//    let x = html! ( <div @foo> </div> );
+    let node: Node<()> = html! ( <div $foo="js-stuff"> </div> ).into();
+    match node {
+        Node::Element(elem) => {
+            assert_eq!(elem.tag.unwrap(), "div");
+            let js_evts = elem.js_events.as_ref().unwrap();
+            assert_eq!(js_evts.len(), 1);
+            let attr = &js_evts[0];
+            assert_eq!(attr.key, "foo");
+            assert_eq!(attr.value, "js-stuff");
+        },
+        _ => panic!()
+    }
 }
 
 #[test]
