@@ -40,6 +40,7 @@
 mod element;
 mod matches;
 mod primitives;
+mod attributes;
 
 extern crate proc_macro;
 

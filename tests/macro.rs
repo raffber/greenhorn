@@ -132,3 +132,10 @@ fn test_listener() {
         _ => panic!()
     }
 }
+
+#[test]
+fn test_children() {
+    let node: Node<u32> = html! (
+        <foo> <bar /> </>
+     ).into();
+}
