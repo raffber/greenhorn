@@ -22,8 +22,10 @@ macro_rules! make_punct {
     };
 }
 
+make_punct!(Slash, '/');
 make_punct!(Hash, '#');
 make_punct!(SmallerSign, '<');
+make_punct!(BiggerSign, '>');
 make_punct!(AtSign, '@');
 make_punct!(DollarSign, '$');
 make_punct!(Dash, '-');

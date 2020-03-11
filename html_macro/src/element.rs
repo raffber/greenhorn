@@ -11,7 +11,7 @@ use proc_macro2::Span;
 use quote::quote;
 use crate::attributes::Attribute;
 
-use crate::primitives::{HtmlName, SmallerSign};
+use crate::primitives::{HtmlName, SmallerSign, Slash, BiggerSign};
 
 pub(crate) struct ElementStart {
     tag: String,
@@ -35,24 +35,10 @@ pub(crate) struct ClosingTag;
 impl ClosingTag {
     pub(crate) fn matches<'a>(tag_name: &str, cursor: Cursor<'a>) -> Option<Cursor<'a>> {
         // allow </> and </tag_name>
-
-        // match starting < which is in common
-        let (punct, cursor) = cursor.punct()?;
-        if punct.as_char() != '<' {
-            return None;
-        }
-
-        println!("ClosingTag::matches - <");
-
-        let (punct, cursor) = cursor.punct()?;
-        if punct.as_char() != '/' {
-            return None;
-        }
-
-        println!("ClosingTag::matches - /");
-
+        let (_, cursor) = SmallerSign::matches(cursor)?;
+        let (_, cursor) = Slash::matches(cursor)?;
+        // optionally match for the tag name
         let cursor = if let Some((name, cursor)) = HtmlName::matches(cursor) {
-            println!("ClosingTag::matches - name matched");
             if &name != tag_name {
                 return None;
             }
@@ -61,16 +47,7 @@ impl ClosingTag {
             cursor
         };
 
-        println!("ClosingTag::matches - name");
-
-        let (punct, cursor) = cursor.punct()?;
-
-        println!("ClosingTag::matches - done");
-
-        if punct.as_char() != '>' {
-            return None;
-        }
-        return Some(cursor);
+        BiggerSign::matches(cursor).map(|x| x.1)
     }
 }
 
@@ -114,15 +91,13 @@ impl Element {
         loop {
             cursor = if let Some(cursor) = ClosingTag::matches(tag_name, cursor) {
                 return (children, cursor);
-            } else if let Some((punct, cursor)) = cursor.punct() {
-                if punct.as_char() == '<' {
-                    let ts = start_cursor.token_stream();
-                    let elem: Element = syn::parse2(ts).unwrap();
+            } else if let Some((_, _)) = SmallerSign::matches(cursor) {
+                if let Some((elem, cursor)) =  Element::matches(start_cursor) {
                     children.push(elem);
+                    cursor
                 } else {
-                    panic!("Expected tag or expression");
+                    panic!("Cannot match child element.")
                 }
-                cursor
             } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Bracket) {
                 let expr = ElementExpression {
                     tokens: grp_cursor.token_stream(),
@@ -208,7 +183,6 @@ impl ToTokens for Element {
         let ts = match self {
             Element::Html(html) => {
                 quote! {
-                    use greenhorn::prelude::NodeBuilder;
                     #html
                 }
             },
@@ -258,6 +232,11 @@ impl ToTokens for HtmlElement {
                     ret.extend(evt.to_token_stream());
                 }
             }
+        }
+        for child in &self.children {
+            ret.extend(quote! {
+                .add(#child)
+            });
         }
         tokens.extend(ret);
     }
