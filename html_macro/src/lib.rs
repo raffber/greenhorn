@@ -4,6 +4,14 @@
 /// This crates complements greenhorn by adding a html!{} macro
 /// to simplify creating view functions:
 ///
+/// TODOs
+/// ======
+///
+/// [ ] Parse -123 in macro attributes
+/// [ ] Error Handling
+/// [ ] Node<T> must also support a list of elements
+/// [ ] support text...
+/// ```
 /// ```
 /// struct Main {
 /// }
@@ -33,7 +41,6 @@
 ///     }
 /// }
 ///
-/// ```
 ///
 
 

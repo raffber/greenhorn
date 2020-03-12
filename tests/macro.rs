@@ -136,12 +136,12 @@ fn test_listener() {
 #[test]
 fn test_children() {
     let node: Node<()> = html! (
-        <foo> <bar /> </>
+        <foo> <bar /> <bla /> </>
      ).into();
     match node {
         Node::Element(elem) => {
             let children = elem.children.as_ref().unwrap();
-            assert_eq!(children.len(), 1);
+            assert_eq!(children.len(), 2);
             let child = &children[0];
             match child {
                 Node::Element(child) => {

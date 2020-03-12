@@ -86,9 +86,9 @@ impl Element {
 
     fn parse_children<'a>(tag_name: &str, cursor: Cursor<'a>) -> (Vec<Element>, Cursor<'a>) {
         let mut children = Vec::<Element>::new();
-        let start_cursor = cursor;
         let mut cursor = cursor;
         loop {
+            let start_cursor = cursor;
             cursor = if let Some(cursor) = ClosingTag::matches(tag_name, cursor) {
                 return (children, cursor);
             } else if let Some((_, _)) = SmallerSign::matches(cursor) {
@@ -98,7 +98,7 @@ impl Element {
                 } else {
                     panic!("Cannot match child element.")
                 }
-            } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Bracket) {
+            } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Brace) {
                 let expr = ElementExpression {
                     tokens: grp_cursor.token_stream(),
                     span: grp
@@ -180,17 +180,15 @@ impl Parse for Element {
 
 impl ToTokens for Element {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let ts = match self {
+        match self {
             Element::Html(html) => {
-                quote! {
-                    #html
-                }
+                let ts = quote! { #html };
+                tokens.extend(ts);
             },
-            Element::Expr(_) => {
-                todo!()
+            Element::Expr(expr) => {
+                tokens.extend(expr.tokens.clone());
             },
         };
-        tokens.extend(ts);
     }
 }
 
