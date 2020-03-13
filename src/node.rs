@@ -39,6 +39,10 @@ impl<T: 'static> Node<T> {
         NodeBuilder::new_with_ns("http://www.w3.org/2000/svg")
     }
 
+    pub fn text<S: ToString>(data: S) -> Self {
+        Node::Text(data.to_string())
+    }
+
     pub fn map<U: 'static, F: 'static + Send + Fn(T) -> U>(self, fun: F) -> Node<U> {
         let fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>> = Arc::new(Mutex::new(Box::new(fun)));
         self.map_shared(fun)
@@ -532,6 +536,14 @@ impl From<BlobBuilder> for Blob {
 impl<T: 'static> From<Blob> for Node<T> {
     fn from(blob: Blob) -> Self {
         Node::Blob(blob)
+    }
+}
+
+impl<T: 'static> AddNodes<T> for Blob {
+    type Output = Once<Node<T>>;
+
+    fn into_nodes(self) -> Self::Output {
+        once(Node::Blob(self))
     }
 }
 
