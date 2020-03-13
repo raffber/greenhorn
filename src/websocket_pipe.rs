@@ -258,8 +258,8 @@ mod tests {
             let (mut stream, _) = connect_async(url).await.expect("Failed to connect!");
             while let Some(msg) = stream.next().await {
                 // receive one message, then terminate
-                match msg.unwrap() {
-                    Message::Text(data) => {
+                match msg {
+                    Ok(Message::Text(data))=> {
                         let msg: TxMsg = serde_json::from_str(&data).unwrap();
                         assert_matches!(msg, TxMsg::Ping());
                         break;

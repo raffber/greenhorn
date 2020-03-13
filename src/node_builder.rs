@@ -9,6 +9,12 @@ use crate::listener::Listener;
 use crate::node::Blob;
 use std::iter::{Once, once};
 
+pub trait AddNodes<T: 'static> {
+    type Output: Iterator<Item=Node<T>>;
+
+    fn into_nodes(self) -> Self::Output;
+}
+
 pub struct NodeBuilder<T> {
     namespace: Option<String>,
     marker: PhantomData<T>,
@@ -172,12 +178,12 @@ impl<T: 'static> ElementBuilder<T> {
 
     pub fn add<S>(mut self, children: S) -> Self
     where
-        S: IntoIterator,
-        S::Item: Into<Node<T>>,
+        S: AddNodes<T>
      {
-        for child in children {
-            self.children.push(child.into());
-        }
+         let mut iter = children.into_nodes();
+         while let Some(child) = iter.next() {
+             self.children.push(child.into());
+         }
         self
     }
 
@@ -257,11 +263,10 @@ impl<T: 'static> From<ElementBuilder<T>> for Node<T> {
     }
 }
 
-impl<T: 'static> IntoIterator for ElementBuilder<T> {
-    type Item = Node<T>;
-    type IntoIter = Once<Node<T>>;
+impl<T: 'static> AddNodes<T> for ElementBuilder<T> {
+    type Output = Once<Node<T>>;
 
-    fn into_iter(self) -> Self::IntoIter {
+    fn into_nodes(self) -> Self::Output {
         once(self.build())
     }
 }

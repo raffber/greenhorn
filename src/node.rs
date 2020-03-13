@@ -4,8 +4,9 @@ use std::fmt::{Debug, Formatter, Error};
 use crate::listener::Listener;
 use std::sync::{Arc, Mutex};
 use crate::event::Subscription;
-use crate::node_builder::{NodeBuilder, BlobBuilder};
+use crate::node_builder::{NodeBuilder, BlobBuilder, AddNodes};
 use std::iter::{once, Once};
+
 
 pub enum Node<T: 'static> {
     ElementMap(Box<dyn ElementMap<T>>),
@@ -117,11 +118,10 @@ impl<T: 'static> Node<T> {
     }
 }
 
-impl <T: 'static> IntoIterator for Node<T> {
-    type Item = Self;
-    type IntoIter = Once<Self>;
+impl<T: 'static> AddNodes<T> for Node<T> {
+    type Output = Once<Node<T>>;
 
-    fn into_iter(self) -> Self::IntoIter {
+    fn into_nodes(self) -> Self::Output {
         once(self)
     }
 }
@@ -132,11 +132,28 @@ impl<T: 'static> From<String> for Node<T> {
     }
 }
 
+impl<T: 'static> AddNodes<T> for String {
+    type Output = Once<Node<T>>;
+
+    fn into_nodes(self) -> Self::Output {
+        once(self.into())
+    }
+}
+
 impl<T: 'static> From<&str> for Node<T> {
     fn from(value: &str) -> Self {
         Node::Text(value.into())
     }
 }
+
+impl<T: 'static> AddNodes<T> for &str {
+    type Output = Once<Node<T>>;
+
+    fn into_nodes(self) -> Self::Output {
+        once(self.into())
+    }
+}
+
 
 impl<T: 'static> From<Subscription<T>> for Node<T> {
     fn from(value: Subscription<T>) -> Self {
@@ -144,12 +161,27 @@ impl<T: 'static> From<Subscription<T>> for Node<T> {
     }
 }
 
-impl <T: 'static> IntoIterator for Subscription<T> {
-    type Item = Node<T>;
-    type IntoIter = Once<Node<T>>;
+impl<T: 'static> AddNodes<T> for Subscription<T> {
+    type Output = Once<Node<T>>;
 
-    fn into_iter(self) -> Self::IntoIter {
+    fn into_nodes(self) -> Self::Output {
         once(Node::EventSubscription(self.id(), self))
+    }
+}
+
+impl<T: 'static> AddNodes<T> for Option<Node<T>> {
+    type Output = std::option::IntoIter<Node<T>>;
+
+    fn into_nodes(self) -> Self::Output {
+        self.into_iter()
+    }
+}
+
+impl<T: 'static, U: Iterator<Item=Node<T>>, S: IntoIterator<Item=Node<T>, IntoIter=U>> AddNodes<T> for S {
+    type Output = U;
+
+    fn into_nodes(self) -> Self::Output {
+        self.into_iter()
     }
 }
 
