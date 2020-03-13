@@ -177,8 +177,8 @@ impl Matches for JsEvent {
         let (_, cursor) = DollarSign::matches(cursor)?;
         let (name, cursor) = HtmlName::matches(cursor)?;
         let (_, cursor) = Equal::matches(cursor)?;
-        let lit = if let Some((lit, cursor)) = cursor.literal() {
-            lit
+        let (lit, cursor) = if let Some((lit, cursor)) = cursor.literal() {
+            (lit, cursor)
         } else {
             return Err(Error::new(cursor.span(), "Expected a string literal"));
         };

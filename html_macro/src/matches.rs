@@ -1,8 +1,5 @@
 use std::marker::PhantomData;
 use syn::buffer::Cursor;
-use syn::parse::Parse;
-use syn::Error;
-use syn::parse::ParseBuffer;
 use syn::Result;
 
 
@@ -37,17 +34,13 @@ impl<T: Matches> Matches for MatchSequence<T> {
     fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
         let mut c = cursor;
         let mut ret = Vec::new();
-        let mut first = false;
         loop {
             match T::matches(c) {
                 Ok((out, cursor)) => {
                     ret.push(out);
                     c = cursor;
                 },
-                Err(err) => {
-                    if first {
-                        return Err(err)
-                    }
+                Err(_) => {
                     break
                 },
             }
