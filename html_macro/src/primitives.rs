@@ -1,6 +1,7 @@
 use crate::matches::Matches;
 use syn::buffer::Cursor;
 use crate::matches::{MatchSequence, MatchTwo};
+use syn::{Result, Error};
 
 
 macro_rules! make_punct {
@@ -10,12 +11,19 @@ macro_rules! make_punct {
         impl Matches for $name {
             type Output = ();
 
-            fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
-                let (punct, cursor) = cursor.punct()?;
-                if punct.as_char() == $sign {
-                    Some(((), cursor))
+            fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
+                let err = || {
+                    let msg = format!("Expected `{}`.", stringify!($sign));
+                    Err(Error::new(cursor.span(), msg))
+                };
+                if let Some((punct, cursor)) = cursor.punct() {
+                    if punct.as_char() == $sign {
+                        Ok(((), cursor))
+                    } else {
+                        return err()
+                    }
                 } else {
-                    None
+                    return err()
                 }
             }
         }
@@ -38,9 +46,12 @@ struct HtmlNamePart;
 impl Matches for HtmlNamePart {
     type Output = String;
 
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
-        let (part, cursor) = cursor.ident()?;
-        Some((part.to_string(), cursor))
+    fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
+        if let Some((part, cursor)) = cursor.ident() {
+            Ok((part.to_string(), cursor))
+        } else {
+            Err(Error::new(cursor.span(), format!("Expected a identfier.")))
+        }
     }
 }
 
@@ -49,26 +60,30 @@ pub struct HtmlName(String);
 impl Matches for HtmlName {
     type Output = String;
 
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
-        let (part, cursor) = cursor.ident()?;
+    fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
+        let (part, cursor) = if let Some((part, cursor)) = cursor.ident() {
+            (part, cursor)
+        } else {
+            return Err(Error::new(cursor.span(), "Expected an identifier"));
+        };
         type Rest = MatchSequence<MatchTwo<Dash, HtmlNamePart>>;
-        if let Some((rest, cursor)) = Rest::matches(cursor) {
+        if let Ok((rest, cursor)) = Rest::matches(cursor) {
             println!("HtmlName::matches - dashed string");
             let mut rest: Vec<((), String)> = rest;
             let mut strings: Vec<String> = rest.drain(..).map(|x| x.1.to_ascii_lowercase()).collect();
             strings.insert(0, part.to_string());
             let ret = strings.join("-");
             if !ret.is_ascii() {
-                return None;
+                return Err(Error::new(cursor.span(), format!("Expected an ascii string but got {}", ret)));
             }
-            Some((ret,cursor))
+            Ok((ret,cursor))
         } else {
             println!("HtmlName::matches - simple string");
             let part = part.to_string();
             if !part.is_ascii() {
-                return None;
+                return Err(Error::new(cursor.span(), format!("Expected an ascii string but got {}", part)));
             }
-            Some((part,cursor))
+            Ok((part,cursor))
         }
     }
 }

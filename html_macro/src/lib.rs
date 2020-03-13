@@ -59,29 +59,31 @@ use proc_macro_error::proc_macro_error;
 #[proc_macro_error]
 #[proc_macro_hack]
 pub fn html(input: TokenStream) -> TokenStream {
-    if let Ok(root) = syn::parse::<Element>(input) {
-        println!("---------------------------");
-        TokenStream::from(quote! {
+    match syn::parse::<Element>(input) {
+        Ok(root) => TokenStream::from(quote! {
             use greenhorn::prelude::NodeBuilder;
             #root
-        })
-    } else {
-        panic!("Invalid macro inputs.");
+        }),
+        Err(err) => {
+            err.to_compile_error().into()
+        }
     }
 }
 
 #[proc_macro_error]
 #[proc_macro_hack]
 pub fn svg(input: TokenStream) -> TokenStream {
-    if let Ok(mut root) = syn::parse::<Element>(input) {
-        root.setup_namespace("http://www.w3.org/2000/svg");
-        println!("---------------------------");
-        TokenStream::from(quote! {
-            use greenhorn::prelude::NodeBuilder;
-            #root
-        })
-    } else {
-        panic!("Invalid macro inputs.");
+    match syn::parse::<Element>(input) {
+        Ok(mut root) => {
+            root.setup_namespace("http://www.w3.org/2000/svg");
+            TokenStream::from(quote! {
+                use greenhorn::prelude::NodeBuilder;
+                #root
+            })
+        },
+        Err(err) => {
+            err.to_compile_error().into()
+        }
     }
 }
 

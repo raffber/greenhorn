@@ -1,11 +1,11 @@
 use syn::parse::{Parse, ParseStream};
-use syn::parse::Result as SynResult;
 use quote::ToTokens;
 use proc_macro2::TokenStream;
 use syn::buffer::Cursor;
 use proc_macro_error::*;
+use syn::{Error, Result};
 
-use crate::matches::{Matches, MatchSequence, ParseAdapter};
+use crate::matches::{Matches, MatchSequence};
 use proc_macro2::Delimiter;
 use proc_macro2::Span;
 use quote::quote;
@@ -20,27 +20,28 @@ pub(crate) struct ElementStart {
 impl Matches for ElementStart {
     type Output = ElementStart;
 
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+    fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
         let (_, cursor) = SmallerSign::matches(cursor)?;
         let (name, cursor) = HtmlName::matches(cursor)?;
         let ret = ElementStart {
             tag: name
         };
-        Some((ret, cursor))
+        Ok((ret, cursor))
     }
 }
 
 pub(crate) struct ClosingTag;
 
 impl ClosingTag {
-    pub(crate) fn matches<'a>(tag_name: &str, cursor: Cursor<'a>) -> Option<Cursor<'a>> {
+    pub(crate) fn matches<'a>(tag_name: &str, cursor: Cursor<'a>) -> Result<Cursor<'a>> {
         // allow </> and </tag_name>
         let (_, cursor) = SmallerSign::matches(cursor)?;
         let (_, cursor) = Slash::matches(cursor)?;
         // optionally match for the tag name
-        let cursor = if let Some((name, cursor)) = HtmlName::matches(cursor) {
+        let cursor = if let Ok((name, cursor)) = HtmlName::matches(cursor) {
             if &name != tag_name {
-                return None;
+                let msg = format!("Tag name does not match expected value. Got `{}` but expected `{}`", name, tag_name);
+                return Err(Error::new(cursor.span(), msg));
             }
             cursor
         } else {
@@ -85,19 +86,19 @@ impl Element {
 
     }
 
-    fn parse_children<'a>(tag_name: &str, cursor: Cursor<'a>) -> (Vec<Element>, Cursor<'a>) {
+    fn parse_children<'a>(tag_name: &str, cursor: Cursor<'a>) -> Result<(Vec<Element>, Cursor<'a>)> {
         let mut children = Vec::<Element>::new();
         let mut cursor = cursor;
         loop {
             let start_cursor = cursor;
-            cursor = if let Some(cursor) = ClosingTag::matches(tag_name, cursor) {
-                return (children, cursor);
-            } else if let Some((_, _)) = SmallerSign::matches(cursor) {
-                if let Some((elem, cursor)) =  Element::matches(start_cursor) {
+            cursor = if let Ok(cursor) = ClosingTag::matches(tag_name, cursor) {
+                return Ok((children, cursor));
+            } else if let Ok((_, _)) = SmallerSign::matches(cursor) {
+                if let Ok((elem, cursor)) =  Element::matches(start_cursor) {
                     children.push(elem);
                     cursor
                 } else {
-                    panic!("Cannot match child element.")
+                    return Err(Error::new(cursor.span(), "Cannot match child element."));
                 }
             } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Brace) {
                 let expr = ElementExpression {
@@ -111,9 +112,9 @@ impl Element {
                 children.push(Element::Text(txt));
                 cursor
             } else if cursor.eof() {
-                panic!("No closing tag");
+                return Err(Error::new(cursor.span(), "No closing tag"));
             } else {
-                panic!("Unexpected string");
+                return Err(Error::new(cursor.span(), "Unexpected string"));
             };
         }
     }
@@ -122,7 +123,7 @@ impl Element {
 impl Matches for Element {
     type Output = Self;
 
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+    fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
         println!("Elemenet::parse - start");
 
         // match opening tag of the form <some-name
@@ -131,15 +132,17 @@ impl Matches for Element {
         println!("Elemenet::parse - element started");
 
         // parse all element attributes
-        let (attribtues, cursor) =
-            MatchSequence::<Attribute>::matches(cursor)
-                .unwrap_or_else(|| (Vec::new(), cursor));
+        let (attribtues, cursor) = MatchSequence::<Attribute>::matches(cursor)?;
 
         println!("Elemenet::parse - attributes matched");
 
         // now expect a ">" or a "/>",
         // in case there was only a ">", we continue parsing children
-        let (punct, cursor) = cursor.punct()?;
+        let (punct, cursor) = if let Some((punct, cursor)) = cursor.punct() {
+            (punct, cursor)
+        } else {
+            return Err(Error::new(cursor.span(), "Expected one of `>` or `/>`"))
+        };
         let punct = punct.as_char();
         let (children, cursor) = match punct {
             '/' => {
@@ -147,7 +150,7 @@ impl Matches for Element {
                 let cursor = if let Some((punct, cursor)) = cursor.punct() {
                     let punct = punct.as_char();
                     if punct != '>' {
-                        return None;
+                        return Err(Error::new(cursor.span(), "Expected a `>`"));
                     }
                     cursor
                 } else {
@@ -158,11 +161,11 @@ impl Matches for Element {
             '>' => {
                 println!("Elemenet::parse - start parsing children");
                 // this was only a start tag, parse children and end tag....
-                let ret = Element::parse_children(&elem_start.tag, cursor);
-                println!("Elemenet::parse - done parsing children");
-                ret
+                Element::parse_children(&elem_start.tag, cursor)?
             },
-            _ => panic!("Expected one of `>` or `/>`")
+            _ => {
+                return Err(Error::new(cursor.span(), "Expected one of `>` or `/>`"))
+            }
         };
 
         println!("Elemenet::parse - done");
@@ -173,13 +176,16 @@ impl Matches for Element {
             children,
             namespace: None
         });
-        Some((ret, cursor))
+        Ok((ret, cursor))
     }
 }
 
 impl Parse for Element {
-    fn parse(input: ParseStream) -> SynResult<Self> {
-        ParseAdapter::<Self>::parse(input).map(|x| x.unwrap())
+    fn parse(input: ParseStream) -> Result<Self> {
+        input.step(|cursor| {
+            let cursor = *cursor;
+            Self::matches(cursor)
+        })
     }
 }
 

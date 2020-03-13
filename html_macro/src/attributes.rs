@@ -1,13 +1,13 @@
 use quote::ToTokens;
 use proc_macro2::TokenStream;
 use syn::buffer::Cursor;
-
-use crate::matches::Matches;
 use proc_macro2::Delimiter;
 use proc_macro2::{Literal, Span};
 use quote::quote;
+use syn::{Result, Error};
 
 use crate::primitives::{HtmlName, Hash, AtSign, DollarSign, Equal, Dot};
+use crate::matches::Matches;
 
 pub(crate) struct HtmlAttribute {
     pub(crate) key: String,
@@ -29,21 +29,21 @@ pub enum AttributeValue {
 impl Matches for AttributeValue {
     type Output = Self;
 
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+    fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
         if let Some((literal, cursor)) = cursor.literal() {
             println!("AttributeValue::matches - literal");
-            Some((AttributeValue::Literal(literal), cursor))
-        } else if let Some((value, cursor)) = HtmlName::matches( cursor) {
+            Ok((AttributeValue::Literal(literal), cursor))
+        } else if let Ok((value, cursor)) = HtmlName::matches( cursor) {
             println!("AttributeValue::matches - html-name");
-            Some( (AttributeValue::HtmlName(value), cursor) )
+            Ok( (AttributeValue::HtmlName(value), cursor) )
         } else if let Some((grp_cursor, grp, cursor)) = cursor.group(Delimiter::Brace) {
             println!("AttributeValue::matches - group");
-            Some( (AttributeValue::Group(Group {
+            Ok( (AttributeValue::Group(Group {
                 stream: grp_cursor.token_stream(),
                 span: grp,
             }), cursor) )
         } else {
-            None
+            Err(Error::new(cursor.span(), "Cannot match a attribute value"))
         }
     }
 }
@@ -69,7 +69,7 @@ impl ToTokens for AttributeValue {
 impl Matches for HtmlAttribute {
     type Output = HtmlAttribute;
 
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+    fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
         println!("HtmlAttribute::matches - start");
         let (name, cursor) = HtmlName::matches(cursor)?;
         let (_, cursor) = Equal::matches(cursor)?;
@@ -79,7 +79,7 @@ impl Matches for HtmlAttribute {
             value
         };
         println!("HtmlAttribute::matches - done");
-        Some((ret, cursor))
+        Ok((ret, cursor))
     }
 }
 
@@ -97,10 +97,10 @@ impl ToTokens for ClassAttribute {
 impl Matches for ClassAttribute {
     type Output = ClassAttribute;
 
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+    fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
         let (_, cursor) = Dot::matches(cursor)?;
         let (name, cursor) = AttributeValue::matches(cursor)?;
-        Some((ClassAttribute {
+        Ok((ClassAttribute {
             value: name
         }, cursor))
     }
@@ -120,10 +120,10 @@ impl ToTokens for IdAttribute {
 impl Matches for IdAttribute {
     type Output = IdAttribute;
 
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+    fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
         let (_, cursor) = Hash::matches(cursor)?;
         let (name, cursor) = AttributeValue::matches(cursor)?;
-        Some((IdAttribute {
+        Ok((IdAttribute {
             value: name
         }, cursor))
     }
@@ -138,15 +138,18 @@ pub(crate) struct ListenerAttribute {
 impl Matches for ListenerAttribute  {
     type Output = ListenerAttribute ;
 
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+    fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
         let (_, cursor) = AtSign::matches(cursor)?;
         let (name, cursor) = HtmlName::matches(cursor)?;
         let (_, cursor) = Equal::matches(cursor)?;
-        let (grp_cursor, _grp, cursor) = cursor.group(Delimiter::Brace)?;
-        Some((ListenerAttribute  {
-            name,
-            value: grp_cursor.token_stream(),
-        }, cursor))
+        if let Some((grp_cursor, _grp, cursor)) = cursor.group(Delimiter::Brace) {
+            Ok((ListenerAttribute  {
+                name,
+                value: grp_cursor.token_stream(),
+            }, cursor))
+        } else {
+            Err(Error::new(cursor.span(), "Cannot match a { } delimited group."))
+        }
     }
 }
 
@@ -170,15 +173,19 @@ pub(crate) struct JsEvent {
 impl Matches for JsEvent {
     type Output = JsEvent;
 
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
+    fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
         let (_, cursor) = DollarSign::matches(cursor)?;
         let (name, cursor) = HtmlName::matches(cursor)?;
         let (_, cursor) = Equal::matches(cursor)?;
-        let (lit, cursor) = cursor.literal()?;
+        let lit = if let Some((lit, cursor)) = cursor.literal() {
+            lit
+        } else {
+            return Err(Error::new(cursor.span(), "Expected a string literal"));
+        };
         let value = lit.to_string();
         for b in value.bytes() {
             if b != b'"' {
-                panic!("Invalid non-string literal");
+                return Err(Error::new(cursor.span(), "Invalid non-string literal"));
             }
             break;
         }
@@ -188,7 +195,7 @@ impl Matches for JsEvent {
             name,
             value,
         };
-        Some((ret, cursor))
+        Ok((ret, cursor))
     }
 }
 
@@ -214,19 +221,20 @@ pub(crate) enum Attribute {
 impl Matches for Attribute {
     type Output = Attribute;
 
-    fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
-        if let Some((attr, cursor)) = HtmlAttribute::matches(cursor) {
-            Some((Attribute::Html(attr), cursor))
-        } else if let Some((attr, cursor)) = ClassAttribute::matches(cursor) {
-            Some((Attribute::Class(attr), cursor))
-        } else if let Some((attr, cursor)) = IdAttribute::matches(cursor) {
-            Some((Attribute::Id(attr), cursor))
-        } else if let Some((attr, cursor)) = ListenerAttribute::matches(cursor) {
-            Some((Attribute::Listener(attr), cursor))
-        } else if let Some((evt, cursor)) = JsEvent::matches(cursor) {
-            Some((Attribute::Js(evt), cursor))
+    fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
+        // TODO: improve error reporting but matching as much as possible
+        if let Ok((attr, cursor)) = HtmlAttribute::matches(cursor) {
+            Ok((Attribute::Html(attr), cursor))
+        } else if let Ok((attr, cursor)) = ClassAttribute::matches(cursor) {
+            Ok((Attribute::Class(attr), cursor))
+        } else if let Ok((attr, cursor)) = IdAttribute::matches(cursor) {
+            Ok((Attribute::Id(attr), cursor))
+        } else if let Ok((attr, cursor)) = ListenerAttribute::matches(cursor) {
+            Ok((Attribute::Listener(attr), cursor))
+        } else if let Ok((evt, cursor)) = JsEvent::matches(cursor) {
+            Ok((Attribute::Js(evt), cursor))
         } else {
-            None
+            Err(Error::new(cursor.span(), "Cannot match any attribute type"))
         }
     }
 }
