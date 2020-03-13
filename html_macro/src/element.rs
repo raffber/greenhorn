@@ -124,18 +124,10 @@ impl Matches for Element {
     type Output = Self;
 
     fn matches(cursor: Cursor) -> Result<(Self::Output, Cursor)> {
-        println!("Elemenet::parse - start");
-
         // match opening tag of the form <some-name
         let (elem_start, cursor) = ElementStart::matches(cursor)?;
-
-        println!("Elemenet::parse - element started");
-
         // parse all element attributes
         let (attribtues, cursor) = MatchSequence::<Attribute>::matches(cursor)?;
-
-        println!("Elemenet::parse - attributes matched");
-
         // now expect a ">" or a "/>",
         // in case there was only a ">", we continue parsing children
         let (punct, cursor) = if let Some((punct, cursor)) = cursor.punct() {
@@ -159,7 +151,6 @@ impl Matches for Element {
                 (Vec::new(), cursor)
             },
             '>' => {
-                println!("Elemenet::parse - start parsing children");
                 // this was only a start tag, parse children and end tag....
                 Element::parse_children(&elem_start.tag, cursor)?
             },
@@ -167,8 +158,6 @@ impl Matches for Element {
                 return Err(Error::new(cursor.span(), "Expected one of `>` or `/>`"))
             }
         };
-
-        println!("Elemenet::parse - done");
 
         let ret = Element::Html(HtmlElement {
             tag: elem_start.tag,

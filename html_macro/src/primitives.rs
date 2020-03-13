@@ -68,7 +68,6 @@ impl Matches for HtmlName {
         };
         type Rest = MatchSequence<MatchTwo<Dash, HtmlNamePart>>;
         if let Ok((rest, cursor)) = Rest::matches(cursor) {
-            println!("HtmlName::matches - dashed string");
             let mut rest: Vec<((), String)> = rest;
             let mut strings: Vec<String> = rest.drain(..).map(|x| x.1.to_ascii_lowercase()).collect();
             strings.insert(0, part.to_string());
@@ -78,7 +77,6 @@ impl Matches for HtmlName {
             }
             Ok((ret,cursor))
         } else {
-            println!("HtmlName::matches - simple string");
             let part = part.to_string();
             if !part.is_ascii() {
                 return Err(Error::new(cursor.span(), format!("Expected an ascii string but got {}", part)));
