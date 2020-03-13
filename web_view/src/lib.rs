@@ -89,9 +89,8 @@ impl<'a> ViewBuilder {
         html_content
     }
 
-
-    pub fn run(self) {
-        web_view::builder()
+    pub fn run<T: FnOnce() -> () + Send + 'static>(self, fun: T) {
+        let ret = web_view::builder()
             .title(&self.title)
             .content(Content::Html(self.format_html()))
             .size(self.width, self.height)
@@ -99,15 +98,15 @@ impl<'a> ViewBuilder {
             .resizable(true)
             .user_data(())
             .invoke_handler(|_webview, _arg| Ok(()))
-            .run()
+            .build()
             .unwrap();
+
+        thread::spawn(fun);
+
+        ret.run().unwrap();
     }
 
-    pub fn run_async(self) {
-        thread::spawn(move || {
-            self.run()
-        });
-    }
+
 }
 
 pub fn create_app<A: App>(app: A, port: u16) -> (Runtime<A, WebsocketPipe>, RuntimeControl<A>) {
