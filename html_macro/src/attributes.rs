@@ -32,7 +32,7 @@ impl Matches for AttributeValue {
     fn matches(cursor: Cursor) -> Option<(Self::Output, Cursor)> {
         if let Some((literal, cursor)) = cursor.literal() {
             println!("AttributeValue::matches - literal");
-            Some( (AttributeValue::Literal(literal), cursor) )
+            Some((AttributeValue::Literal(literal), cursor))
         } else if let Some((value, cursor)) = HtmlName::matches( cursor) {
             println!("AttributeValue::matches - html-name");
             Some( (AttributeValue::HtmlName(value), cursor) )

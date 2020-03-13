@@ -7,10 +7,8 @@
 /// TODOs
 /// ======
 ///
-/// [ ] Parse -123 in macro attributes
+/// [ ] Parse -123 in macro attributes - lower priority
 /// [ ] Error Handling
-/// [ ] Node<T> must also support a list of elements
-/// [ ] support text...
 /// ```
 /// ```
 /// struct Main {
