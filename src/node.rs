@@ -5,6 +5,7 @@ use crate::listener::Listener;
 use std::sync::{Arc, Mutex};
 use crate::event::Subscription;
 use crate::node_builder::{NodeBuilder, BlobBuilder};
+use std::iter::{once, Once};
 
 pub enum Node<T: 'static> {
     ElementMap(Box<dyn ElementMap<T>>),
@@ -116,6 +117,15 @@ impl<T: 'static> Node<T> {
     }
 }
 
+impl <T: 'static> IntoIterator for Node<T> {
+    type Item = Self;
+    type IntoIter = Once<Self>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        once(self)
+    }
+}
+
 impl<T: 'static> From<String> for Node<T> {
     fn from(value: String) -> Self {
         Node::Text(value)
@@ -131,6 +141,15 @@ impl<T: 'static> From<&str> for Node<T> {
 impl<T: 'static> From<Subscription<T>> for Node<T> {
     fn from(value: Subscription<T>) -> Self {
         Node::EventSubscription(value.id(), value)
+    }
+}
+
+impl <T: 'static> IntoIterator for Subscription<T> {
+    type Item = Node<T>;
+    type IntoIter = Once<Node<T>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        once(Node::EventSubscription(self.id(), self))
     }
 }
 
@@ -507,3 +526,4 @@ impl<T: 'static> From<Blob> for Node<T> {
         Node::Blob(blob)
     }
 }
+

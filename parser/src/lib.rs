@@ -69,7 +69,7 @@ fn load_tree<T: 'static>(node: NodeRef<scraper::node::Node>) -> Option<Node<T>> 
         ScraperNode::Element(elem) => {
             let mut builder = load_element(elem);
             for item in node.children() {
-                builder = builder.add_option(load_tree(item));
+                builder = builder.add(load_tree(item));
             }
             Some(builder.build())
         },

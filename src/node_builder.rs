@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use crate::node::{Node, NodeElement};
 use crate::listener::Listener;
 use crate::node::Blob;
+use std::iter::{Once, once};
 
 pub struct NodeBuilder<T> {
     namespace: Option<String>,
@@ -159,11 +160,6 @@ impl<T: 'static> ElementBuilder<T> {
         self
     }
 
-    pub fn add<S: Into<Node<T>>>(mut self, child: S) -> Self {
-        self.children.push(child.into());
-        self
-    }
-
     pub fn mount<ChildMsg, R, Mapper>(mut self, comp: &Component<R>, mapper: Mapper) -> Self
         where
             ChildMsg: 'static + Send,
@@ -174,14 +170,7 @@ impl<T: 'static> ElementBuilder<T> {
         self
     }
 
-    pub fn add_option<S: Into<Node<T>>>(mut self, child: Option<S>) -> Self {
-        if let Some(child) = child {
-            self.children.push(child.into());
-        }
-        self
-    }
-
-    pub fn add_all<S>(mut self, children: S) -> Self
+    pub fn add<S>(mut self, children: S) -> Self
     where
         S: IntoIterator,
         S::Item: Into<Node<T>>,
@@ -265,6 +254,15 @@ impl<T: 'static> ListenerBuilder<T> {
 impl<T: 'static> From<ElementBuilder<T>> for Node<T> {
     fn from(builder: ElementBuilder<T>) -> Self {
         builder.build()
+    }
+}
+
+impl<T: 'static> IntoIterator for ElementBuilder<T> {
+    type Item = Node<T>;
+    type IntoIter = Once<Node<T>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        once(self.build())
     }
 }
 

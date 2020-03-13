@@ -55,6 +55,7 @@ impl ClosingTag {
 pub(crate) enum Element {
     Html(HtmlElement),
     Expr(ElementExpression),
+    Text(String),
 }
 
 pub(crate) struct HtmlElement {
@@ -104,6 +105,10 @@ impl Element {
                     span: grp
                 };
                 children.push(Element::Expr(expr));
+                cursor
+            } else if let Some((ident, cursor)) = cursor.ident() {
+                let txt = ident.to_string();
+                children.push(Element::Text(txt));
                 cursor
             } else if cursor.eof() {
                 panic!("No closing tag");
@@ -182,13 +187,17 @@ impl ToTokens for Element {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
             Element::Html(html) => {
-                let ts = quote! { #html };
-                tokens.extend(ts);
+                html.to_tokens(tokens);
             },
             Element::Expr(expr) => {
                 tokens.extend(expr.tokens.clone());
             },
-        };
+            Element::Text(txt) => {
+                tokens.extend(quote! {
+                     NodeBuilder::new().text(#txt)
+                })
+            }
+        }
     }
 }
 
