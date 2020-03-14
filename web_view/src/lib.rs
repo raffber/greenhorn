@@ -3,6 +3,8 @@ use std::thread;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use greenhorn::prelude::*;
+use async_std::net::TcpListener;
+use async_std::task;
 
 pub struct ViewBuilder {
     pub css: Vec<String>,
@@ -41,11 +43,6 @@ impl<'a> ViewBuilder {
         self
     }
 
-    pub fn port(mut self, port: u16) -> Self {
-        self.port = port;
-        self
-    }
-
     pub fn title<T: Into<String>>(mut self, title: T) -> Self {
         self.title = title.into();
         self
@@ -62,8 +59,8 @@ impl<'a> ViewBuilder {
         self
     }
 
-    pub fn format_html(&self) -> String {
-        let js_main = format!("window.onload = function() {{ app = new greenhorn.Application(\"ws://127.0.0.1:\" + {}, document.body); }}", self.port);
+    pub fn format_html(&self, port: u16) -> String {
+        let js_main = format!("window.onload = function() {{ app = new greenhorn.Application(\"ws://127.0.0.1:\" + {}, document.body); }}", port);
         let js_lib = include_str!("../res/bundle.js");
         let mut additional = Vec::new();
         for x in &self.js {
@@ -89,10 +86,18 @@ impl<'a> ViewBuilder {
         html_content
     }
 
-    pub fn run<T: FnOnce() -> () + Send + 'static>(self, fun: T) {
+    pub fn run<T: FnOnce(WebsocketPipe) -> () + Send + 'static>(self, fun: T) {
+        let addr = SocketAddr::from_str("127.0.0.1:0").unwrap();
+
+        let socket = task::block_on(async {
+            TcpListener::bind(&addr).await
+        }).expect("Failed to bind");
+
+        let port = socket.local_addr().unwrap().port();
+
         let ret = web_view::builder()
             .title(&self.title)
-            .content(Content::Html(self.format_html()))
+            .content(Content::Html(self.format_html(port)))
             .size(self.width, self.height)
             .debug(self.debug)
             .resizable(true)
@@ -101,17 +106,11 @@ impl<'a> ViewBuilder {
             .build()
             .unwrap();
 
-        thread::spawn(fun);
+
+        let pipe = WebsocketPipe::listen_to_socket(socket);
+
+        thread::spawn(move || fun(pipe) );
 
         ret.run().unwrap();
     }
-
-
-}
-
-pub fn create_app<A: App>(app: A, port: u16) -> (Runtime<A, WebsocketPipe>, RuntimeControl<A>) {
-    let url  = format!("127.0.0.1:{}", port);
-    let addr = SocketAddr::from_str(&url).unwrap();
-    let pipe = WebsocketPipe::build(addr).listen();
-    Runtime::new(app, pipe)
 }

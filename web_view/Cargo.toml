@@ -9,3 +9,7 @@ edition = "2018"
 [dependencies]
 greenhorn = {path = ".."}
 web-view = "0.6.0"
+
+[dependencies.async-std]
+version = "1.4.0"
+features = ["unstable"]

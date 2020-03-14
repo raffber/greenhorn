@@ -12,12 +12,24 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use tungstenite::protocol::Message;
 
-pub struct WebsocketPipeBuilder {
-    addr: SocketAddr,
+struct PipeChannels {
     req_tx: UnboundedSender<Message>,
     req_rx: UnboundedReceiver<Message>,
     resp_tx: UnboundedSender<Message>,
     resp_rx: UnboundedReceiver<Message>,
+}
+
+impl PipeChannels {
+    fn new() -> Self {
+        let (req_tx, req_rx) = unbounded();
+        let (resp_tx, resp_rx) = unbounded();
+        PipeChannels {
+            req_tx,
+            resp_tx,
+            req_rx,
+            resp_rx,
+        }
+    }
 }
 
 pub struct WebsocketPipe {
@@ -27,20 +39,46 @@ pub struct WebsocketPipe {
 }
 
 impl WebsocketPipe {
-    pub fn build(addr: SocketAddr) -> WebsocketPipeBuilder {
-        let (req_tx, req_rx) = unbounded();
-        let (resp_tx, resp_rx) = unbounded();
-        WebsocketPipeBuilder {
-            addr,
-            req_tx,
-            resp_tx,
-            req_rx,
-            resp_rx,
+    pub fn listen_to_addr(addr: SocketAddr) -> WebsocketPipe {
+        let try_socket = task::block_on(async {
+            TcpListener::bind(&addr).await
+        });
+        let listener = try_socket.expect("Failed to bind");
+        Self::listen_to_socket(listener)
+    }
+
+    pub fn listen_to_socket(listener: TcpListener) -> WebsocketPipe {
+        let channels = PipeChannels::new();
+        let resp_tx = channels.resp_tx;
+        let req_rx = channels.req_rx;
+        let local_addr = listener.local_addr().unwrap();
+        let local_addr_cloned = local_addr.clone();
+        task::spawn(async move {
+            if let Ok((stream, _)) = listener.accept().await {
+                let ws = accept_async(stream).await.expect("Error during handshake");
+                let mut handler = ConnectionHandler {
+                    ws,
+                    resp_tx,
+                    req_rx,
+                };
+                handler.run().await;
+            } else {
+                error!("Could not accept connection on: {}", local_addr_cloned);
+            }
+        });
+        WebsocketPipe {
+            resp_rx: channels.resp_rx,
+            req_tx: channels.req_tx,
+            addr: local_addr,
         }
     }
 
     pub fn local_addr(&self) -> SocketAddr {
         self.addr.clone()
+    }
+
+    pub fn port(&self) -> u16 {
+        self.addr.port()
     }
 }
 
@@ -102,37 +140,6 @@ impl ConnectionHandler {
         } else {
             self.resp_tx.close_channel();
             false
-        }
-    }
-}
-
-impl WebsocketPipeBuilder {
-    pub fn listen(self) -> WebsocketPipe {
-        let resp_tx = self.resp_tx;
-        let req_rx = self.req_rx;
-        let addr = self.addr;
-        let try_socket = task::block_on(async {
-            TcpListener::bind(&addr).await
-        });
-        let listener = try_socket.expect("Failed to bind");
-        let local_addr = listener.local_addr();
-        task::spawn(async move {
-            if let Ok((stream, _)) = listener.accept().await {
-                let ws = accept_async(stream).await.expect("Error during handshake");
-                let mut handler = ConnectionHandler {
-                    ws,
-                    resp_tx,
-                    req_rx,
-                };
-                handler.run().await;
-            } else {
-                error!("Could not accept connection on: {}", addr);
-            }
-        });
-        WebsocketPipe {
-            resp_rx: self.resp_rx,
-            req_tx: self.req_tx,
-            addr: local_addr.unwrap(),
         }
     }
 }
@@ -223,7 +230,7 @@ mod tests {
     #[test]
     fn test_accept() {
         let addr = SocketAddr::from_str("127.0.0.1:5903").unwrap();
-        let mut pipe = WebsocketPipe::build(addr).listen();
+        let mut pipe = WebsocketPipe::listen_to_addr(addr);
         let handle = task::spawn(async move {
             let url = Url::parse("ws://127.0.0.1:5903").unwrap();
             let (mut stream, _) = connect_async(url).await.expect("Failed to connect!");
@@ -252,7 +259,7 @@ mod tests {
     #[test]
     fn test_close_client() {
         let addr = SocketAddr::from_str("127.0.0.1:5904").unwrap();
-        let pipe = WebsocketPipe::build(addr).listen();
+        let pipe = WebsocketPipe::listen_to_addr(addr);
         let client = task::spawn(async move {
             let url = Url::parse("ws://127.0.0.1:5904").unwrap();
             let (mut stream, _) = connect_async(url).await.expect("Failed to connect!");
@@ -284,7 +291,7 @@ mod tests {
     #[test]
     fn test_close_server() {
         let addr = SocketAddr::from_str("127.0.0.1:5905").unwrap();
-        let pipe = WebsocketPipe::build(addr).listen();
+        let pipe = WebsocketPipe::listen_to_addr(addr);
         let client = task::spawn(async move {
             let url = Url::parse("ws://127.0.0.1:5905").unwrap();
             let (mut stream, _) = connect_async(url).await.expect("Failed to connect!");

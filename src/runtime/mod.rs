@@ -29,7 +29,7 @@ struct ComponentDom<M: 'static> {
     component: Box<dyn ComponentMap<M>>,
 }
 
-pub struct Runtime<A: 'static + App, P: Pipe> {
+pub struct Runtime<A: 'static + App, P: 'static + Pipe> {
     tx: UnboundedSender<RuntimeMsg<A>>,
     rx: UnboundedReceiver<RuntimeMsg<A>>,
     app: A,
@@ -71,7 +71,7 @@ enum RuntimeMsg<A: App> {
     AsyncMsg(A::Message),
 }
 
-impl<A: App, P: 'static + Pipe> Runtime<A, P> {
+impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     pub fn new(app: A, pipe: P) -> (Runtime<A, P>, RuntimeControl<A>) {
         let (tx, rx) = unbounded();
         let (sender, receiver) = pipe.split();
