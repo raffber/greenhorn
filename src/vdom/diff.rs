@@ -3,6 +3,14 @@ use crate::runtime::{RenderResult, Frame};
 use crate::vdom::{Patch, VElement, PatchItem, VNode};
 use std::collections::{HashMap, HashSet};
 
+// Expansion ideas
+// [ ] key based diffing
+// Refer to https://programming.vip/docs/realization-and-analysis-of-virtual-dom-diff-algorithm.html
+// performance tuning...
+// hash based diffing => compute hash in parallel
+// https://github.com/Matt-Esch/virtual-dom/blob/master/vtree/diff.js
+//
+
 pub(crate) struct Differ<'a, A: App> {
     old: &'a Frame<A>,
     new: &'a RenderResult<A>,
