@@ -15,7 +15,6 @@ use crate::node::{ComponentMap, ComponentContainer};
 use crate::runtime::render::RenderedState;
 pub(crate) use crate::runtime::render::{RenderResult, Frame};
 use crate::runtime::metrics::Metrics;
-use metered::measure;
 
 mod service_runner;
 mod render;
@@ -289,11 +288,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         self.not_applied_counter = 0;
         let old_frame = self.current_frame.take();
 
-        let time = &self.metrics.root.time;
-        let dom = measure!(time, {
-            self.app.render()
-        });
-        println!("Render: {:?}", time);
+        let dom = self.app.render();
 
         let updated = self.invalidated_components.take().unwrap();
         self.invalidated_components = Some(HashSet::new());
