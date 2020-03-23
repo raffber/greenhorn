@@ -14,9 +14,12 @@ use std::collections::{HashMap, VecDeque, HashSet};
 use crate::node::{ComponentMap, ComponentContainer};
 use crate::runtime::render::RenderedState;
 pub(crate) use crate::runtime::render::{RenderResult, Frame};
+use crate::runtime::metrics::Metrics;
+use metered::measure;
 
 mod service_runner;
 mod render;
+mod metrics;
 
 const DEFAULT_RENDER_INTERVAL: u64 = 30;
 const RENDER_RETRY_INTERVAL: u64 = 10;
@@ -47,6 +50,7 @@ pub struct Runtime<A: 'static + App, P: 'static + Pipe> {
     invalidate_all: bool,
     not_applied_counter: i32,
     dirty: bool,
+    metrics: Metrics,
 }
 
 pub struct RuntimeControl<A: App> {
@@ -93,7 +97,8 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             dirty: false,
             invalidate_all: false,
             current_frame: None,
-            not_applied_counter: 0
+            not_applied_counter: 0,
+            metrics: Default::default(),
         };
         let control = RuntimeControl { tx };
         (runtime, control)
@@ -283,7 +288,13 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         }
         self.not_applied_counter = 0;
         let old_frame = self.current_frame.take();
-        let dom = self.app.render();
+
+        let time = &self.metrics.root.time;
+        let dom = measure!(time, {
+            self.app.render()
+        });
+        println!("Render: {:?}", time);
+
         let updated = self.invalidated_components.take().unwrap();
         self.invalidated_components = Some(HashSet::new());
 
