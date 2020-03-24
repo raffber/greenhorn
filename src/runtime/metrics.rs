@@ -4,7 +4,8 @@ use std::io;
 use serde::Serialize;
 use std::time::Instant;
 use hdrhistogram::Histogram;
-use serde_json::Value as JsonValue;
+use serde_json::{Value as JsonValue, Value};
+
 
 trait Metric {
     fn histogram(&self) -> &Histogram<u64>;
@@ -52,12 +53,24 @@ impl Throughput {
             self.last_update = Some(now);
         }
     }
-
 }
 
 impl Default for Throughput {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Metric for Throughput {
+    fn histogram(&self) -> &Histogram<u64> {
+        &self.hist
+    }
+
+    fn dump(&self) -> Value {
+        json!{
+
+        }
+        todo!()
     }
 }
 
@@ -102,6 +115,7 @@ pub struct Metrics {
 }
 
 
+
 impl Metrics {
     fn new() -> Self {
         Default::default()
@@ -122,7 +136,7 @@ impl Metrics {
         ret
     }
 
-    fn dump(&self, out: impl io::Write) {
+    fn write(&self, out: impl io::Write) {
         todo!()
     }
 }
