@@ -1,24 +1,68 @@
 use std::collections::HashMap;
 use crate::Id;
 use std::io;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use std::time::Instant;
-use hdrhistogram::Histogram;
-use serde_json::{Value as JsonValue, Value};
+use hdrhistogram::Histogram as HdrHistogram;
+use hdrhistogram::{CreationError, RecordError};
+use std::result::Result as StdResult;
+use serde_json::json;
+
+// newtype for histogram to impl Serialize
+struct Histogram(HdrHistogram<u64>);
 
 
-trait Metric {
-    fn histogram(&self) -> &Histogram<u64>;
-    fn dump(&self) -> JsonValue;
+impl Histogram {
+    pub fn new_with_bounds(low: u64, high: u64, sigfig: u8) -> Result<Self, CreationError> {
+        HdrHistogram::new_with_bounds(low, high, sigfig).map(|x| Histogram(x))
+    }
+
+    pub fn record_n(&mut self, value: u64, count: u64) -> Result<(), RecordError> {
+        self.0.record_n(value, count)
+    }
+
+    pub fn record(&mut self, value: u64) -> Result<(), RecordError> {
+        self.0.record(value)
+    }
 }
 
+impl Serialize for Histogram {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+        where S: Serializer
+    {
+        let quantiles: Vec<_> = self.0
+            .iter_quantiles(16)
+            .map(|x| x.quantile())
+            .collect();
+
+        let json = json!({
+            "len": self.0.len(),
+            "min": self.0.min(),
+            "max": self.0.max(),
+            "mean": self.0.mean(),
+            "quantiles": quantiles,
+        });
+        json.serialize(serializer)
+    }
+}
+
+trait Metric<'de> : Serialize {
+    fn histogram(&self) -> &Histogram;
+}
+
+#[derive(Serialize)]
 struct ResponseTime {
-    hist: Histogram<u64>,
+    hist: Histogram,
 }
 
+#[derive(Serialize)]
 struct Throughput {
-    hist: Histogram<u64>,
+    hist: Histogram,
+
+    #[serde(skip_serializing)]
     last_update: Option<Instant>,
+
+    #[serde(skip_serializing)]
     last_count: u64,
 }
 
@@ -42,10 +86,10 @@ impl Throughput {
             let delta = now.duration_since(last_update).as_secs_f64();
             let delta_int = delta as u64;
             if delta_int >= 2 {
-                self.hist.record_n(0, delta_int - 1);
+                self.hist.record_n(0, delta_int - 1).unwrap();
             }
             if delta_int >= 1 {
-                self.hist.record(self.last_count);
+                self.hist.record(self.last_count).unwrap();
                 self.last_update = Some(now);
             }
             self.last_count = 0;
@@ -61,18 +105,12 @@ impl Default for Throughput {
     }
 }
 
-impl Metric for Throughput {
-    fn histogram(&self) -> &Histogram<u64> {
+impl Metric<'_> for Throughput {
+    fn histogram(&self) -> &Histogram {
         &self.hist
     }
-
-    fn dump(&self) -> Value {
-        json!{
-
-        }
-        todo!()
-    }
 }
+
 
 impl ResponseTime {
     fn new() -> Self {
@@ -87,7 +125,7 @@ impl ResponseTime {
         let after = Instant::now();
         let delta = after.duration_since(before);
         let delta = delta.as_micros();
-        self.hist.record(delta as u64);
+        self.hist.record(delta as u64).unwrap();
         ret
     }
 }
@@ -100,8 +138,8 @@ impl Default for ResponseTime {
 
 #[derive(Serialize, Default)]
 pub struct ComponentMetric {
-    pub time: ResponseTime,
-    pub throughput: Throughput,
+    time: ResponseTime,
+    throughput: Throughput,
 }
 
 impl ComponentMetric {
@@ -115,13 +153,12 @@ pub struct Metrics {
 }
 
 
-
 impl Metrics {
     fn new() -> Self {
         Default::default()
     }
 
-    fn run_comp<T, F>(&mut self, id: Id, fun: &mut F) -> T
+    fn run_comp<T, F>(&mut self, id: Id, fun: F) -> T
         where
             F: FnOnce() -> T
     {
@@ -136,7 +173,8 @@ impl Metrics {
         ret
     }
 
-    fn write(&self, out: impl io::Write) {
-        todo!()
+    fn write(&self, out: impl io::Write) -> StdResult<(), String> {
+        serde_json::to_writer(out, self)
+            .map_err(|x| format!("{}", x))
     }
 }
