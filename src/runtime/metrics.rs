@@ -69,7 +69,7 @@ pub struct Throughput {
 impl Throughput {
     pub fn new() -> Self {
         Self {
-            hist: Histogram::new_with_bounds(0, 10000, 3).unwrap(),
+            hist: Histogram::new_with_bounds(1, 10000, 3).unwrap(),
             last_update: None,
             last_count: 0,
         }
@@ -115,7 +115,7 @@ impl Metric<'_> for Throughput {
 impl ResponseTime {
     pub fn new() -> Self {
         Self {
-            hist: Histogram::new_with_bounds(0, 1e6 as u64, 3).unwrap()
+            hist: Histogram::new_with_bounds(1, 1e6 as u64, 3).unwrap()
         }
     }
 

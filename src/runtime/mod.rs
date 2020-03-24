@@ -143,8 +143,8 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         self.metrics
     }
 
-    pub fn run_blocking(self) {
-        async_std::task::block_on(self.run());
+    pub fn run_blocking(self) -> Metrics {
+        async_std::task::block_on(self.run())
     }
 
     fn handle_service_msg(&mut self, msg: ServiceMessage<A::Message>) {

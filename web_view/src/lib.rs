@@ -109,8 +109,10 @@ impl<'a> ViewBuilder {
 
         let pipe = WebsocketPipe::listen_to_socket(socket);
 
-        thread::spawn(move || fun(pipe) );
+        let thread = thread::spawn(move || fun(pipe) );
 
         ret.run().unwrap();
+
+        thread.join().unwrap();
     }
 }
