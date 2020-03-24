@@ -6,6 +6,7 @@ use crate::listener::Listener;
 use crate::event::Subscription;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use crate::runtime::metrics::Metrics;
 
 // TODO: currently an event cannot be subscribed to multiple times
 // since we store the event_id as the key to find a single subscription
@@ -139,7 +140,7 @@ impl<A: App> RenderResult<A> {
         }
     }
 
-    pub(crate) fn from_root(root_rendered: Node<A::Message>) -> Self {
+    pub(crate) fn from_root(root_rendered: Node<A::Message>, _metrics: &mut Metrics) -> Self {
         let mut result = Vec::new();
         let vdom = RenderedComponent::<A>::render_recursive(root_rendered, &mut result)
             .expect("Root produced an empty DOM");
@@ -242,7 +243,7 @@ impl<A: App> RenderResult<A> {
     }
 
     /// precondition: The root component must still be valid and not require a re-render
-    pub(crate) fn from_frame(old: &Frame<A>, changes: &HashSet<Id>) -> Self {
+    pub(crate) fn from_frame(old: &Frame<A>, changes: &HashSet<Id>, _metrics: &mut Metrics) -> Self {
         let mut old = &old.rendered;
         let mut ret = Self {
             listeners: Default::default(),

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::Id;
 use std::io;
 use serde::{Serialize, Serializer};
-use std::time::Instant;
+use std::time::{Instant, Duration};
 use hdrhistogram::Histogram as HdrHistogram;
 use hdrhistogram::{CreationError, RecordError};
 use std::result::Result as StdResult;
@@ -51,12 +51,12 @@ trait Metric<'de> : Serialize {
 }
 
 #[derive(Serialize)]
-struct ResponseTime {
+pub struct ResponseTime {
     hist: Histogram,
 }
 
 #[derive(Serialize)]
-struct Throughput {
+pub struct Throughput {
     hist: Histogram,
 
     #[serde(skip_serializing)]
@@ -67,7 +67,7 @@ struct Throughput {
 }
 
 impl Throughput {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             hist: Histogram::new_with_bounds(0, 10000, 3).unwrap(),
             last_update: None,
@@ -75,12 +75,12 @@ impl Throughput {
         }
     }
 
-    fn hit(&mut self) {
+    pub fn hit(&mut self) {
         self.update();
         self.last_count += 1;
     }
 
-    fn update(&mut self) {
+    pub fn update(&mut self) {
         let now = Instant::now();
         if let Some(last_update) = self.last_update {
             let delta = now.duration_since(last_update).as_secs_f64();
@@ -113,13 +113,13 @@ impl Metric<'_> for Throughput {
 
 
 impl ResponseTime {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             hist: Histogram::new_with_bounds(0, 1e6 as u64, 3).unwrap()
         }
     }
 
-    fn run<T, F: FnOnce() -> T>(&mut self, fun: F) -> T {
+    pub fn run<T, F: FnOnce() -> T>(&mut self, fun: F) -> T {
         let before = Instant::now();
         let ret = fun();
         let after = Instant::now();
@@ -127,6 +127,10 @@ impl ResponseTime {
         let delta = delta.as_micros();
         self.hist.record(delta as u64).unwrap();
         ret
+    }
+
+    pub fn record(&mut self, delta: Duration) {
+        self.hist.record(delta.as_micros() as u64).unwrap();
     }
 }
 
@@ -143,22 +147,30 @@ pub struct ComponentMetric {
 }
 
 impl ComponentMetric {
-    fn new() -> Self { Default::default() }
+    pub fn new() -> Self { Default::default() }
+
+    pub fn run<T, F: FnOnce() -> T>(&mut self, fun: F) -> T {
+        let ret = self.time.run(fun);
+        self.throughput.hit();
+        ret
+    }
 }
 
 #[derive(Serialize, Default)]
 pub struct Metrics {
     pub components: HashMap<Id, ComponentMetric>,
     pub root: ComponentMetric,
+    pub diff: ResponseTime,
+    pub empty_patch: ResponseTime,
 }
 
 
 impl Metrics {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Default::default()
     }
 
-    fn run_comp<T, F>(&mut self, id: Id, fun: F) -> T
+    pub fn run_comp<T, F>(&mut self, id: Id, fun: F) -> T
         where
             F: FnOnce() -> T
     {
@@ -168,12 +180,10 @@ impl Metrics {
             self.components.insert(id, ComponentMetric::new());
             self.components.get_mut(&id).unwrap()
         };
-        let ret = metric.time.run(fun);
-        metric.throughput.hit();
-        ret
+        metric.run(fun)
     }
 
-    fn write(&self, out: impl io::Write) -> StdResult<(), String> {
+    pub fn write(&self, out: impl io::Write) -> StdResult<(), String> {
         serde_json::to_writer(out, self)
             .map_err(|x| format!("{}", x))
     }

@@ -15,6 +15,7 @@ use crate::node::{ComponentMap, ComponentContainer};
 use crate::runtime::render::RenderedState;
 pub(crate) use crate::runtime::render::{RenderResult, Frame};
 use crate::runtime::metrics::Metrics;
+use std::time::{Instant, Duration};
 
 mod service_runner;
 mod render;
@@ -69,8 +70,8 @@ impl<A: App> RuntimeControl<A> {
 enum RuntimeMsg<A: App> {
     Cancel,
     Update(A::Message),
-    ApplyNextFrame(Frame<A>),
-    NextFrameRendering(Frame<A>),
+    ApplyNextFrame(Frame<A>, Duration),
+    NextFrameRendering(Frame<A>, Duration),
     AsyncMsg(A::Message),
 }
 
@@ -103,7 +104,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         (runtime, control)
     }
 
-    pub async fn run(mut self) {
+    pub async fn run(mut self) -> Metrics {
         self.schedule_render(DEFAULT_RENDER_INTERVAL);
         let (mailbox, receiver) = Mailbox::<A::Message>::new();
         self.app.mount(mailbox);
@@ -139,6 +140,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 }
             }
         }
+        self.metrics
     }
 
     pub fn run_blocking(self) {
@@ -188,14 +190,16 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             RuntimeMsg::Update(msg) => {
                 self.update(msg);
             }
-            RuntimeMsg::ApplyNextFrame(frame) => {
+            RuntimeMsg::ApplyNextFrame(frame, duration) => {
                 self.next_frame = None;
                 self.rendered.apply(&frame);
                 self.current_frame = Some(frame);
+                self.metrics.empty_patch.record(duration);
             }
-            RuntimeMsg::NextFrameRendering(frame) => {
+            RuntimeMsg::NextFrameRendering(frame, duration) => {
                 // schedule next frame
                 self.next_frame = Some(frame);
+                self.metrics.diff.record(duration);
             },
             RuntimeMsg::AsyncMsg(msg) => {
                 self.update(msg);
@@ -288,17 +292,19 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         self.not_applied_counter = 0;
         let old_frame = self.current_frame.take();
 
-        let dom = self.app.render();
+        let metrics = &mut self.metrics;
+        let app = &mut self.app;
+        let dom = metrics.root.run(|| app.render() );
 
         let updated = self.invalidated_components.take().unwrap();
         self.invalidated_components = Some(HashSet::new());
 
         let result = if self.invalidate_all {
-            RenderResult::from_root(dom)
+            RenderResult::from_root(dom, &mut self.metrics)
         } else if let Some(old_frame) = &old_frame {
-            RenderResult::from_frame(old_frame, &updated)
+            RenderResult::from_frame(old_frame, &updated, &mut self.metrics)
         } else {
-            RenderResult::from_root(dom)
+            RenderResult::from_root(dom, &mut self.metrics)
         };
         self.invalidate_all = false;
         self.dirty = false;
@@ -307,21 +313,24 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
 
         async_std::task::spawn_blocking(move || {
             // create a patch
+            let before = Instant::now();
             let patch= if let Some(old_frame) = &old_frame {
                 Differ::new(&old_frame, &result, updated).diff()
             } else {
                 Patch::from_dom(&result)
             };
+            let after = Instant::now();
+            let delta = after.duration_since(before);
 
             if patch.is_empty() {
                 let translations = patch.translations;
                 let frame = Frame::new(result, translations);
-                let _ = tx.unbounded_send(RuntimeMsg::ApplyNextFrame(frame));
+                let _ = tx.unbounded_send(RuntimeMsg::ApplyNextFrame(frame, delta));
             } else {
                 let serialized = patch_serialize(&result, &patch);
                 let translations = patch.translations;
                 let frame = Frame::new(result, translations);
-                let _ = tx.unbounded_send(RuntimeMsg::NextFrameRendering(frame));
+                let _ = tx.unbounded_send(RuntimeMsg::NextFrameRendering(frame, delta));
 
                 // serialize the patch and send it to the client
                 sender.send(TxMsg::Patch(serialized));
