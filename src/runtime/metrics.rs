@@ -7,6 +7,7 @@ use hdrhistogram::Histogram as HdrHistogram;
 use hdrhistogram::{CreationError, RecordError};
 use std::result::Result as StdResult;
 use serde_json::json;
+use std::cmp::max;
 
 // newtype for histogram to impl Serialize
 struct Histogram(HdrHistogram<u64>);
@@ -30,9 +31,13 @@ impl Serialize for Histogram {
     fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
         where S: Serializer
     {
+        let num = 16;
+        let step = max(self.0.max() / num, 1);
+        let len = self.0.len();
         let quantiles: Vec<_> = self.0
-            .iter_quantiles(16)
-            .map(|x| x.quantile())
+            .iter_linear(step)
+            .take(num as usize)
+            .map(|x| (x.quantile(), x.count_since_last_iteration() as f64) )
             .collect();
 
         let json = json!({
