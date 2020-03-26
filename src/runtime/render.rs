@@ -8,6 +8,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use crate::runtime::metrics::Metrics;
 use crate::runtime::component::RenderedComponent;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hasher, Hash};
 
 // TODO: currently an event cannot be subscribed to multiple times
 // since we store the event_id as the key to find a single subscription
@@ -190,28 +192,38 @@ impl<A: App> Frame<A> {
     }
 }
 
-#[derive(Hash, Eq, Debug, Clone)]
+#[derive(Eq, Debug, Clone)]
 pub(crate) struct ListenerKey {
-    id: Id,
-    name: String,
+    hash: u64
+}
+
+impl Hash for ListenerKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_u64(self.hash);
+    }
 }
 
 impl ListenerKey {
     pub(crate) fn new<M: 'static + Send>(listener: &Listener<M>) -> Self {
-        Self {
-            id: listener.node_id,
-            name: listener.event_name.clone()
-        }
+        let mut hasher = DefaultHasher::new();
+        hasher.write_u64(listener.node_id.id);
+        hasher.write(listener.event_name.as_bytes());
+        let hash = hasher.finish();
+        Self { hash }
     }
 
     pub(crate) fn from_raw(id: Id, name: &str) -> Self {
-        Self { id, name: name.to_string() }
+        let mut hasher = DefaultHasher::new();
+        hasher.write_u64(id.id);
+        hasher.write(name.as_bytes());
+        let hash = hasher.finish();
+        Self { hash }
     }
 }
 
 impl PartialEq for ListenerKey {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.name == other.name
+        self.hash == other.hash
     }
 }
 
