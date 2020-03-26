@@ -83,7 +83,8 @@ pub(crate) struct RenderResult<A: App> {
 }
 
 impl<A: App> RenderResult<A> {
-    pub(crate) fn from_vnode(root: VNode) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new_from_vnode(root: VNode) -> Self {
         Self {
             listeners: Default::default(),
             subscriptions: Default::default(),
@@ -94,7 +95,7 @@ impl<A: App> RenderResult<A> {
         }
     }
 
-    pub(crate) fn from_root(root_rendered: Node<A::Message>, _metrics: &mut Metrics) -> Self {
+    pub(crate) fn new_from_root(root_rendered: Node<A::Message>, _metrics: &mut Metrics) -> Self {
         let mut result = Vec::new();
         let vdom = render_recursive::<A>(root_rendered, &mut result)
             .expect("Root produced an empty DOM");
@@ -151,6 +152,29 @@ impl<A: App> RenderResult<A> {
         }
     }
 
+    /// precondition: The root component must still be valid and not require a re-render
+    pub(crate) fn new_from_frame(old: &Frame<A>, changes: &HashSet<Id>, _metrics: &mut Metrics) -> Self {
+        let mut old = &old.rendered;
+        let mut ret = Self {
+            listeners: Default::default(),
+            subscriptions: Default::default(),
+            blobs: Default::default(),
+            components: HashMap::with_capacity(old.components.len() * 2 ),
+            root_components: HashSet::new(),
+            root: old.root.clone(),
+        };
+
+        let root_components = old.root_components.clone(); // XXX: workaround
+        for id in &root_components {
+            let comp = old.components.get(id).unwrap();
+            ret.render_component_from_old(&mut old, comp.component(), changes);
+        }
+
+        ret.root_components = old.root_components.clone();
+        ret.root = old.root.clone();
+        ret
+    }
+
     fn render_component_from_old(&mut self, old: &RenderResult<A>,
             comp: ComponentContainer<A::Message>,
             rendered: &HashSet<Id>) {
@@ -196,29 +220,6 @@ impl<A: App> RenderResult<A> {
         }
     }
 
-    /// precondition: The root component must still be valid and not require a re-render
-    pub(crate) fn from_frame(old: &Frame<A>, changes: &HashSet<Id>, _metrics: &mut Metrics) -> Self {
-        let mut old = &old.rendered;
-        let mut ret = Self {
-            listeners: Default::default(),
-            subscriptions: Default::default(),
-            blobs: Default::default(),
-            components: HashMap::with_capacity(old.components.len() * 2 ),
-            root_components: HashSet::new(),
-            root: old.root.clone(),
-        };
-
-        let root_components = old.root_components.clone(); // XXX: workaround
-        for id in &root_components {
-            let comp = old.components.get(id).unwrap();
-            ret.render_component_from_old(&mut old, comp.component(), changes);
-        }
-
-        ret.root_components = old.root_components.clone();
-        ret.root = old.root.clone();
-        ret
-    }
-
     pub(crate) fn get_component_vdom(&self, component_id: &Id) -> Option<&VNode> {
         self.components.get(component_id).map(|x| x.vdom())
     }
@@ -234,9 +235,10 @@ impl<A: App> Frame<A> {
         Self { rendered, translations }
     }
 
-    pub(crate) fn from_vnode(vdom: VNode) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new_from_vnode(vdom: VNode) -> Self {
         Self {
-            rendered: RenderResult::from_vnode(vdom),
+            rendered: RenderResult::new_from_vnode(vdom),
             translations: Default::default()
         }
     }

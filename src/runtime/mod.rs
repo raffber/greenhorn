@@ -304,11 +304,11 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         self.invalidated_components = Some(HashSet::new());
 
         let result = if self.invalidate_all {
-            RenderResult::from_root(dom, &mut self.metrics)
+            RenderResult::new_from_root(dom, &mut self.metrics)
         } else if let Some(old_frame) = &old_frame {
-            RenderResult::from_frame(old_frame, &updated, &mut self.metrics)
+            RenderResult::new_from_frame(old_frame, &updated, &mut self.metrics)
         } else {
-            RenderResult::from_root(dom, &mut self.metrics)
+            RenderResult::new_from_root(dom, &mut self.metrics)
         };
         self.invalidate_all = false;
         self.dirty = false;

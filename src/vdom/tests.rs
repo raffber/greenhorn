@@ -52,8 +52,8 @@ fn test_remove_attr() {
         children: vec![],
         namespace: None,
     });
-    let old = Frame::<DummyApp>::from_vnode(elem_a);
-    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let old = Frame::<DummyApp>::new_from_vnode(elem_a);
+    let new = RenderResult::<DummyApp>::new_from_vnode(elem_b);
     let patch = diff(&old, &new);
 
     assert_eq!(patch.translations.len(), 1);
@@ -90,8 +90,8 @@ fn test_add_attr() {
         namespace: None,
     });
 
-    let old = Frame::<DummyApp>::from_vnode(elem_a);
-    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let old = Frame::<DummyApp>::new_from_vnode(elem_a);
+    let new = RenderResult::<DummyApp>::new_from_vnode(elem_b);
     let patch = diff(&old, &new);
 
     assert_eq!(patch.translations.len(), 1);
@@ -129,8 +129,8 @@ fn test_change_attr() {
         namespace: None,
     });
 
-    let old = Frame::<DummyApp>::from_vnode(elem_a);
-    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let old = Frame::<DummyApp>::new_from_vnode(elem_a);
+    let new = RenderResult::<DummyApp>::new_from_vnode(elem_b);
     let patch = diff(&old, &new);
 
     assert_eq!(patch.translations.len(), 1);
@@ -166,8 +166,8 @@ fn test_change_tag() {
         namespace: None,
     });
 
-    let old = Frame::<DummyApp>::from_vnode(elem_a);
-    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let old = Frame::<DummyApp>::new_from_vnode(elem_a);
+    let new = RenderResult::<DummyApp>::new_from_vnode(elem_b);
     let patch = diff(&old, &new);
 
     assert_eq!(patch.translations.len(), 0);
@@ -206,8 +206,8 @@ fn test_add_event() {
         namespace: None,
     });
 
-    let old = Frame::<DummyApp>::from_vnode(elem_a);
-    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let old = Frame::<DummyApp>::new_from_vnode(elem_a);
+    let new = RenderResult::<DummyApp>::new_from_vnode(elem_b);
     let patch = diff(&old, &new);
 
     assert_eq!(patch.items.len(), 1);
@@ -247,8 +247,8 @@ fn test_add_child() {
         namespace: None,
     });
 
-    let old = Frame::<DummyApp>::from_vnode(elem_a);
-    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let old = Frame::<DummyApp>::new_from_vnode(elem_a);
+    let new = RenderResult::<DummyApp>::new_from_vnode(elem_b);
     let patch = diff(&old, &new);
 
     assert_eq!(patch.translations.len(), 1);
@@ -294,7 +294,7 @@ fn test_output_patch() {
         namespace: None,
     });
 
-    let new = RenderResult::<DummyApp>::from_vnode(elem_b);
+    let new = RenderResult::<DummyApp>::new_from_vnode(elem_b);
     let patch = Patch::from_dom(&new);
     let serialized = serialize(&new, &patch);
     fs::write("test_patch.bin", serialized).expect("Unable to write file!");
