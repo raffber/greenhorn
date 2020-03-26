@@ -32,7 +32,7 @@ impl Serialize for Histogram {
         where S: Serializer
     {
         let num = 16;
-        let step = max(self.0.max() / num, 1);
+        let step = max((self.0.max() / num) + 1, 1);
         let quantiles: Vec<_> = self.0
             .iter_linear(step)
             .take(num as usize)
@@ -74,7 +74,7 @@ pub struct Throughput {
 impl Throughput {
     pub fn new() -> Self {
         Self {
-            hist: Histogram::new_with_bounds(1, 10000, 3).unwrap(),
+            hist: Histogram::new_with_bounds(1, 1000, 3).unwrap(),
             last_update: None,
             last_count: 0,
         }
@@ -91,13 +91,15 @@ impl Throughput {
             let delta = now.duration_since(last_update).as_secs_f64();
             let delta_int = delta as u64;
             if delta_int >= 2 {
+                println!("hia!!!");
                 self.hist.record_n(0, delta_int - 1).unwrap();
             }
             if delta_int >= 1 {
+                println!("{}", self.last_count);
                 self.hist.record(self.last_count).unwrap();
                 self.last_update = Some(now);
+                self.last_count = 0;
             }
-            self.last_count = 0;
         } else {
             self.last_update = Some(now);
         }

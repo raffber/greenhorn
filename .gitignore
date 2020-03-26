@@ -8,3 +8,5 @@ parser/target/
 js/dist/
 
 html_macro/target/
+
+scripts/.ipynb_checkpoints/
