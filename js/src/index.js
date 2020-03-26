@@ -359,10 +359,13 @@ export class Application {
 
     onPatch(patch_data) {
         let patch = new Patch(patch_data, this.root_element.firstElementChild, this);
-        patch.apply();
-        for (const cb of this.afterRender) {
-            cb(this);
-        }
+        let self = this;
+        window.requestAnimationFrame(() => {
+            patch.apply();
+            for (const cb of self.afterRender) {
+                cb(self);
+            }
+        });
     }
 
     close() {
