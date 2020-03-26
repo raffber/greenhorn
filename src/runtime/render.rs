@@ -10,6 +10,7 @@ use crate::runtime::metrics::Metrics;
 use crate::runtime::component::RenderedComponent;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hasher, Hash};
+use crate::runtime::state::Frame;
 
 // TODO: currently an event cannot be subscribed to multiple times
 // since we store the event_id as the key to find a single subscription
@@ -74,7 +75,7 @@ pub(crate) enum ResultItem<A: App> {
 
 
 pub(crate) struct RenderResult<A: App> {
-    listeners: HashMap<ListenerKey, Listener<A::Message>>,
+    pub(crate) listeners: HashMap<ListenerKey, Listener<A::Message>>,
     pub(crate) subscriptions: HashMap<Id, Subscription<A::Message>>,
     pub(crate) blobs: HashMap<Id, Blob>,
     components: HashMap<Id, Arc<RenderedComponent<A>>>,
@@ -225,25 +226,6 @@ impl<A: App> RenderResult<A> {
     }
 }
 
-pub(crate) struct Frame<A: App> {
-    pub(crate) rendered: RenderResult<A>,
-    pub(crate) translations: HashMap<Id, Id>, // new -> old
-}
-
-impl<A: App> Frame<A> {
-    pub(crate) fn new(rendered: RenderResult<A>, translations: HashMap<Id, Id>) -> Self {
-        Self { rendered, translations }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn new_from_vnode(vdom: VNode) -> Self {
-        Self {
-            rendered: RenderResult::new_from_vnode(vdom),
-            translations: Default::default()
-        }
-    }
-}
-
 #[derive(Eq, Debug, Clone)]
 pub(crate) struct ListenerKey {
     hash: u64
@@ -276,41 +258,5 @@ impl ListenerKey {
 impl PartialEq for ListenerKey {
     fn eq(&self, other: &Self) -> bool {
         self.hash == other.hash
-    }
-}
-
-pub(crate) struct RenderedState<A: App> {
-    subscriptions: HashMap<Id, Subscription<A::Message>>,
-    listeners: HashMap<ListenerKey, Listener<A::Message>>,
-    translations: HashMap<Id, Id> // old -> new
-}
-
-
-impl<A: App> RenderedState<A> {
-    pub(crate) fn new() -> Self {
-        Self {
-            subscriptions: Default::default(),
-            listeners: Default::default(),
-            translations: Default::default()
-        }
-    }
-
-    pub(crate) fn get_listener(&self, target: &Id, name: &str) -> Option<&Listener<A::Message>>{
-        let target = self.translations.get(target).unwrap_or(target);
-        let key = ListenerKey::from_raw(*target, &name);
-        self.listeners.get(&key)
-    }
-
-    pub(crate) fn get_subscription(&self, event_id: &Id) -> Option<&Subscription<A::Message>> {
-        self.subscriptions.get(&event_id)
-    }
-
-    pub(crate) fn apply(&mut self, frame: &Frame<A>) {
-        self.listeners = frame.rendered.listeners.clone();
-        self.subscriptions = frame.rendered.subscriptions.clone();
-        self.translations.clear();
-        for (new, old) in &frame.translations {
-            self.translations.insert(*old, *new);
-        }
     }
 }

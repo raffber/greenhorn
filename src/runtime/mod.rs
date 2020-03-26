@@ -12,8 +12,9 @@ use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::{select, FutureExt, StreamExt};
 use std::collections::{HashMap, VecDeque, HashSet};
 use crate::node::{ComponentMap, ComponentContainer};
-use crate::runtime::render::RenderedState;
-pub(crate) use crate::runtime::render::{RenderResult, Frame};
+use crate::runtime::state::RenderedState;
+pub(crate) use crate::runtime::render::RenderResult;
+pub(crate) use crate::runtime::state::Frame;
 use crate::runtime::metrics::Metrics;
 use std::time::{Instant, Duration};
 
@@ -21,6 +22,7 @@ mod service_runner;
 mod render;
 mod metrics;
 mod component;
+mod state;
 
 const DEFAULT_RENDER_INTERVAL: u64 = 30;
 const RENDER_RETRY_INTERVAL: u64 = 10;
