@@ -1,5 +1,5 @@
-use crate::vdom::{EventHandler, VElement, VNode};
-use crate::node::{Node, ComponentContainer, ElementMap, ComponentMap, Blob};
+use crate::vdom::VNode;
+use crate::node::{Node, ComponentContainer, ComponentMap, Blob};
 
 use crate::{App, Id};
 use crate::listener::Listener;
@@ -7,6 +7,7 @@ use crate::event::Subscription;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use crate::runtime::metrics::Metrics;
+use crate::runtime::component::RenderedComponent;
 
 // TODO: currently an event cannot be subscribed to multiple times
 // since we store the event_id as the key to find a single subscription
@@ -19,105 +20,6 @@ pub(crate) enum ResultItem<A: App> {
     Blob( Blob )
 }
 
-struct RenderedComponent<A: App> {
-    component: ComponentContainer<A::Message>,
-    vdom: VNode,
-    listeners: Vec<ListenerKey>,
-    subscriptions: Vec<Id>,
-    children: Vec<Id>,
-    blobs: Vec<Id>,
-}
-
-impl<A: App> RenderedComponent<A> {
-    fn new(comp: ComponentContainer<A::Message>) -> (Self, Vec<ResultItem<A>>) {
-        let dom = comp.render();
-        let mut result = Vec::new();
-        let vdom = Self::render_recursive(dom, &mut result)
-            .expect("Expected an actual DOM to render.");
-
-        let mut subs = Vec::with_capacity(result.len());
-        let mut listeners = Vec::with_capacity(result.len());
-        let mut children = Vec::with_capacity(result.len());
-        let mut blobs = Vec::with_capacity(result.len());
-
-        for item in &result {
-            match item {
-                ResultItem::Listener(listener) => {
-                    let key = ListenerKey { id: listener.node_id, name: listener.event_name.clone() };
-                    listeners.push(key)
-                },
-                ResultItem::Subscription(id, _) => {
-                    subs.push(id.clone());
-                },
-                ResultItem::Component(comp) => {
-                    children.push(comp.id())
-                },
-                ResultItem::Blob(blob) => {
-                    blobs.push(blob.id());
-                }
-            }
-        }
-
-        (Self {
-            component: comp, vdom, listeners,
-            subscriptions: subs, children, blobs,
-        }, result)
-    }
-
-    fn id(&self) -> Id {
-        self.component.id()
-    }
-
-    fn render(&self) -> Node<A::Message> {
-        self.component.render()
-    }
-
-    fn render_recursive(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>) -> Option<VNode> {
-        match dom {
-            Node::ElementMap(mut elem) => Self::render_element(&mut *elem, result),
-            Node::Component(comp) => {
-                let id = comp.id();
-                result.push( ResultItem::Component(comp) );
-                Some(VNode::Placeholder(id))
-            }
-            Node::Text(text) => Some(VNode::text(text)),
-            Node::Element(mut elem) => Self::render_element(&mut elem, result),
-            Node::EventSubscription(event_id, subs) => {
-                result.push( ResultItem::Subscription(event_id, subs) );
-                None
-            }
-            Node::Blob(blob) => {
-                result.push( ResultItem::Blob(blob) );
-                None
-            }
-        }
-    }
-
-
-    fn render_element(elem: &mut dyn ElementMap<A::Message>, result: &mut Vec<ResultItem<A>>) -> Option<VNode> {
-        let mut children = Vec::new();
-        for (_, child) in elem.take_children().drain(..).enumerate() {
-            let child = Self::render_recursive(child, result);
-            if let Some(child) = child {
-                children.push(child);
-            }
-        }
-        let mut events = Vec::new();
-        for listener in elem.take_listeners().drain(..) {
-            events.push(EventHandler::from_listener(&listener));
-            result.push( ResultItem::Listener(listener) );
-        }
-        Some(VNode::element(VElement {
-            id: elem.id(),
-            tag: elem.take_tag(),
-            attr: elem.take_attrs(),
-            js_events: elem.take_js_events(),
-            events,
-            children,
-            namespace: elem.take_namespace(),
-        }))
-    }
-}
 
 pub(crate) struct RenderResult<A: App> {
     listeners: HashMap<ListenerKey, Listener<A::Message>>,
@@ -203,19 +105,19 @@ impl<A: App> RenderResult<A> {
         let id = comp.id();
         if !rendered.contains(&id) && old.components.contains_key(&id) {
             let old_render = old.components.get(&id).unwrap();
-            for child in &old_render.children {
+            for child in old_render.children() {
                 let old_comp = old.components.get(&child).unwrap();
-                self.render_component_from_old(old, old_comp.component.clone(), rendered)
+                self.render_component_from_old(old, old_comp.component(), rendered)
             }
-            for key in &old_render.listeners {
+            for key in old_render.listeners() {
                 let listener = old.listeners.get(key).unwrap();
                 self.listeners.insert(key.clone(), listener.clone());
             }
-            for event_id in &old_render.subscriptions {
+            for event_id in old_render.subscriptions() {
                 let subs = old.subscriptions.get(&event_id).unwrap();
                 self.subscriptions.insert(*event_id, subs.clone());
             }
-            for blob_id in &old_render.blobs {
+            for blob_id in old_render.blobs() {
                 let blob = old.blobs.get(&blob_id).unwrap();
                 self.blobs.insert(*blob_id, blob.clone());
             }
@@ -257,7 +159,7 @@ impl<A: App> RenderResult<A> {
         let root_components = old.root_components.clone(); // XXX: workaround
         for id in &root_components {
             let comp = old.components.get(id).unwrap();
-            ret.render_component_from_old(&mut old, comp.component.clone(), changes);
+            ret.render_component_from_old(&mut old, comp.component(), changes);
         }
 
         ret.root_components = old.root_components.clone();
@@ -266,7 +168,7 @@ impl<A: App> RenderResult<A> {
     }
 
     pub(crate) fn get_component_vdom(&self, component_id: &Id) -> Option<&VNode> {
-        self.components.get(component_id).map(|x| &x.vdom)
+        self.components.get(component_id).map(|x| x.vdom())
     }
 }
 
@@ -289,17 +191,21 @@ impl<A: App> Frame<A> {
 }
 
 #[derive(Hash, Eq, Debug, Clone)]
-struct ListenerKey {
+pub(crate) struct ListenerKey {
     id: Id,
     name: String,
 }
 
 impl ListenerKey {
-    fn new<M: 'static + Send>(listener: &Listener<M>) -> Self {
+    pub(crate) fn new<M: 'static + Send>(listener: &Listener<M>) -> Self {
         Self {
             id: listener.node_id,
             name: listener.event_name.clone()
         }
+    }
+
+    pub(crate) fn from_raw(id: Id, name: &str) -> Self {
+        Self { id, name: name.to_string() }
     }
 }
 
@@ -327,7 +233,7 @@ impl<A: App> RenderedState<A> {
 
     pub(crate) fn get_listener(&self, target: &Id, name: &str) -> Option<&Listener<A::Message>>{
         let target = self.translations.get(target).unwrap_or(target);
-        let key = ListenerKey { id: target.clone(), name: name.into() };
+        let key = ListenerKey::from_raw(*target, &name);
         self.listeners.get(&key)
     }
 

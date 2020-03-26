@@ -20,6 +20,7 @@ use std::time::{Instant, Duration};
 mod service_runner;
 mod render;
 mod metrics;
+mod component;
 
 const DEFAULT_RENDER_INTERVAL: u64 = 30;
 const RENDER_RETRY_INTERVAL: u64 = 10;

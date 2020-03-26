@@ -12,6 +12,7 @@ use crate::listener::Listener;
 use crate::node::Blob;
 use crate::runtime::RenderResult;
 
+const DEFAULT_PATH_CAPACITY : usize = 64;
 
 #[derive(Clone)]
 pub struct Path {
@@ -22,7 +23,7 @@ impl Path {
     pub fn new() -> Path {
         // preallocate as length probably fairly small
         Path {
-            inner: Vec::with_capacity(64)
+            inner: Vec::with_capacity(DEFAULT_PATH_CAPACITY)
         }
     }
 
