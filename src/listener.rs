@@ -1,6 +1,8 @@
 use std::sync::{Arc, Mutex};
 use crate::Id;
 use crate::dom_event::DomEvent;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hasher, Hash};
 
 pub struct Listener<T> {
     pub event_name: String,
@@ -45,6 +47,43 @@ impl<T: 'static> Listener<T> {
         (self.fun.lock().unwrap())(e)
     }
 }
+
+
+#[derive(Eq, Debug, Clone)]
+pub(crate) struct ListenerKey {
+    hash: u64
+}
+
+impl Hash for ListenerKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_u64(self.hash);
+    }
+}
+
+impl ListenerKey {
+    pub(crate) fn new<M: 'static + Send>(listener: &Listener<M>) -> Self {
+        let mut hasher = DefaultHasher::new();
+        hasher.write_u64(listener.node_id.id);
+        hasher.write(listener.event_name.as_bytes());
+        let hash = hasher.finish();
+        Self { hash }
+    }
+
+    pub(crate) fn from_raw(id: Id, name: &str) -> Self {
+        let mut hasher = DefaultHasher::new();
+        hasher.write_u64(id.id);
+        hasher.write(name.as_bytes());
+        let hash = hasher.finish();
+        Self { hash }
+    }
+}
+
+impl PartialEq for ListenerKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.hash == other.hash
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

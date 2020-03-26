@@ -2,14 +2,12 @@ use crate::vdom::{VNode, EventHandler, VElement};
 use crate::node::{Node, ComponentContainer, ComponentMap, Blob, ElementMap};
 
 use crate::{App, Id};
-use crate::listener::Listener;
+use crate::listener::{Listener, ListenerKey};
 use crate::event::Subscription;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use crate::runtime::metrics::Metrics;
 use crate::runtime::component::RenderedComponent;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hasher, Hash};
 use crate::runtime::state::Frame;
 
 // TODO: currently an event cannot be subscribed to multiple times
@@ -226,37 +224,3 @@ impl<A: App> RenderResult<A> {
     }
 }
 
-#[derive(Eq, Debug, Clone)]
-pub(crate) struct ListenerKey {
-    hash: u64
-}
-
-impl Hash for ListenerKey {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        state.write_u64(self.hash);
-    }
-}
-
-impl ListenerKey {
-    pub(crate) fn new<M: 'static + Send>(listener: &Listener<M>) -> Self {
-        let mut hasher = DefaultHasher::new();
-        hasher.write_u64(listener.node_id.id);
-        hasher.write(listener.event_name.as_bytes());
-        let hash = hasher.finish();
-        Self { hash }
-    }
-
-    pub(crate) fn from_raw(id: Id, name: &str) -> Self {
-        let mut hasher = DefaultHasher::new();
-        hasher.write_u64(id.id);
-        hasher.write(name.as_bytes());
-        let hash = hasher.finish();
-        Self { hash }
-    }
-}
-
-impl PartialEq for ListenerKey {
-    fn eq(&self, other: &Self) -> bool {
-        self.hash == other.hash
-    }
-}

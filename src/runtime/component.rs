@@ -1,7 +1,8 @@
 use crate::{App, Id};
 use crate::vdom::VNode;
-use crate::runtime::render::{ResultItem, ListenerKey, render_recursive};
+use crate::runtime::render::{ResultItem, render_recursive};
 use crate::node::{ComponentContainer, ComponentMap};
+use crate::listener::ListenerKey;
 
 pub(crate) struct RenderedComponent<A: App> {
     component: ComponentContainer<A::Message>,

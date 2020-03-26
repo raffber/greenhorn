@@ -1,8 +1,7 @@
 use crate::{App, Id};
 use crate::event::Subscription;
 use std::collections::HashMap;
-use crate::runtime::render::ListenerKey;
-use crate::listener::Listener;
+use crate::listener::{Listener, ListenerKey};
 use crate::runtime::RenderResult;
 
 #[cfg(test)]
