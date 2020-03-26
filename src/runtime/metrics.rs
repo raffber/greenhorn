@@ -33,11 +33,11 @@ impl Serialize for Histogram {
     {
         let num = 16;
         let step = max(self.0.max() / num, 1);
-        let len = self.0.len();
         let quantiles: Vec<_> = self.0
             .iter_linear(step)
             .take(num as usize)
-            .map(|x| (x.quantile(), x.count_since_last_iteration() as f64) )
+            .enumerate()
+            .map(|(k, x)| (k*(step as usize), x.quantile(), x.count_since_last_iteration() as f64) )
             .collect();
 
         let json = json!({
