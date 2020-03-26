@@ -1,29 +1,36 @@
+# Next Tasks
+
+ * lazy component re-render
+ * wasm version
+ * Call metrics module for nested components
+ * key-based diffing
 
 # Performance Optimizations - TODO
 
- * establish better benchmarking solution
-      - try to establish common usecases and implement benchmarks
-      - find a good way to instrument code and collect data
  * js: optimize patch decode
       - profile
       - closure compiler?!
  * component based rendering
    => only rerender components which need it
    => parallel component rendering
- * don't back annotate ids, just keep translation and use when generating next patch
+ * Patch optimization:
+    => nth-child navigation instruction
  * key-based diffing
  * diff: hash based comparison
       - Merkle trees ?!
       - good hashfunction for the job?
- * diff: better algorithms to produce smaller patches for some cases?!
 
 
 # Performance Optimizations - Done
 
+ * establish better benchmarking solution
+      - try to establish common usecases and implement benchmarks
+      - find a good way to instrument code and collect data
  * serialization frontend <-> backend: JSON for normal messages, binary for patches seems to be the fastest solution
    - JSON.parse() in the browser is pretty quick and outperforms js implementations of better formats
    - initial testing showed that serialization/deserialization was about 80% of overall render time in a small-ish example
  * lazy rerender
+ * don't back annotate ids, just keep translation and use when generating next patch
  * frame limiter
  * patch optimizations
    - don't emit unnecessary moves
