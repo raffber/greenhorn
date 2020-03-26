@@ -1,5 +1,5 @@
-use crate::vdom::VNode;
-use crate::node::{Node, ComponentContainer, ComponentMap, Blob};
+use crate::vdom::{VNode, EventHandler, VElement};
+use crate::node::{Node, ComponentContainer, ComponentMap, Blob, ElementMap};
 
 use crate::{App, Id};
 use crate::listener::Listener;
@@ -14,6 +14,56 @@ use std::hash::{Hasher, Hash};
 // TODO: currently an event cannot be subscribed to multiple times
 // since we store the event_id as the key to find a single subscription
 // however, we should use a subscription list as value
+
+
+/// Recursively renders an arbitrary node.
+/// Non-tree elements will be pushed into `result`.
+pub(crate) fn render_recursive<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>) -> Option<VNode> {
+    match dom {
+        Node::ElementMap(mut elem) => render_element(&mut *elem, result),
+        Node::Component(comp) => {
+            let id = comp.id();
+            result.push( ResultItem::Component(comp) );
+            Some(VNode::Placeholder(id))
+        }
+        Node::Text(text) => Some(VNode::text(text)),
+        Node::Element(mut elem) => render_element(&mut elem, result),
+        Node::EventSubscription(event_id, subs) => {
+            result.push( ResultItem::Subscription(event_id, subs) );
+            None
+        }
+        Node::Blob(blob) => {
+            result.push( ResultItem::Blob(blob) );
+            None
+        }
+    }
+}
+
+/// Recursively renders an element into a VNode.
+/// Non-tree elements will be pushed into `result`.
+fn render_element<A: App>(elem: &mut dyn ElementMap<A::Message>, result: &mut Vec<ResultItem<A>>) -> Option<VNode> {
+    let mut children = Vec::new();
+    for (_, child) in elem.take_children().drain(..).enumerate() {
+        let child = render_recursive(child, result);
+        if let Some(child) = child {
+            children.push(child);
+        }
+    }
+    let mut events = Vec::new();
+    for listener in elem.take_listeners().drain(..) {
+        events.push(EventHandler::from_listener(&listener));
+        result.push( ResultItem::Listener(listener) );
+    }
+    Some(VNode::element(VElement {
+        id: elem.id(),
+        tag: elem.take_tag(),
+        attr: elem.take_attrs(),
+        js_events: elem.take_js_events(),
+        events,
+        children,
+        namespace: elem.take_namespace(),
+    }))
+}
 
 pub(crate) enum ResultItem<A: App> {
     Listener( Listener<A::Message> ),
@@ -46,7 +96,7 @@ impl<A: App> RenderResult<A> {
 
     pub(crate) fn from_root(root_rendered: Node<A::Message>, _metrics: &mut Metrics) -> Self {
         let mut result = Vec::new();
-        let vdom = RenderedComponent::<A>::render_recursive(root_rendered, &mut result)
+        let vdom = render_recursive::<A>(root_rendered, &mut result)
             .expect("Root produced an empty DOM");
 
         let mut ret = Self {
