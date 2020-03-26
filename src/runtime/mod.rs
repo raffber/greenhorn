@@ -261,9 +261,12 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                         let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(result));
                     });
                 }
-                MailboxMsg::Stream(_stream) => {
+                MailboxMsg::Stream(mut stream) => {
+                    let tx = self.tx.clone();
                     async_std::task::spawn(async move {
-                        todo!();
+                        while let Some(value) = stream.next().await {
+                            let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(value));
+                        }
                     });
                 }
             }
