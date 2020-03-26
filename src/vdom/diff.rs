@@ -133,7 +133,12 @@ impl<'a, A: App> Differ<'a, A> {
 
         if !old.children.is_empty() && new.children.is_empty() {
             patch.push(PatchItem::RemoveChildren());
-            return false;
+            return true;
+        }
+
+        if old.children.is_empty() && !new.children.is_empty() {
+            patch.push(PatchItem::AddChildren(&new.children));
+            return true;
         }
 
         let mut ret = false;

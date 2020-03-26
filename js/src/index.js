@@ -398,6 +398,7 @@ export class Patch {
             15: Patch.prototype.removeJsEvent,
             16: Patch.prototype.addJsEvent,
             17: Patch.prototype.replaceJsEvent,
+            18: Patch.prototype.addChildren,
         }
     }
 
@@ -519,6 +520,15 @@ export class Patch {
         this.element.removeEventListener(attr_value);
         this.element[key_attr] = fun;
         this.element.addEventListener(key, fun);
+    }
+
+    addChildren() {
+        let len = this.patch.getUint32(this.offset, true);
+        this.offset += 4;
+        for (var k = 0; k < len; ++k) {
+            let node = this.deserializeNode();
+            this.element.appendChild(node.create());
+        }
     }
 
     deserializeElement() {

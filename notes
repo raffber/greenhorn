@@ -7,7 +7,6 @@
  * js: optimize patch decode
       - profile
       - closure compiler?!
- * separate update() and render() thread
  * component based rendering
    => only rerender components which need it
    => parallel component rendering
@@ -29,6 +28,7 @@
  * patch optimizations
    - don't emit unnecessary moves
    - truncate moves from end of patch
+ * separate update() and render() thread
 
 
 # TODOs / Fixes

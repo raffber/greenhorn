@@ -91,11 +91,9 @@ impl Throughput {
             let delta = now.duration_since(last_update).as_secs_f64();
             let delta_int = delta as u64;
             if delta_int >= 2 {
-                println!("hia!!!");
                 self.hist.record_n(0, delta_int - 1).unwrap();
             }
             if delta_int >= 1 {
-                println!("{}", self.last_count);
                 self.hist.record(self.last_count).unwrap();
                 self.last_update = Some(now);
                 self.last_count = 0;

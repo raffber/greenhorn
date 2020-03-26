@@ -177,6 +177,13 @@ pub(crate) fn serialize<A: App>(rendered: &RenderResult<A>, patch: &Patch) -> Ve
                 key.serialize(&mut output);
                 value.serialize(&mut output);
             }
+            PatchItem::AddChildren(children) => {
+                output.push(18);
+                (children.len() as u32).serialize(&mut output);
+                for child in *children {
+                    child.serialize(rendered, &mut output);
+                }
+            }
         }
     }
     output

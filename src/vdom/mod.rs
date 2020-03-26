@@ -156,6 +156,8 @@ pub enum PatchItem<'a> {
     RemoveJsEvent(&'a str),
     AddJsEvent(&'a str, &'a str),
     ReplaceJsEvent(&'a str, &'a str),
+
+    AddChildren(&'a Vec<VNode>),
 }
 
 impl<'a> PatchItem<'a> {
