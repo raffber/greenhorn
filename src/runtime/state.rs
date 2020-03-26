@@ -5,6 +5,9 @@ use crate::runtime::render::ListenerKey;
 use crate::listener::Listener;
 use crate::runtime::RenderResult;
 
+#[cfg(test)]
+use crate::vdom::VNode;
+
 pub(crate) struct Frame<A: App> {
     pub(crate) rendered: RenderResult<A>,
     pub(crate) translations: HashMap<Id, Id>, // new -> old
