@@ -120,7 +120,7 @@ impl<A: App> RenderResult<A> {
                 },
                 ResultItem::Component(comp) => {
                     ret.root_components.insert(comp.id());
-                    ret.render_component(comp);
+                    ret.render_component(None, comp, None);
                 }
                 ResultItem::Blob(blob) => {
                     ret.blobs.insert(blob.id(), blob);
@@ -135,7 +135,7 @@ impl<A: App> RenderResult<A> {
     ///
     /// **Precondition**: The root component must still be valid and not require a re-render
     pub(crate) fn new_from_frame(old: &Frame<A>, changes: &HashSet<Id>, _metrics: &mut Metrics) -> Self {
-        let mut old = &old.rendered;
+        let old = &old.rendered;
         let mut ret = Self {
             listeners: Default::default(),
             subscriptions: Default::default(),
@@ -148,7 +148,7 @@ impl<A: App> RenderResult<A> {
         let root_components = old.root_components.clone(); // XXX: workaround
         for id in &root_components {
             let comp = old.components.get(id).unwrap();
-            ret.render_component_from_old(&mut old, comp.component(), changes);
+            ret.render_component_from_old(Some(old), comp.component(), Some(changes));
         }
 
         ret.root_components = old.root_components.clone();
@@ -157,7 +157,11 @@ impl<A: App> RenderResult<A> {
     }
 
     /// Renders a component and registers its results into the current object.
-    fn render_component(&mut self, comp: ComponentContainer<A::Message>) {
+    fn render_component(&mut self,
+            old: Option<&RenderResult<A>>,
+            comp: ComponentContainer<A::Message>,
+            changes: Option<&HashSet<Id>>)
+        {
         let id = comp.id();
         let (rendered, mut result) = RenderedComponent::new(comp);
         self.components.insert(id, Arc::new(rendered));
@@ -171,7 +175,7 @@ impl<A: App> RenderResult<A> {
                     self.subscriptions.insert(id, subscription);
                 },
                 ResultItem::Component(comp) => {
-                    self.render_component(comp);
+                    self.render_component_from_old(old, comp, changes);
                 }
                 ResultItem::Blob(blob) => {
                     self.blobs.insert(blob.id(), blob);
@@ -180,6 +184,7 @@ impl<A: App> RenderResult<A> {
         }
     }
 
+    /// Renders a component which was not changed, thus re-using all of it's VDom.
     fn render_unchanged_component(&mut self, old: &RenderResult<A>,
                 comp: ComponentContainer<A::Message>,
                 changes: &HashSet<Id>)
@@ -188,7 +193,7 @@ impl<A: App> RenderResult<A> {
         let old_render = old.components.get(&id).unwrap();
         for child in old_render.children() {
             let old_comp = old.components.get(&child).unwrap();
-            self.render_component_from_old(old, old_comp.component(), changes)
+            self.render_component_from_old(Some(old), old_comp.component(), Some(changes))
         }
         for key in old_render.listeners() {
             let listener = old.listeners.get(key).unwrap();
@@ -205,14 +210,20 @@ impl<A: App> RenderResult<A> {
         self.components.insert(id, old_render.clone());
     }
 
-    fn render_component_from_old(&mut self, old: &RenderResult<A>,
+    /// Renders a component based on an old RenderResult
+    fn render_component_from_old(&mut self, old: Option<&RenderResult<A>>,
                                  comp: ComponentContainer<A::Message>,
-                                 changes: &HashSet<Id>) {
+                                 changes: Option<&HashSet<Id>>) {
         let id = comp.id();
-        if !changes.contains(&id) && old.components.contains_key(&id) {
-            self.render_unchanged_component(old, comp, changes);
+        if let Some(old) = old {
+            let changes = changes.unwrap();
+            if !changes.contains(&id) && old.components.contains_key(&id) {
+                self.render_unchanged_component(old, comp, changes);
+            } else {
+                self.render_component(Some(old), comp, Some(changes));
+            }
         } else {
-            self.render_component(comp);
+            self.render_component(old, comp, changes);
         }
     }
 
