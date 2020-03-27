@@ -219,7 +219,7 @@ impl<'a, A: App> Differ<'a, A> {
                     patch.push(PatchItem::ChangeText(elem_new))
                 }
             }
-            (VNode::Placeholder(id_old), VNode::Placeholder(id_new)) => {
+            (VNode::Placeholder(id_old, _path_old), VNode::Placeholder(id_new, _path_new)) => {
                 if id_old == id_new && !self.rendered.contains(id_new) {
                     // TODO: skip this component, navigate to its children and diff those if they
                     // were rendered

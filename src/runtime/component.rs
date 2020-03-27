@@ -1,6 +1,6 @@
 use crate::{App, Id};
 use crate::vdom::VNode;
-use crate::runtime::render::{ResultItem, render_recursive};
+use crate::runtime::render::{ResultItem, render_component};
 use crate::node::{ComponentContainer, ComponentMap};
 use crate::listener::ListenerKey;
 
@@ -17,7 +17,7 @@ impl<A: App> RenderedComponent<A> {
     pub(crate) fn new(comp: ComponentContainer<A::Message>) -> (Self, Vec<ResultItem<A>>) {
         let dom = comp.render();
         let mut result = Vec::new();
-        let vdom = render_recursive(dom, &mut result)
+        let vdom = render_component(dom, &mut result)
             .expect("Expected an actual DOM to render.");
 
         let mut subs = Vec::with_capacity(result.len());

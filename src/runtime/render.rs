@@ -1,4 +1,4 @@
-use crate::vdom::{VNode, EventHandler, VElement};
+use crate::vdom::{VNode, EventHandler, VElement, Path};
 use crate::node::{Node, ComponentContainer, ComponentMap, Blob, ElementMap};
 
 use crate::{App, Id};
@@ -15,18 +15,24 @@ use crate::runtime::state::Frame;
 // however, we should use a subscription list as value
 
 
+pub(crate) fn render_component<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>) -> Option<VNode> {
+    let mut path = Path::new();
+    render_recursive(dom, result, &mut path)
+}
+
+
 /// Recursively renders an arbitrary node.
 /// Non-tree elements will be pushed into `result`.
-pub(crate) fn render_recursive<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>) -> Option<VNode> {
+fn render_recursive<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>, path: &mut Path) -> Option<VNode> {
     match dom {
-        Node::ElementMap(mut elem) => render_element(&mut *elem, result),
+        Node::ElementMap(mut elem) => render_element(&mut *elem, result, path),
         Node::Component(comp) => {
             let id = comp.id();
             result.push( ResultItem::Component(comp) );
-            Some(VNode::Placeholder(id))
+            Some(VNode::Placeholder(id, path.clone()))
         }
         Node::Text(text) => Some(VNode::text(text)),
-        Node::Element(mut elem) => render_element(&mut elem, result),
+        Node::Element(mut elem) => render_element(&mut elem, result, path),
         Node::EventSubscription(event_id, subs) => {
             result.push( ResultItem::Subscription(event_id, subs) );
             None
@@ -40,10 +46,12 @@ pub(crate) fn render_recursive<A: App>(dom: Node<A::Message>, result: &mut Vec<R
 
 /// Recursively renders an element into a VNode.
 /// Non-tree elements will be pushed into `result`.
-fn render_element<A: App>(elem: &mut dyn ElementMap<A::Message>, result: &mut Vec<ResultItem<A>>) -> Option<VNode> {
+fn render_element<A: App>(elem: &mut dyn ElementMap<A::Message>, result: &mut Vec<ResultItem<A>>, path: &mut Path) -> Option<VNode> {
     let mut children = Vec::new();
-    for (_, child) in elem.take_children().drain(..).enumerate() {
-        let child = render_recursive(child, result);
+    path.push(0);
+    for (k, child) in elem.take_children().drain(..).enumerate() {
+        path.pop(); path.push(k);
+        let child = render_component(child, result);
         if let Some(child) = child {
             children.push(child);
         }
@@ -98,7 +106,7 @@ impl<A: App> RenderResult<A> {
     /// Re-renders the whole component tree.
     pub(crate) fn new_from_root(root_rendered: Node<A::Message>, _metrics: &mut Metrics) -> Self {
         let mut result = Vec::new();
-        let vdom = render_recursive::<A>(root_rendered, &mut result)
+        let vdom = render_component::<A>(root_rendered, &mut result)
             .expect("Root produced an empty DOM");
 
         let mut ret = Self {

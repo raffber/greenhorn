@@ -14,7 +14,7 @@ use crate::runtime::RenderResult;
 
 const DEFAULT_PATH_CAPACITY : usize = 64;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Path {
     inner: Vec<usize>
 }
@@ -97,7 +97,7 @@ pub struct VElement {
 pub enum VNode {
     Element(VElement),
     Text(String),
-    Placeholder(Id),
+    Placeholder(Id, Path),
 }
 
 impl VNode {
@@ -121,7 +121,7 @@ impl VNode {
                 }
             },
             VNode::Text(_) => {panic!()},
-            VNode::Placeholder(_) => {panic!()},
+            VNode::Placeholder(_, _) => {panic!()},
         }
     }
 
@@ -133,7 +133,7 @@ impl VNode {
         match self {
             VNode::Element(e) => e.id,
             VNode::Text(_) => Id::empty(),
-            VNode::Placeholder(x) => x.clone(),
+            VNode::Placeholder(x, _) => x.clone(),
         }
     }
 }
