@@ -94,6 +94,8 @@ impl<A: App> RenderResult<A> {
         }
     }
 
+    /// Create a new RenderResult if the root component was re-rendered.
+    /// Re-renders the whole component tree.
     pub(crate) fn new_from_root(root_rendered: Node<A::Message>, _metrics: &mut Metrics) -> Self {
         let mut result = Vec::new();
         let vdom = render_recursive::<A>(root_rendered, &mut result)
@@ -128,6 +130,33 @@ impl<A: App> RenderResult<A> {
         ret
     }
 
+    /// Create a new RenderResult based on an old frame and a set of changed components
+    /// that require rerendering.
+    ///
+    /// **Precondition**: The root component must still be valid and not require a re-render
+    pub(crate) fn new_from_frame(old: &Frame<A>, changes: &HashSet<Id>, _metrics: &mut Metrics) -> Self {
+        let mut old = &old.rendered;
+        let mut ret = Self {
+            listeners: Default::default(),
+            subscriptions: Default::default(),
+            blobs: Default::default(),
+            components: HashMap::with_capacity(old.components.len() * 2 ),
+            root_components: HashSet::new(),
+            root: old.root.clone(),
+        };
+
+        let root_components = old.root_components.clone(); // XXX: workaround
+        for id in &root_components {
+            let comp = old.components.get(id).unwrap();
+            ret.render_component_from_old(&mut old, comp.component(), changes);
+        }
+
+        ret.root_components = old.root_components.clone();
+        ret.root = old.root.clone();
+        ret
+    }
+
+    /// Renders a component and registers its results into the current object.
     fn render_component(&mut self, comp: ComponentContainer<A::Message>) {
         let id = comp.id();
         let (rendered, mut result) = RenderedComponent::new(comp);
@@ -151,71 +180,39 @@ impl<A: App> RenderResult<A> {
         }
     }
 
-    /// precondition: The root component must still be valid and not require a re-render
-    pub(crate) fn new_from_frame(old: &Frame<A>, changes: &HashSet<Id>, _metrics: &mut Metrics) -> Self {
-        let mut old = &old.rendered;
-        let mut ret = Self {
-            listeners: Default::default(),
-            subscriptions: Default::default(),
-            blobs: Default::default(),
-            components: HashMap::with_capacity(old.components.len() * 2 ),
-            root_components: HashSet::new(),
-            root: old.root.clone(),
-        };
-
-        let root_components = old.root_components.clone(); // XXX: workaround
-        for id in &root_components {
-            let comp = old.components.get(id).unwrap();
-            ret.render_component_from_old(&mut old, comp.component(), changes);
+    fn render_unchanged_component(&mut self, old: &RenderResult<A>,
+                comp: ComponentContainer<A::Message>,
+                changes: &HashSet<Id>)
+    {
+        let id = comp.id();
+        let old_render = old.components.get(&id).unwrap();
+        for child in old_render.children() {
+            let old_comp = old.components.get(&child).unwrap();
+            self.render_component_from_old(old, old_comp.component(), changes)
         }
-
-        ret.root_components = old.root_components.clone();
-        ret.root = old.root.clone();
-        ret
+        for key in old_render.listeners() {
+            let listener = old.listeners.get(key).unwrap();
+            self.listeners.insert(key.clone(), listener.clone());
+        }
+        for event_id in old_render.subscriptions() {
+            let subs = old.subscriptions.get(&event_id).unwrap();
+            self.subscriptions.insert(*event_id, subs.clone());
+        }
+        for blob_id in old_render.blobs() {
+            let blob = old.blobs.get(&blob_id).unwrap();
+            self.blobs.insert(*blob_id, blob.clone());
+        }
+        self.components.insert(id, old_render.clone());
     }
 
     fn render_component_from_old(&mut self, old: &RenderResult<A>,
-            comp: ComponentContainer<A::Message>,
-            rendered: &HashSet<Id>) {
+                                 comp: ComponentContainer<A::Message>,
+                                 changes: &HashSet<Id>) {
         let id = comp.id();
-        if !rendered.contains(&id) && old.components.contains_key(&id) {
-            let old_render = old.components.get(&id).unwrap();
-            for child in old_render.children() {
-                let old_comp = old.components.get(&child).unwrap();
-                self.render_component_from_old(old, old_comp.component(), rendered)
-            }
-            for key in old_render.listeners() {
-                let listener = old.listeners.get(key).unwrap();
-                self.listeners.insert(key.clone(), listener.clone());
-            }
-            for event_id in old_render.subscriptions() {
-                let subs = old.subscriptions.get(&event_id).unwrap();
-                self.subscriptions.insert(*event_id, subs.clone());
-            }
-            for blob_id in old_render.blobs() {
-                let blob = old.blobs.get(&blob_id).unwrap();
-                self.blobs.insert(*blob_id, blob.clone());
-            }
-            self.components.insert(id, old_render.clone());
-            return;
-        }
-        let (rendered_component, mut result) = RenderedComponent::new(comp);
-        self.components.insert(id, Arc::new(rendered_component));
-        for item in result.drain(..) {
-            match item {
-                ResultItem::Listener(listener) => {
-                    self.listeners.insert(ListenerKey::new(&listener), listener);
-                },
-                ResultItem::Subscription(id, subscription) => {
-                    self.subscriptions.insert(id, subscription);
-                },
-                ResultItem::Component(comp) => {
-                    self.render_component_from_old(old, comp, rendered);
-                },
-                ResultItem::Blob(blob) => {
-                    self.blobs.insert(blob.id(), blob);
-                }
-            }
+        if !changes.contains(&id) && old.components.contains_key(&id) {
+            self.render_unchanged_component(old, comp, changes);
+        } else {
+            self.render_component(comp);
         }
     }
 
