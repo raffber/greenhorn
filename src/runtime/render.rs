@@ -28,7 +28,7 @@ fn render_recursive<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A
         Node::ElementMap(mut elem) => render_element(&mut *elem, result, path),
         Node::Component(comp) => {
             let id = comp.id();
-            result.push( ResultItem::Component(comp) );
+            result.push( ResultItem::Component(comp, path.clone()) );
             Some(VNode::Placeholder(id, path.clone()))
         }
         Node::Text(text) => Some(VNode::text(text)),
@@ -75,7 +75,7 @@ fn render_element<A: App>(elem: &mut dyn ElementMap<A::Message>, result: &mut Ve
 pub(crate) enum ResultItem<A: App> {
     Listener( Listener<A::Message> ),
     Subscription( Id, Subscription<A::Message> ),
-    Component( ComponentContainer<A::Message> ),
+    Component( ComponentContainer<A::Message>, Path ),
     Blob( Blob )
 }
 
@@ -85,7 +85,7 @@ pub(crate) struct RenderResult<A: App> {
     pub(crate) subscriptions: HashMap<Id, Subscription<A::Message>>,
     pub(crate) blobs: HashMap<Id, Blob>,
     components: HashMap<Id, Arc<RenderedComponent<A>>>,
-    pub(crate) root_components: HashSet<Id>,
+    pub(crate) root_components: Vec<(Id, Path)>,
     pub(crate) root: Arc<VNode>,
 }
 
@@ -114,7 +114,7 @@ impl<A: App> RenderResult<A> {
             subscriptions: Default::default(),
             blobs: Default::default(),
             components: HashMap::default(),
-            root_components: HashSet::new(),
+            root_components: Default::default(),
             root: Arc::new(vdom),
         };
 
@@ -126,8 +126,8 @@ impl<A: App> RenderResult<A> {
                 ResultItem::Subscription(id, subscription) => {
                     ret.subscriptions.insert(id, subscription);
                 },
-                ResultItem::Component(comp) => {
-                    ret.root_components.insert(comp.id());
+                ResultItem::Component(comp, path) => {
+                    ret.root_components.push((comp.id(), path));
                     ret.render_component(None, comp, None);
                 }
                 ResultItem::Blob(blob) => {
@@ -149,12 +149,12 @@ impl<A: App> RenderResult<A> {
             subscriptions: Default::default(),
             blobs: Default::default(),
             components: HashMap::with_capacity(old.components.len() * 2 ),
-            root_components: HashSet::new(),
+            root_components: Default::default(),
             root: old.root.clone(),
         };
 
         let root_components = old.root_components.clone(); // XXX: workaround
-        for id in &root_components {
+        for (id, _) in &root_components {
             let comp = old.components.get(id).unwrap();
             ret.render_component_from_old(Some(old), comp.component(), Some(changes));
         }
@@ -182,7 +182,7 @@ impl<A: App> RenderResult<A> {
                 ResultItem::Subscription(id, subscription) => {
                     self.subscriptions.insert(id, subscription);
                 },
-                ResultItem::Component(comp) => {
+                ResultItem::Component(comp, _) => {
                     self.render_component_from_old(old, comp, changes);
                 }
                 ResultItem::Blob(blob) => {
@@ -199,8 +199,8 @@ impl<A: App> RenderResult<A> {
     {
         let id = comp.id();
         let old_render = old.components.get(&id).unwrap();
-        for child in old_render.children() {
-            let old_comp = old.components.get(&child).unwrap();
+        for (child, _) in old_render.children() {
+            let old_comp = old.components.get(child).unwrap();
             self.render_component_from_old(Some(old), old_comp.component(), Some(changes))
         }
         for key in old_render.listeners() {

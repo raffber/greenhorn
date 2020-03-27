@@ -1,5 +1,5 @@
 use crate::{App, Id};
-use crate::vdom::VNode;
+use crate::vdom::{VNode, Path};
 use crate::runtime::render::{ResultItem, render_component};
 use crate::node::{ComponentContainer, ComponentMap};
 use crate::listener::ListenerKey;
@@ -9,7 +9,7 @@ pub(crate) struct RenderedComponent<A: App> {
     vdom: VNode,
     listeners: Vec<ListenerKey>,
     subscriptions: Vec<Id>,
-    children: Vec<Id>,
+    children: Vec<(Id, Path)>,
     blobs: Vec<Id>,
 }
 
@@ -34,8 +34,8 @@ impl<A: App> RenderedComponent<A> {
                 ResultItem::Subscription(id, _) => {
                     subs.push(id.clone());
                 },
-                ResultItem::Component(comp) => {
-                    children.push(comp.id())
+                ResultItem::Component(comp, path) => {
+                    children.push((comp.id(), path.clone()))
                 },
                 ResultItem::Blob(blob) => {
                     blobs.push(blob.id());
@@ -53,7 +53,7 @@ impl<A: App> RenderedComponent<A> {
         self.component.id()
     }
 
-    pub(crate) fn children(&self) -> &Vec<Id> {
+    pub(crate) fn children(&self) -> &Vec<(Id, Path)> {
         &self.children
     }
 
