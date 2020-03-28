@@ -1,4 +1,11 @@
 
+# Next Tasks
+
+ * dialogs
+ * more js event types
+ * more js callbacks?
+
+
 # Performance Optimizations - TODO
 
  * js: optimize patch decode
