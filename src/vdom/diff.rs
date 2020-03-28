@@ -161,9 +161,13 @@ impl<'a, A: App> Differ<'a, A> {
         let range = 0..common_len;
         for k in range {
             if k != 0 {
-                truncates += 1;
-                // TODO: collapse multiple NextNode to one
-                patch.push(PatchItem::NextNode(1));
+                if let Some(PatchItem::NextNode(skips)) = patch.peek() {
+                    patch.pop();
+                    patch.push(PatchItem::NextNode(skips + 1))
+                } else {
+                    truncates += 1;
+                    patch.push(PatchItem::NextNode(1));
+                }
             }
             let old_node = old.children.get(k).unwrap();
             let new_node = new.children.get(k).unwrap();

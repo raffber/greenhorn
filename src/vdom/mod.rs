@@ -11,6 +11,7 @@ use std::hash::{Hash, Hasher};
 use crate::listener::Listener;
 use crate::node::Blob;
 use crate::runtime::RenderResult;
+use std::ops::Deref;
 
 const DEFAULT_PATH_CAPACITY : usize = 64;
 
@@ -138,7 +139,7 @@ impl VNode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum PatchItem<'a> {
     AppendSibling(&'a VNode),
     Replace(&'a VNode),
@@ -233,6 +234,11 @@ impl<'a> Patch<'a> {
 
     fn pop(&mut self) -> Option<PatchItem<'a>> {
         self.items.pop()
+    }
+
+    fn peek(&self) -> Option<PatchItem<'a>> {
+        let len = self.len();
+        self.items.get(len - 1).map(|x| x.deref().clone())
     }
 
     fn translate(&mut self, from: Id, to: Id) {
