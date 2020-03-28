@@ -3,6 +3,7 @@ use crate::vdom::{VNode, Path};
 use crate::runtime::render::{ResultItem, render_component};
 use crate::node::{ComponentContainer, ComponentMap};
 use crate::listener::ListenerKey;
+use crate::runtime::metrics::Metrics;
 
 pub(crate) struct RenderedComponent<A: App> {
     component: ComponentContainer<A::Message>,
@@ -14,8 +15,8 @@ pub(crate) struct RenderedComponent<A: App> {
 }
 
 impl<A: App> RenderedComponent<A> {
-    pub(crate) fn new(comp: ComponentContainer<A::Message>) -> (Self, Vec<ResultItem<A>>) {
-        let dom = comp.render();
+    pub(crate) fn new(comp: ComponentContainer<A::Message>, metrics: &mut Metrics) -> (Self, Vec<ResultItem<A>>) {
+        let dom = metrics.run_comp(comp.id(), || comp.render() );
         let mut result = Vec::new();
         let vdom = render_component(dom, &mut result)
             .expect("Expected an actual DOM to render.");

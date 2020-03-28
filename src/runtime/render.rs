@@ -105,7 +105,7 @@ impl<A: App> RenderResult<A> {
 
     /// Create a new RenderResult if the root component was re-rendered.
     /// Re-renders the whole component tree.
-    pub(crate) fn new_from_root(root_rendered: Node<A::Message>, _metrics: &mut Metrics) -> Self {
+    pub(crate) fn new_from_root(root_rendered: Node<A::Message>, metrics: &mut Metrics) -> Self {
         let mut result = Vec::new();
         let vdom = render_component::<A>(root_rendered, &mut result)
             .expect("Root produced an empty DOM");
@@ -129,7 +129,7 @@ impl<A: App> RenderResult<A> {
                 },
                 ResultItem::Component(comp, path) => {
                     ret.root_components.push((comp.id(), path));
-                    ret.render_component(None, comp, None);
+                    ret.render_component(None, comp, None, metrics);
                 }
                 ResultItem::Blob(blob) => {
                     ret.blobs.insert(blob.id(), blob);
@@ -143,7 +143,7 @@ impl<A: App> RenderResult<A> {
     /// that require rerendering.
     ///
     /// **Precondition**: The root component must still be valid and not require a re-render
-    pub(crate) fn new_from_frame(old: &Frame<A>, changes: &HashSet<Id>, _metrics: &mut Metrics) -> Self {
+    pub(crate) fn new_from_frame(old: &Frame<A>, changes: &HashSet<Id>, metrics: &mut Metrics) -> Self {
         let old = &old.rendered;
         let mut ret = Self {
             listeners: Default::default(),
@@ -157,7 +157,8 @@ impl<A: App> RenderResult<A> {
         let root_components = old.root_components.clone(); // XXX: workaround
         for (id, _) in &root_components {
             let comp = old.components.get(id).unwrap();
-            ret.render_component_from_old(Some(old), comp.component(), Some(changes));
+            ret.render_component_from_old(Some(old), comp.component(),
+            Some(changes), metrics);
         }
 
         ret.root_components = old.root_components.clone();
@@ -169,10 +170,12 @@ impl<A: App> RenderResult<A> {
     fn render_component(&mut self,
             old: Option<&RenderResult<A>>,
             comp: ComponentContainer<A::Message>,
-            changes: Option<&HashSet<Id>>)
+            changes: Option<&HashSet<Id>>,
+            metrics: &mut Metrics)
         {
         let id = comp.id();
-        let (rendered, mut result) = RenderedComponent::new(comp);
+        let (rendered, mut result) =
+            RenderedComponent::new(comp, metrics);
         self.components.insert(id, Arc::new(rendered));
 
         for item in result.drain(..) {
@@ -184,7 +187,7 @@ impl<A: App> RenderResult<A> {
                     self.subscriptions.insert(id, subscription);
                 },
                 ResultItem::Component(comp, _) => {
-                    self.render_component_from_old(old, comp, changes);
+                    self.render_component_from_old(old, comp, changes, metrics);
                 }
                 ResultItem::Blob(blob) => {
                     self.blobs.insert(blob.id(), blob);
@@ -196,13 +199,15 @@ impl<A: App> RenderResult<A> {
     /// Renders a component which was not changed, thus re-using all of it's VDom.
     fn render_unchanged_component(&mut self, old: &RenderResult<A>,
                 comp: ComponentContainer<A::Message>,
-                changes: &HashSet<Id>)
+                changes: &HashSet<Id>,
+                metrics: &mut Metrics)
     {
         let id = comp.id();
         let old_render = old.components.get(&id).unwrap();
         for (child, _) in old_render.children() {
             let old_comp = old.components.get(child).unwrap();
-            self.render_component_from_old(Some(old), old_comp.component(), Some(changes))
+            self.render_component_from_old(Some(old), old_comp.component(),
+                                           Some(changes), metrics)
         }
         for key in old_render.listeners() {
             let listener = old.listeners.get(key).unwrap();
@@ -222,17 +227,19 @@ impl<A: App> RenderResult<A> {
     /// Renders a component based on an old RenderResult
     fn render_component_from_old(&mut self, old: Option<&RenderResult<A>>,
                                  comp: ComponentContainer<A::Message>,
-                                 changes: Option<&HashSet<Id>>) {
+                                 changes: Option<&HashSet<Id>>,
+                                 metrics: &mut Metrics)
+     {
         let id = comp.id();
         if let Some(old) = old {
             let changes = changes.unwrap();
             if !changes.contains(&id) && old.components.contains_key(&id) {
-                self.render_unchanged_component(old, comp, changes);
+                self.render_unchanged_component(old, comp, changes, metrics);
             } else {
-                self.render_component(Some(old), comp, Some(changes));
+                self.render_component(Some(old), comp, Some(changes), metrics);
             }
         } else {
-            self.render_component(old, comp, changes);
+            self.render_component(old, comp, changes, metrics);
         }
     }
 
