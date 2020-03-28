@@ -20,6 +20,7 @@ mod vdom;
 mod websocket_pipe;
 mod node;
 mod listener;
+mod dialog;
 pub mod services;
 pub mod any;
 

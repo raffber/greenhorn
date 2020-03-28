@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::future::Future;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
+use crate::dialog::Dialog;
 
 enum MapSender<T> {
     Direct(Sender<T>),
@@ -175,6 +176,10 @@ impl<T: Send + 'static> Mailbox<T> {
         self.tx.send(MailboxMsg::Future(Box::pin(fut)));
     }
 
+    pub fn spawn_blocking<Fut: 'static + Send + Future<Output=T>>(&self, _fut: Fut) {
+        todo!()
+    }
+
     pub fn subscribe<S: 'static + Send + Stream<Item=T>>(&self, stream: S) {
         self.tx.send(MailboxMsg::Stream(Box::pin(stream)));
     }
@@ -216,6 +221,10 @@ impl<T: Send + 'static> Mailbox<T> {
                 propagate: true,
                 default_action: true,
             }));
+    }
+
+    pub fn dialog<'de, D: Dialog<'de>, F: Fn(D::Msg) -> T>(&self, _dialog: D, _fun: F) {
+        todo!()
     }
 }
 
