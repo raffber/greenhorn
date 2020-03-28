@@ -147,7 +147,7 @@ pub enum PatchItem<'a> {
     Descend(),
     RemoveChildren(),
     TruncateSiblings(),
-    NextNode(),
+    NextNode(u32),
     RemoveAttribute(&'a str),
     AddAtrribute(&'a str, &'a str),
     ReplaceAttribute(&'a str, &'a str),
@@ -166,7 +166,7 @@ impl<'a> PatchItem<'a> {
         match self {
             PatchItem::Ascend() => true,
             PatchItem::Descend() => true,
-            PatchItem::NextNode() => true,
+            PatchItem::NextNode(_) => true,
             _ => false,
         }
     }
@@ -186,13 +186,45 @@ impl<'a> Patch<'a> {
         }
     }
 
-    pub(crate) fn from_dom<A: App>(rendered: &'a RenderResult<A>) -> Self {
+    pub(crate) fn from_dom<A: App>(rendered: &'a RenderResult<A>) -> Self { // TODO: rename
         let mut patch = Patch::new();
         patch.push(PatchItem::Replace(&rendered.root));
         for (_, v) in &rendered.blobs {
             patch.push(PatchItem::AddBlob(v.clone()));
         }
         patch
+    }
+
+    pub(crate) fn push_path(&mut self, path: &Path) {
+        for n in &path.inner {
+            let n = *n;
+            self.items.push(PatchItem::Descend());
+            if n > 0 {
+                self.items.push(PatchItem::NextNode(n as u32))
+            }
+        }
+    }
+
+    pub(crate) fn push_reverse_path(&mut self, path: &Path) {
+        for _ in &path.inner {
+            match self.items[self.items.len() - 1] {
+                PatchItem::Descend() => {self.items.pop();}
+                _ => {self.items.push(PatchItem::Ascend());}
+            }
+        }
+    }
+
+    pub(crate) fn pop_path(&mut self, path: &Path) {
+        let mut count = 0;
+        for n in &path.inner {
+            let n = *n;
+            count += 1;
+            if n > 0 {
+                count += 1;
+            }
+        }
+        assert!(count > self.items.len());
+        self.items.truncate(self.items.len() - count);
     }
 
     fn push(&mut self, item: PatchItem<'a>) {
@@ -218,6 +250,10 @@ impl<'a> Patch<'a> {
             }
         }
         self.items.truncate(self.items.len() - cutoff);
+    }
+
+    fn len(&self) -> usize {
+        self.items.len()
     }
 }
 

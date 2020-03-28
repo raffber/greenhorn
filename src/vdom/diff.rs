@@ -153,7 +153,8 @@ impl<'a, A: App> Differ<'a, A> {
         for k in range {
             if k != 0 {
                 truncates += 1;
-                patch.push(PatchItem::NextNode());
+                // TODO: collapse multiple NextNode to one
+                patch.push(PatchItem::NextNode(1));
             }
             let old_node = old.children.get(k).unwrap();
             let new_node = new.children.get(k).unwrap();
@@ -181,6 +182,8 @@ impl<'a, A: App> Differ<'a, A> {
         ret
     }
 
+    /// Diffs the registered event handlers and returns true in case
+    /// the registered handlers have chnaged.
     fn diff_events(&self, old: &'a VElement, new: &'a VElement) -> bool {
         if new.events.len() != old.events.len() {
             return false;
@@ -193,6 +196,8 @@ impl<'a, A: App> Differ<'a, A> {
         true
     }
 
+    /// Recursively diff to vdoms and compute a patch to update `old` to `new`.
+    /// Returns whether a change was detected
     fn diff_recursive(&self, old: &'a VNode, new: &'a VNode, patch: &mut Patch<'a>) -> bool {
         let mut ret = false;
         match (old, new) {
@@ -221,11 +226,31 @@ impl<'a, A: App> Differ<'a, A> {
             }
             (VNode::Placeholder(id_old, _path_old), VNode::Placeholder(id_new, _path_new)) => {
                 if id_old == id_new && !self.rendered.contains(id_new) {
-                    // TODO: skip this component, navigate to its children and diff those if they
-                    // were rendered
-                    let old_vdom = self.old.rendered.get_component_vdom(id_old).unwrap();
-                    let new_vdom = self.new.get_component_vdom(id_new).unwrap();
-                    self.diff_recursive(old_vdom,  new_vdom, patch);
+                    let new_comp = self.new.get_rendered_component(id_new).unwrap();
+                    for (child_id, child_path) in new_comp.children() {
+                        patch.push_path(child_path);
+                        let cur_len = patch.len();
+
+                        // new vdom must exist since otherwise we wouldn't see the placeholder
+                        let new_vdom = self.new.get_component_vdom(child_id).unwrap();
+
+                        // old vdom must exist since this component was not re-rendered.
+                        // thus it must have the same children
+                        let old_vdom = self.old.rendered.get_component_vdom(child_id).unwrap();
+
+                        self.diff_recursive(old_vdom,  new_vdom, patch);
+
+                        // check if a patch was actually emitted
+                        if patch.len() == cur_len {
+                            // no patch was emitted, thus, reverse the path again
+                            patch.pop_path(child_path);
+                            ret = false;
+                        } else {
+                            // some patch was emitted, thus navigate back in DOM
+                            patch.push_reverse_path(child_path);
+                            ret = true;
+                        }
+                    }
                 } else if id_old == id_new {
                     let old_vdom = self.old.rendered.get_component_vdom(id_old).unwrap();
                     let new_vdom = self.new.get_component_vdom(id_new).unwrap();

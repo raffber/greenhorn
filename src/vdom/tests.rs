@@ -1,6 +1,5 @@
 use super::*;
 
-use assert_matches::assert_matches;
 use std::fs;
 use crate::runtime::{Frame, RenderResult};
 use std::collections::HashSet;
@@ -252,10 +251,14 @@ fn test_add_child() {
     let patch = diff(&old, &new);
 
     assert_eq!(patch.translations.len(), 1);
-    assert_eq!(patch.items.len(), 2);
-    assert_matches!(&patch.items[0], PatchItem::Descend());
-    if let PatchItem::AppendSibling(VNode::Element(child)) = &patch.items[1] {
-        assert_eq!(child.tag, "bla");
+    assert_eq!(patch.items.len(), 1);
+    if let PatchItem::AddChildren(children) = &patch.items[0] {
+        assert_eq!(children.len(), 1);
+        if let VNode::Element(child) = &children[0] {
+            assert_eq!(child.tag, "bla");
+        } else {
+            panic!()
+        }
     } else {
         panic!()
     }

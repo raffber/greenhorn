@@ -9,6 +9,7 @@ use std::sync::Arc;
 use crate::runtime::metrics::Metrics;
 use crate::runtime::component::RenderedComponent;
 use crate::runtime::state::Frame;
+use std::ops::Deref;
 
 // TODO: currently an event cannot be subscribed to multiple times
 // since we store the event_id as the key to find a single subscription
@@ -237,6 +238,10 @@ impl<A: App> RenderResult<A> {
 
     pub(crate) fn get_component_vdom(&self, component_id: &Id) -> Option<&VNode> {
         self.components.get(component_id).map(|x| x.vdom())
+    }
+
+    pub(crate) fn get_rendered_component(&self, component_id: &Id) -> Option<&RenderedComponent<A>> {
+        self.components.get(component_id).map(|x| x.deref())
     }
 }
 

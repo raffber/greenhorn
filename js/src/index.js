@@ -472,7 +472,11 @@ export class Patch {
     }
 
     nextNode() {
-        this.element = this.element.nextSibling;
+        let len = this.patch.getUint32(this.offset, true);
+        this.offset += 4;
+        for (let k = 0; k < len; ++k) {
+            this.element = this.element.nextSibling;
+        }
     }
 
     removeAttribute() {

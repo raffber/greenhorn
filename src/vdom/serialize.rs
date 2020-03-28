@@ -135,8 +135,9 @@ pub(crate) fn serialize<A: App>(rendered: &RenderResult<A>, patch: &Patch) -> Ve
             PatchItem::TruncateSiblings() => {
                 output.push(8);
             }
-            PatchItem::NextNode() => {
+            PatchItem::NextNode(n) => {
                 output.push(9);
+                n.serialize(&mut output);
             }
             PatchItem::RemoveAttribute(key) => {
                 output.push(10);
