@@ -10,6 +10,8 @@ use std::collections::{HashMap, HashSet};
 // hash based diffing => compute hash in parallel
 // https://github.com/Matt-Esch/virtual-dom/blob/master/vtree/diff.js
 //
+// potentially parallelize using a concurrent hashmap in RenderResult (or just use RwLock<HashMap<>>
+//
 
 pub(crate) struct Differ<'a, A: App> {
     old: &'a Frame<A>,
@@ -22,6 +24,7 @@ impl<'a, A: App> Differ<'a, A> {
         Self { old, new, rendered }
     }
 
+    /// Produce a patch based on the RenderResult
     pub(crate) fn diff(self) -> Patch<'a> {
         let mut patch = Patch::new();
         self.diff_recursive(&self.old.rendered.root,   &self.new.root, &mut patch);
@@ -30,6 +33,7 @@ impl<'a, A: App> Differ<'a, A> {
         patch
     }
 
+    /// Diffs all blobs of the two render results and emits PatchItems accordingly.
     fn diff_blobs(&self, patch: &mut Patch<'a>) {
         for (k, _) in &self.old.rendered.blobs {
             if !self.new.blobs.contains_key(k) {
@@ -50,6 +54,8 @@ impl<'a, A: App> Differ<'a, A> {
         }
     }
 
+    /// Diffs all attributes of the two elements and emits patches accordingly.
+    /// Returns true if changes were detected.
     fn diff_attrs(&self, old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) -> bool {
         let mut ret = false;
 
@@ -87,7 +93,8 @@ impl<'a, A: App> Differ<'a, A> {
         ret
     }
 
-
+    /// Diffs all js events of the two elements and emits patches accordingly.
+    /// Returns true if changes were detected.
     fn diff_js_events(&self, old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) -> bool {
         let mut ret = false;
 
@@ -125,6 +132,8 @@ impl<'a, A: App> Differ<'a, A> {
         ret
     }
 
+    /// Recursively diffs all children of the elements and emit patches accordingly.
+    /// Returns true if changes were detected.
     #[allow(clippy::comparison_chain)]
     fn diff_children(&self, old: &'a VElement, new: &'a VElement, patch: &mut Patch<'a>) -> bool {
         if old.children.is_empty() && new.children.is_empty() {
@@ -183,7 +192,7 @@ impl<'a, A: App> Differ<'a, A> {
     }
 
     /// Diffs the registered event handlers and returns true in case
-    /// the registered handlers have chnaged.
+    /// the registered handlers have changed.
     fn diff_events(&self, old: &'a VElement, new: &'a VElement) -> bool {
         if new.events.len() != old.events.len() {
             return false;
@@ -254,11 +263,12 @@ impl<'a, A: App> Differ<'a, A> {
                 } else if id_old == id_new {
                     let old_vdom = self.old.rendered.get_component_vdom(id_old).unwrap();
                     let new_vdom = self.new.get_component_vdom(id_new).unwrap();
-                    self.diff_recursive(old_vdom,  new_vdom, patch);
+                    ret = self.diff_recursive(old_vdom,  new_vdom, patch);
                 } else {
                     // don't even bother diffing
                     let new_vdom = self.new.get_component_vdom(id_new).unwrap();
                     patch.push(PatchItem::Replace(new_vdom));
+                    ret = true;
                 }
             },
             (_, new) => {

@@ -231,6 +231,10 @@ impl<'a> Patch<'a> {
         self.items.push(item)
     }
 
+    fn pop(&mut self) -> Option<PatchItem<'a>> {
+        self.items.pop()
+    }
+
     fn translate(&mut self, from: Id, to: Id) {
         self.translations.insert(from, to);
     }
