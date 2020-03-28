@@ -1,20 +1,11 @@
-# Next Tasks
-
- * lazy component re-render
- * wasm version
- * Call metrics module for nested components
- * key-based diffing
 
 # Performance Optimizations - TODO
 
  * js: optimize patch decode
       - profile
       - closure compiler?!
- * component based rendering
-   => only rerender components which need it
-   => parallel component rendering
- * Patch optimization:
-    => nth-child navigation instruction
+
+ * parallel component rendering
  * key-based diffing
  * diff: hash based comparison
       - Merkle trees ?!
@@ -23,6 +14,10 @@
 
 # Performance Optimizations - Done
 
+ * Patch optimization:
+    => nth-child navigation instruction
+ * component based rendering
+   => only rerender components which need it
  * establish better benchmarking solution
       - try to establish common usecases and implement benchmarks
       - find a good way to instrument code and collect data
