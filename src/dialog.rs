@@ -1,8 +1,6 @@
-use serde::{Serialize, Deserialize};
 use std::marker::PhantomData;
 use std::sync::{Mutex, Arc};
-
-// TODO: cleanup 'de livetime acc. https://serde.rs/lifetimes.html
+use serde_json::{Value as JsonValue, Value};
 
 mod private {
     use super::*;
@@ -15,30 +13,49 @@ mod private {
     impl Sealed for FileSaveDialog {}
 }
 
+pub trait DialogSerialize {
+   fn to_json(&self) -> JsonValue;
+   fn from_json(value: JsonValue) -> Self;
+}
 
-pub trait DialogMsg<'de> : Serialize + Deserialize<'de> {}
 
-pub trait Dialog<'de>: private::Sealed + Serialize + Deserialize<'de> {
-    type Msg: DialogMsg<'de>;
+pub trait Dialog: private::Sealed + DialogSerialize + std::marker::Sized {
+    type Msg: DialogSerialize;
 
     /// Called by the runtime to produce a result based on the received
     /// data from the dialog after the user has closed it.
-    fn resolve(self, data: &'de str) -> Result<Self::Msg, serde_json::Error> {
-        serde_json::from_str(data)
+    fn resolve(self, data: &str) -> Result<Self::Msg, serde_json::Error> {
+        todo!()
     }
 }
 
 
-#[derive(Serialize, Deserialize)]
 pub enum FileOpenMsg {
     Cancel(),
     Selected(String),
 }
 
-impl DialogMsg<'_> for FileOpenMsg {}
+impl DialogSerialize for FileOpenMsg {
+    fn to_json(&self) -> Value {
+        unimplemented!()
+    }
 
-#[derive(Serialize, Deserialize)]
+    fn from_json(value: Value) -> Self {
+        unimplemented!()
+    }
+}
+
 pub struct FileOpenDialog {}
+
+impl DialogSerialize for FileOpenDialog {
+    fn to_json(&self) -> Value {
+        unimplemented!()
+    }
+
+    fn from_json(value: Value) -> Self {
+        unimplemented!()
+    }
+}
 
 impl FileOpenDialog {
     fn new() -> Self {
@@ -47,26 +64,41 @@ impl FileOpenDialog {
 
 }
 
-impl Dialog<'_> for FileOpenDialog {
+impl Dialog for FileOpenDialog {
     type Msg = FileOpenMsg;
 }
 
-#[derive(Serialize, Deserialize)]
 pub enum MultipleFileOpenMsg {
     Cancel(),
     Selected(Vec<String>)
 }
 
-impl DialogMsg<'_> for MultipleFileOpenMsg {}
+impl DialogSerialize for MultipleFileOpenMsg {
+    fn to_json(&self) -> Value {
+        unimplemented!()
+    }
 
-#[derive(Serialize, Deserialize)]
+    fn from_json(value: Value) -> Self {
+        unimplemented!()
+    }
+}
+
 pub struct MultipleFileOpenDialog {}
 
-impl Dialog<'_> for MultipleFileOpenDialog {
+impl DialogSerialize for MultipleFileOpenDialog {
+    fn to_json(&self) -> Value {
+        unimplemented!()
+    }
+
+    fn from_json(value: Value) -> Self {
+        unimplemented!()
+    }
+}
+
+impl Dialog for MultipleFileOpenDialog {
     type Msg = MultipleFileOpenMsg;
 }
 
-#[derive(Serialize, Deserialize)]
 pub enum MessageBoxMsg {
     Ok(),
     Cancel(),
@@ -74,47 +106,77 @@ pub enum MessageBoxMsg {
     No(),
 }
 
-impl DialogMsg<'_> for MessageBoxMsg {}
+impl DialogSerialize for MessageBoxMsg {
+    fn to_json(&self) -> Value {
+        unimplemented!()
+    }
 
-#[derive(Serialize, Deserialize)]
+    fn from_json(value: Value) -> Self {
+        unimplemented!()
+    }
+}
+
 pub struct MessageBox {
 
 }
 
-impl Dialog<'_> for MessageBox {
+impl DialogSerialize for MessageBox {
+    fn to_json(&self) -> Value {
+        unimplemented!()
+    }
+
+    fn from_json(value: Value) -> Self {
+        unimplemented!()
+    }
+}
+
+impl Dialog for MessageBox {
     type Msg = MessageBoxMsg;
 }
 
-
-#[derive(Serialize, Deserialize)]
 pub enum FileSaveMsg {
     SaveTo(String),
     Cancel()
 }
 
-impl DialogMsg<'_> for FileSaveMsg {}
+impl DialogSerialize for FileSaveMsg {
+    fn to_json(&self) -> Value {
+        unimplemented!()
+    }
 
+    fn from_json(value: Value) -> Self {
+        unimplemented!()
+    }
+}
 
-#[derive(Serialize, Deserialize)]
 pub struct FileSaveDialog {
 
 }
 
-impl Dialog<'_> for FileSaveDialog {
+impl Dialog for FileSaveDialog {
     type Msg = FileSaveMsg;
 }
 
+impl DialogSerialize for FileSaveDialog {
+    fn to_json(&self) -> Value {
+        unimplemented!()
+    }
 
-pub(crate) struct DialogBinding<'de, T: Send + 'static> {
-    inner: Option<Box<dyn DialogBindingTrait<'de, T>>>,
+    fn from_json(value: Value) -> Self {
+        unimplemented!()
+    }
 }
 
-impl<'de, T: Send + 'static> DialogBinding<'de, T> {
-    pub(crate) fn new<D: Dialog<'de>, F: Fn(D::Msg) -> T>(&self, _dialog: D, _fun: F) -> Self {
+pub(crate) struct DialogBinding<T: Send + 'static> {
+    inner: Option<Box<dyn DialogBindingTrait<T>>>,
+}
+
+impl<T: Send + 'static> DialogBinding<T> {
+    pub(crate) fn new<D: Dialog, F: Fn(D::Msg) -> T>(&self, _dialog: D, _fun: F) -> Self {
         todo!()
     }
 
-    pub(crate) fn resolve(mut self, data: &'de str) -> Result<T, serde_json::Error> {
+    pub(crate) fn resolve(mut self, data: &str) -> Result<T, serde_json::Error> {
         self.inner.take().unwrap().resolve(data)
     }
 
@@ -128,18 +190,18 @@ impl<'de, T: Send + 'static> DialogBinding<'de, T> {
     // }
 }
 
-pub(crate) trait DialogBindingTrait<'de, T: Send + 'static> {
-    fn resolve(&mut self, data: &'de str) -> Result<T, serde_json::Error>;
+pub(crate) trait DialogBindingTrait<T: Send + 'static> {
+    fn resolve(&mut self, data: &str) -> Result<T, serde_json::Error>;
 }
 
-struct DialogBindingDirect<'de, T: Send + 'static, U: Dialog<'de>, Fun: Fn(U::Msg) -> T> {
+struct DialogBindingDirect<T: Send + 'static, U: Dialog, Fun: Fn(U::Msg) -> T> {
     fun: Arc<Mutex<Fun>>,
     dialog: Option<U>,
-    marker: PhantomData<&'de T>,
+    marker: PhantomData<T>,
 }
 
-impl<'de, T: Send + 'static, U: Dialog<'de>, Fun: Fn(U::Msg) -> T> DialogBindingTrait<'de, T> for DialogBindingDirect<'de, T, U, Fun> {
-    fn resolve(&mut self, data: &'de str) -> Result<T, serde_json::Error> {
+impl<T: Send + 'static, U: Dialog, Fun: Fn(U::Msg) -> T> DialogBindingTrait<T> for DialogBindingDirect<T, U, Fun> {
+    fn resolve(&mut self, data: &str) -> Result<T, serde_json::Error> {
         let msg = self.dialog.take().unwrap().resolve(data)?;
         let fun = self.fun.lock().unwrap();
         let ret = (*fun)(msg);
@@ -147,14 +209,14 @@ impl<'de, T: Send + 'static, U: Dialog<'de>, Fun: Fn(U::Msg) -> T> DialogBinding
     }
 }
 
-struct DialogBindingMap<'de, T: Send + 'static, U: Send + 'static, Fun: Fn(U) -> T> {
+struct DialogBindingMap<T: Send + 'static, U: Send + 'static, Fun: Fn(U) -> T> {
     fun: Arc<Mutex<Fun>>,
-    inner: Option<Box<dyn DialogBindingTrait<'de, U>>>,
-    marker: PhantomData<&'de T>,
+    inner: Option<Box<dyn DialogBindingTrait<U>>>,
+    marker: PhantomData<T>,
 }
 
-impl<'de, T: Send + 'static, U: Send + 'static, Fun: Fn(U) -> T> DialogBindingTrait<'de, T> for DialogBindingMap<'de, T, U, Fun> {
-    fn resolve(&mut self, data: &'de str) -> Result<T, serde_json::Error> {
+impl<T: Send + 'static, U: Send + 'static, Fun: Fn(U) -> T> DialogBindingTrait<T> for DialogBindingMap<T, U, Fun> {
+    fn resolve(&mut self, data: &str) -> Result<T, serde_json::Error> {
         let msg = self.inner.take().unwrap().resolve(data)?;
         let fun = self.fun.lock().unwrap();
         let ret = (*fun)(msg);

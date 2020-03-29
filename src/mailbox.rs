@@ -223,7 +223,7 @@ impl<T: Send + 'static> Mailbox<T> {
             }));
     }
 
-    pub fn dialog<'de, D: Dialog<'de>, F: Fn(D::Msg) -> T>(&self, _dialog: D, _fun: F) {
+    pub fn dialog<D: Dialog, F: Fn(D::Msg) -> T>(&self, _dialog: D, _fun: F) {
         todo!()
     }
 }
