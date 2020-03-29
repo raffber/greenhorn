@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::future::Future;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
-use crate::dialog::Dialog;
+use crate::dialog::{Dialog, DialogBinding};
 
 enum MapSender<T> {
     Direct(Sender<T>),
@@ -113,6 +113,7 @@ pub(crate) enum MailboxMsg<T: 'static + Send> {
     Subscription(ServiceSubscription<T>),
     Future(Pin<Box<dyn Send + Future<Output=T>>>),
     Stream(Pin<Box<dyn Send + Stream<Item=T>>>),
+    Dialog(DialogBinding<T>),
 }
 
 impl<T: Send + 'static> MailboxMsg<T> {
@@ -131,6 +132,9 @@ impl<T: Send + 'static> MailboxMsg<T> {
             MailboxMsg::Stream(stream) => {
                 MailboxMsg::Stream(Box::pin(stream.map(move |x| (mapper)(x))))
             },
+            MailboxMsg::Dialog(d) => {
+                MailboxMsg::Dialog(d.map(mapper))
+            }
             _ => panic!()
         }
     }

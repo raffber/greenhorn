@@ -108,7 +108,7 @@ impl<T: Send + 'static> DialogBinding<T> {
         self.inner.take().unwrap().resolve(data)
     }
 
-    pub(crate) fn map<U: 'static + Send, F: 'static + Fn(T) -> U>(self, fun: Arc<Mutex<F>>) -> DialogBinding<U> {
+    pub(crate) fn map<U: 'static + Send, F: 'static + Send + Sync + Fn(T) -> U>(self, fun: Arc<F>) -> DialogBinding<U> {
         let inner: Box<dyn DialogBindingTrait<U>> = Box::new(DialogBindingMap{
             fun,
             inner: self.inner,
@@ -137,17 +137,16 @@ impl<T: Send + 'static, U: Dialog, Fun: Fn(U::Msg) -> T> DialogBindingTrait<T> f
     }
 }
 
-struct DialogBindingMap<T: Send + 'static, U: Send + 'static, Fun: Fn(U) -> T> {
-    fun: Arc<Mutex<Fun>>,
+struct DialogBindingMap<T: Send + 'static, U: Send + 'static, Fun: 'static + Send + Sync + Fn(U) -> T> {
+    fun: Arc<Fun>,
     inner: Option<Box<dyn DialogBindingTrait<U>>>,
     marker: PhantomData<T>,
 }
 
-impl<T: Send + 'static, U: Send + 'static, Fun: Fn(U) -> T> DialogBindingTrait<T> for DialogBindingMap<T, U, Fun> {
+impl<T: Send + 'static, U: Send + 'static, Fun: 'static + Send + Sync + Fn(U) -> T> DialogBindingTrait<T> for DialogBindingMap<T, U, Fun> {
     fn resolve(&mut self, data: &str) -> Result<T, serde_json::Error> {
         let msg = self.inner.take().unwrap().resolve(data)?;
-        let fun = self.fun.lock().unwrap();
-        let ret = (*fun)(msg);
+        let ret = (*self.fun)(msg);
         Ok(ret)
     }
 }

@@ -272,6 +272,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                         }
                     });
                 }
+                MailboxMsg::Dialog(_) => {todo!()}
             }
         }
     }
