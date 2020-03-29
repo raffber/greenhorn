@@ -282,7 +282,14 @@ export class Pipe {
             let prop = msg.Propagate.propagate;
             let default_action = msg.Propagate.default_action;
             this.injectEvent(event, prop, default_action);
+        } else if (msg.hasOwnProperty("Dialog")) {
+            this.spawnDialog(msg.Dialog);
         }
+    }
+
+    spawnDialog(dialog) {
+        let json_dialog = JSON.stringify(dialog);
+        external.invoke(json_dialog);
     }
 
     injectEvent(event, prop, default_action) {
