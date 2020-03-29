@@ -13,14 +13,15 @@ pub enum TxMsg {
     RunJs(String),
     Service(u64, TxServiceMessage),
     Propagate(EventPropagate),
+    Dialog(String),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum RxMsg {
-    Ping(),
     Event(DomEvent),
     FrameApplied(),
     Service(u64, RxServiceMessage),
+    Dialog(String),
 }
 
 pub trait Sender: Clone + Send {

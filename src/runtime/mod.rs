@@ -17,6 +17,7 @@ pub(crate) use crate::runtime::render::RenderResult;
 pub(crate) use crate::runtime::state::Frame;
 use crate::runtime::metrics::Metrics;
 use std::time::{Instant, Duration};
+use crate::dialog::DialogBinding;
 
 mod service_runner;
 mod render;
@@ -54,6 +55,7 @@ pub struct Runtime<A: 'static + App, P: 'static + Pipe> {
     not_applied_counter: i32,
     dirty: bool,
     metrics: Metrics,
+    dialogs: VecDeque<DialogBinding<A::Message>>
 }
 
 pub struct RuntimeControl<A: App> {
@@ -102,6 +104,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             current_frame: None,
             not_applied_counter: 0,
             metrics: Default::default(),
+            dialogs: Default::default(),
         };
         let control = RuntimeControl { tx };
         (runtime, control)
@@ -174,14 +177,29 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 }
             }
             RxMsg::FrameApplied() => {
+                // a patch was applied by the frontend
+                // thus we swap the current state to the newly rendered frame
                 if let Some(frame) = self.next_frame.take() {
                     self.rendered.apply(&frame);
                     self.current_frame = Some(frame);
                 }
             }
-            RxMsg::Ping() => {}
             RxMsg::Service(id, msg) => {
                 self.services.send(Id::from_data(id), msg);
+            },
+            RxMsg::Dialog(data) => {
+                // cannot receive a dialog message if no dialog is active
+                // since this is the only place where we pop
+                let dialog = self.dialogs.pop_front().unwrap();
+                // panic if data was ill formated since that is a bug in the backend
+                let msg = dialog.resolve(&data).unwrap();
+                self.update(msg);
+                self.process_events();
+                if self.dialogs.len() > 0 {
+                    // show next dialog
+                    let data = self.dialogs.get(0).unwrap().serialize();
+                    self.sender.send(TxMsg::Dialog(data))
+                }
             }
         };
         true
@@ -272,7 +290,12 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                         }
                     });
                 }
-                MailboxMsg::Dialog(_) => {todo!()}
+                MailboxMsg::Dialog(dialog) => {
+                    if self.dialogs.len() == 0 {
+                        self.sender.send(TxMsg::Dialog(dialog.serialize()))
+                    }
+                    self.dialogs.push_back(dialog);
+                }
             }
         }
     }

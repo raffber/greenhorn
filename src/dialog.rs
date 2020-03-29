@@ -116,6 +116,10 @@ impl<T: Send + 'static> DialogBinding<T> {
         });
         DialogBinding { inner: Some(inner) }
     }
+
+    pub(crate) fn serialize(&self) -> String {
+        todo!()
+    }
 }
 
 pub(crate) trait DialogBindingTrait<T: Send + 'static> {
