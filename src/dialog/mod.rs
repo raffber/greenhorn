@@ -58,12 +58,14 @@ impl<T: Send + 'static> DialogBinding<T> {
     }
 
     pub(crate) fn serialize(&self) -> String {
-        todo!()
+        // unwrap is fine because we only take() self.inner in resolve()
+        self.inner.as_ref().unwrap().serialize()
     }
 }
 
 pub(crate) trait DialogBindingTrait<T: Send + 'static> {
     fn resolve(&mut self, data: &str) -> Result<T, serde_json::Error>;
+    fn serialize(&self) -> String;
 }
 
 struct DialogBindingDirect<T: Send + 'static, U: Dialog, Fun: Fn(U::Msg) -> T> {
@@ -79,6 +81,10 @@ impl<T: Send + 'static, U: Dialog, Fun: Fn(U::Msg) -> T> DialogBindingTrait<T> f
         let ret = (*fun)(msg);
         Ok(ret)
     }
+
+    fn serialize(&self) -> String {
+        serde_json::to_string(&self.dialog).unwrap()
+    }
 }
 
 struct DialogBindingMap<T: Send + 'static, U: Send + 'static, Fun: 'static + Send + Sync + Fn(U) -> T> {
@@ -92,5 +98,10 @@ impl<T: Send + 'static, U: Send + 'static, Fun: 'static + Send + Sync + Fn(U) ->
         let msg = self.inner.take().unwrap().resolve(data)?;
         let ret = (*self.fun)(msg);
         Ok(ret)
+    }
+
+    fn serialize(&self) -> String {
+        // unwrap is fine because we only take() self.inner in resolve()
+        self.inner.as_ref().unwrap().serialize()
     }
 }
