@@ -1,17 +1,21 @@
 use std::marker::PhantomData;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::sync::{Mutex, Arc};
 use serde::de::DeserializeOwned;
 
+mod file_dialogs;
+mod msg_box;
+
 mod private {
-    use super::*;
+    use crate::dialog::file_dialogs::*;
+    use crate::dialog::msg_box::*;
 
     pub trait Sealed {}
 
     impl Sealed for FileOpenDialog {}
     impl Sealed for MultipleFileOpenDialog {}
-    impl Sealed for MessageBox {}
     impl Sealed for FileSaveDialog {}
+    impl Sealed for MessageBox {}
 }
 
 pub trait Dialog: private::Sealed + Serialize + DeserializeOwned + std::marker::Sized {
@@ -23,70 +27,6 @@ pub trait Dialog: private::Sealed + Serialize + DeserializeOwned + std::marker::
         let bytes = data.as_bytes();
         serde_json::from_reader(bytes)
     }
-}
-
-#[derive(Serialize, Deserialize)]
-pub enum FileOpenMsg {
-    Cancel(),
-    Selected(String),
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct FileOpenDialog {}
-
-impl FileOpenDialog {
-    fn new() -> Self {
-        todo!()
-    }
-
-}
-
-impl Dialog for FileOpenDialog {
-    type Msg = FileOpenMsg;
-}
-
-#[derive(Serialize, Deserialize)]
-pub enum MultipleFileOpenMsg {
-    Cancel(),
-    Selected(Vec<String>)
-}
-
-
-#[derive(Serialize, Deserialize)]
-pub struct MultipleFileOpenDialog {}
-
-impl Dialog for MultipleFileOpenDialog {
-    type Msg = MultipleFileOpenMsg;
-}
-
-#[derive(Serialize, Deserialize)]
-pub enum MessageBoxMsg {
-    Ok(),
-    Cancel(),
-    Yes(),
-    No(),
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct MessageBox {}
-
-impl Dialog for MessageBox {
-    type Msg = MessageBoxMsg;
-}
-
-#[derive(Serialize, Deserialize)]
-pub enum FileSaveMsg {
-    SaveTo(String),
-    Cancel()
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct FileSaveDialog {
-
-}
-
-impl Dialog for FileSaveDialog {
-    type Msg = FileSaveMsg;
 }
 
 pub(crate) struct DialogBinding<T: Send + 'static> {
@@ -154,4 +94,3 @@ impl<T: Send + 'static, U: Send + 'static, Fun: 'static + Send + Sync + Fn(U) ->
         Ok(ret)
     }
 }
-
