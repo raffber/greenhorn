@@ -6,6 +6,9 @@ use serde::de::DeserializeOwned;
 mod file_dialogs;
 mod msg_box;
 
+// ensure that external crates cannot implement Dialog
+// otherwise this would allow them to inject unknown data
+// using `Mailbox::dialog()`.
 mod private {
     use crate::dialog::file_dialogs::*;
     use crate::dialog::msg_box::*;
@@ -18,8 +21,14 @@ mod private {
     impl Sealed for MessageBox {}
 }
 
+/// Interface for modal dialogs. A dialog may be spawned using the `Mailbox::dialog()` function.
+/// Once a dialog closes it resolves to a result captured using the `Msg` type.
 pub trait Dialog: private::Sealed + Serialize + DeserializeOwned + std::marker::Sized {
     type Msg: DeserializeOwned;
+
+    /// Must return a type name uniquely identifying this type within all Dialog types.
+    /// This allows the resulting json to be associated to a type upon deserialization.
+    fn type_name() -> &'static str;
 
     /// Called by the runtime to produce a result based on the received
     /// data from the dialog after the user has closed it.
@@ -27,8 +36,19 @@ pub trait Dialog: private::Sealed + Serialize + DeserializeOwned + std::marker::
         let bytes = data.as_bytes();
         serde_json::from_reader(bytes)
     }
+
+    /// Serializes the current object into a json string.
+    /// Also inserts a `__type__` field.
+    fn serialize(&self) -> String {
+        let mut result = serde_json::to_value(self).unwrap();
+        let obj = result.as_object_mut().unwrap();
+        obj.insert("__type__".to_string(), Self::type_name().into());
+        serde_json::to_string(&result).unwrap()
+    }
 }
 
+/// Binds a dialog with a function mapping it to a message understandable
+/// by the component tree.
 pub(crate) struct DialogBinding<T: Send + 'static> {
     inner: Option<Box<dyn DialogBindingTrait<T>>>,
 }
@@ -83,7 +103,7 @@ impl<T: Send + 'static, U: Dialog, Fun: Fn(U::Msg) -> T> DialogBindingTrait<T> f
     }
 
     fn serialize(&self) -> String {
-        serde_json::to_string(&self.dialog).unwrap()
+        Dialog::serialize(self.dialog.as_ref().unwrap())
     }
 }
 

@@ -19,6 +19,10 @@ impl FileOpenDialog {
 
 impl Dialog for FileOpenDialog {
     type Msg = FileOpenMsg;
+
+    fn type_name() -> &'static str {
+        "FileOpenDialog"
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -33,6 +37,10 @@ pub struct MultipleFileOpenDialog {}
 
 impl Dialog for MultipleFileOpenDialog {
     type Msg = MultipleFileOpenMsg;
+
+    fn type_name() -> &'static str {
+        "MultipleFileOpenDialog"
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -48,4 +56,8 @@ pub struct FileSaveDialog {
 
 impl Dialog for FileSaveDialog {
     type Msg = FileSaveMsg;
+
+    fn type_name() -> &'static str {
+        "FileSaveDialog"
+    }
 }
