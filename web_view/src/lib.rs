@@ -102,7 +102,10 @@ impl<'a> ViewBuilder {
             .debug(self.debug)
             .resizable(true)
             .user_data(())
-            .invoke_handler(|_webview, _arg| Ok(()))
+            .invoke_handler(|webview, arg| {
+                handler(webview, arg);
+                Ok(())
+            })
             .build()
             .unwrap();
 
@@ -115,4 +118,8 @@ impl<'a> ViewBuilder {
 
         thread.join().unwrap();
     }
+}
+
+fn handler(_webview: &mut WebView<()>, arg: &str) {
+    println!("{}", arg);
 }

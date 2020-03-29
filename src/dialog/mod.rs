@@ -6,6 +6,9 @@ use serde::de::DeserializeOwned;
 mod file_dialogs;
 mod msg_box;
 
+pub use file_dialogs::{FileOpenDialog, MultipleFileOpenDialog, FileSaveDialog};
+pub use msg_box::{MessageBox, MessageBoxMsg, MsgBoxType, MsgBoxIcon};
+
 // ensure that external crates cannot implement Dialog
 // otherwise this would allow them to inject unknown data
 // using `Mailbox::dialog()`.
@@ -54,7 +57,7 @@ pub(crate) struct DialogBinding<T: Send + 'static> {
 }
 
 impl<T: Send + 'static> DialogBinding<T> {
-    pub(crate) fn new<D: 'static + Dialog, F: 'static + Fn(D::Msg) -> T>(&self, dialog: D, fun: F) -> Self {
+    pub(crate) fn new<D: 'static + Dialog, F: 'static + Fn(D::Msg) -> T>(dialog: D, fun: F) -> Self {
         Self {
             inner: Some(Box::new(DialogBindingDirect {
                 fun: Arc::new(Mutex::new(fun)),

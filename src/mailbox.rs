@@ -227,8 +227,9 @@ impl<T: Send + 'static> Mailbox<T> {
             }));
     }
 
-    pub fn dialog<D: Dialog, F: Fn(D::Msg) -> T>(&self, _dialog: D, _fun: F) {
-        todo!()
+    pub fn dialog<D: 'static + Dialog, F: 'static + Fn(D::Msg) -> T>(&self, dialog: D, fun: F) {
+        let binding = DialogBinding::new(dialog, fun);
+        self.tx.send(MailboxMsg::Dialog(binding));
     }
 }
 
