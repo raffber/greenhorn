@@ -5,6 +5,7 @@ use std::str::FromStr;
 use greenhorn::prelude::*;
 use async_std::net::TcpListener;
 use async_std::task;
+use greenhorn::dialog::MessageBox;
 
 pub struct ViewBuilder {
     pub css: Vec<String>,
@@ -121,5 +122,12 @@ impl<'a> ViewBuilder {
 }
 
 fn handler(_webview: &mut WebView<()>, arg: &str) {
+    let value = serde_json::to_value(arg).expect("Invalid message received");
+    match value.as_object().unwrap().get("__type__").unwrap().as_str().unwrap() {
+       "MessageBox" => {
+           let msgbox: MessageBox = serde_json::from_value(value).unwrap();
+       },
+       _ => {}
+    }
     println!("{}", arg);
 }
