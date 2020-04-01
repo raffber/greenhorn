@@ -5,7 +5,9 @@ use std::str::FromStr;
 use greenhorn::prelude::*;
 use async_std::net::TcpListener;
 use async_std::task;
-use greenhorn::dialog::MessageBox;
+use greenhorn::dialog::{MessageBox, MsgBoxIcon, MsgBoxType, MessageBoxResult};
+use serde_json::Value as JsonValue;
+use tinyfiledialogs::{message_box_ok, MessageBoxIcon, message_box_ok_cancel, OkCancel, message_box_yes_no, YesNo};
 
 pub struct ViewBuilder {
     pub css: Vec<String>,
@@ -121,13 +123,42 @@ impl<'a> ViewBuilder {
     }
 }
 
-fn handler(_webview: &mut WebView<()>, arg: &str) {
-    let value = serde_json::to_value(arg).expect("Invalid message received");
-    match value.as_object().unwrap().get("__type__").unwrap().as_str().unwrap() {
+fn handler(_webview: &mut WebView<()>, arg: &str) -> String {
+    let value: JsonValue = serde_json::from_str(arg).expect("Invalid message received");
+    let obj = value.as_object().unwrap();
+    let tp = obj.get("__type__").unwrap();
+    let tp_as_str = tp.as_str().unwrap();
+    match tp_as_str {
        "MessageBox" => {
            let msgbox: MessageBox = serde_json::from_value(value).unwrap();
+           let icon = match msgbox.icon {
+               MsgBoxIcon::Info => MessageBoxIcon::Info,
+               MsgBoxIcon::Warning => MessageBoxIcon::Warning,
+               MsgBoxIcon::Error => MessageBoxIcon::Error,
+               MsgBoxIcon::Question => MessageBoxIcon::Question,
+           };
+           match msgbox.box_type {
+               MsgBoxType::Ok => {
+                   message_box_ok(&msgbox.title, &msgbox.message, icon);
+                   "".to_string()
+               },
+               MsgBoxType::OkCancel => {
+                   let default = match msgbox.default {
+                       MessageBoxResult::Ok => OkCancel::Ok,
+                       MessageBoxResult::Cancel => OkCancel::Cancel,
+                       _ => panic!(),
+                   };
+                   let result = match message_box_ok_cancel(&msgbox.title, &msgbox.message, icon, default) {
+                       OkCancel::Cancel => {MessageBoxResult::Ok},
+                       OkCancel::Ok => {MessageBoxResult::Cancel},
+                   };
+                   serde_json::to_string(&result).unwrap()
+               },
+               MsgBoxType::YesNo => {
+
+               },
+           }
        },
-       _ => {}
+       _ => {"".to_string()}
     }
-    println!("{}", arg);
 }

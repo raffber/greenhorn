@@ -192,7 +192,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 // since this is the only place where we pop
                 let dialog = self.dialogs.pop_front().unwrap();
                 // panic if data was ill formated since that is a bug in the backend
-                let msg = dialog.resolve(&data).unwrap();
+                let msg = dialog.resolve(data).unwrap();
                 self.update(msg);
                 self.process_events();
                 if self.dialogs.len() > 0 {

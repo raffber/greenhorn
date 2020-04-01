@@ -4,6 +4,7 @@ use crate::dom_event::DomEvent;
 use crate::service::{RxServiceMessage, TxServiceMessage};
 use serde::{Deserialize, Serialize};
 use crate::mailbox::EventPropagate;
+use serde_json::Value as JsonValue;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum TxMsg {
@@ -13,7 +14,7 @@ pub enum TxMsg {
     RunJs(String),
     Service(u64, TxServiceMessage),
     Propagate(EventPropagate),
-    Dialog(String),
+    Dialog(JsonValue),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -21,7 +22,7 @@ pub enum RxMsg {
     Event(DomEvent),
     FrameApplied(),
     Service(u64, RxServiceMessage),
-    Dialog(String),
+    Dialog(JsonValue),
 }
 
 pub trait Sender: Clone + Send {

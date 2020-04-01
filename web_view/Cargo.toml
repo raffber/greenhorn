@@ -10,6 +10,7 @@ edition = "2018"
 greenhorn = {path = ".."}
 web-view = "0.6.0"
 serde_json = "1.0"
+tinyfiledialogs = "3.0"
 
 [dependencies.async-std]
 version = "1.4.0"

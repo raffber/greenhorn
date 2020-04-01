@@ -17,19 +17,20 @@ pub enum MsgBoxIcon {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub enum MessageBoxMsg {
-    Ok(),
-    Cancel(),
-    Yes(),
-    No(),
+pub enum MessageBoxResult {
+    Ok,
+    Cancel,
+    Yes,
+    No,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct MessageBox {
-    box_type: MsgBoxType,
-    title: String,
-    message: String,
-    icon: MsgBoxIcon,
+    pub box_type: MsgBoxType,
+    pub title: String,
+    pub message: String,
+    pub icon: MsgBoxIcon,
+    pub default: MessageBoxResult,
 }
 
 impl MessageBox {
@@ -38,13 +39,14 @@ impl MessageBox {
             box_type,
             title: title.to_string(),
             message: message.to_string(),
-            icon
+            icon,
+            default: MessageBoxResult::Ok,
         }
     }
 }
 
 impl Dialog for MessageBox {
-    type Msg = MessageBoxMsg;
+    type Msg = MessageBoxResult;
 
     fn type_name() -> &'static str {
         "MessageBox"

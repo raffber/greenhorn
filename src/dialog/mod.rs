@@ -2,12 +2,13 @@ use std::marker::PhantomData;
 use serde::Serialize;
 use std::sync::{Mutex, Arc};
 use serde::de::DeserializeOwned;
+use serde_json::Value as JsonValue;
 
 mod file_dialogs;
 mod msg_box;
 
 pub use file_dialogs::{FileOpenDialog, MultipleFileOpenDialog, FileSaveDialog};
-pub use msg_box::{MessageBox, MessageBoxMsg, MsgBoxType, MsgBoxIcon};
+pub use msg_box::{MessageBox, MessageBoxResult, MsgBoxType, MsgBoxIcon};
 
 // ensure that external crates cannot implement Dialog
 // otherwise this would allow them to inject unknown data
@@ -35,18 +36,17 @@ pub trait Dialog: private::Sealed + Serialize + DeserializeOwned + std::marker::
 
     /// Called by the runtime to produce a result based on the received
     /// data from the dialog after the user has closed it.
-    fn resolve(self, data: &str) -> Result<Self::Msg, serde_json::Error> {
-        let bytes = data.as_bytes();
-        serde_json::from_reader(bytes)
+    fn resolve(self, data: JsonValue) -> Result<Self::Msg, serde_json::Error> {
+        serde_json::from_value(data)
     }
 
     /// Serializes the current object into a json string.
     /// Also inserts a `__type__` field.
-    fn serialize(&self) -> String {
+    fn serialize(&self) -> JsonValue {
         let mut result = serde_json::to_value(self).unwrap();
         let obj = result.as_object_mut().unwrap();
         obj.insert("__type__".to_string(), Self::type_name().into());
-        serde_json::to_string(&result).unwrap()
+        serde_json::to_value(&result).unwrap()
     }
 }
 
@@ -67,7 +67,7 @@ impl<T: Send + 'static> DialogBinding<T> {
         }
     }
 
-    pub(crate) fn resolve(mut self, data: &str) -> Result<T, serde_json::Error> {
+    pub(crate) fn resolve(mut self, data: JsonValue) -> Result<T, serde_json::Error> {
         self.inner.take().unwrap().resolve(data)
     }
 
@@ -80,15 +80,15 @@ impl<T: Send + 'static> DialogBinding<T> {
         DialogBinding { inner: Some(inner) }
     }
 
-    pub(crate) fn serialize(&self) -> String {
+    pub(crate) fn serialize(&self) -> JsonValue {
         // unwrap is fine because we only take() self.inner in resolve()
         self.inner.as_ref().unwrap().serialize()
     }
 }
 
 pub(crate) trait DialogBindingTrait<T: Send + 'static> {
-    fn resolve(&mut self, data: &str) -> Result<T, serde_json::Error>;
-    fn serialize(&self) -> String;
+    fn resolve(&mut self, data: JsonValue) -> Result<T, serde_json::Error>;
+    fn serialize(&self) -> JsonValue;
 }
 
 struct DialogBindingDirect<T: Send + 'static, U: Dialog, Fun: Fn(U::Msg) -> T> {
@@ -98,14 +98,14 @@ struct DialogBindingDirect<T: Send + 'static, U: Dialog, Fun: Fn(U::Msg) -> T> {
 }
 
 impl<T: Send + 'static, U: Dialog, Fun: Fn(U::Msg) -> T> DialogBindingTrait<T> for DialogBindingDirect<T, U, Fun> {
-    fn resolve(&mut self, data: &str) -> Result<T, serde_json::Error> {
+    fn resolve(&mut self, data: JsonValue) -> Result<T, serde_json::Error> {
         let msg = self.dialog.take().unwrap().resolve(data)?;
         let fun = self.fun.lock().unwrap();
         let ret = (*fun)(msg);
         Ok(ret)
     }
 
-    fn serialize(&self) -> String {
+    fn serialize(&self) -> JsonValue {
         Dialog::serialize(self.dialog.as_ref().unwrap())
     }
 }
@@ -117,13 +117,13 @@ struct DialogBindingMap<T: Send + 'static, U: Send + 'static, Fun: 'static + Sen
 }
 
 impl<T: Send + 'static, U: Send + 'static, Fun: 'static + Send + Sync + Fn(U) -> T> DialogBindingTrait<T> for DialogBindingMap<T, U, Fun> {
-    fn resolve(&mut self, data: &str) -> Result<T, serde_json::Error> {
+    fn resolve(&mut self, data: JsonValue) -> Result<T, serde_json::Error> {
         let msg = self.inner.take().unwrap().resolve(data)?;
         let ret = (*self.fun)(msg);
         Ok(ret)
     }
 
-    fn serialize(&self) -> String {
+    fn serialize(&self) -> JsonValue {
         // unwrap is fine because we only take() self.inner in resolve()
         self.inner.as_ref().unwrap().serialize()
     }
