@@ -283,15 +283,21 @@ export class Pipe {
             let default_action = msg.Propagate.default_action;
             this.injectEvent(event, prop, default_action);
         } else if (msg.hasOwnProperty("Dialog")) {
-            console.log(msg.Dialog);
             this.spawnDialog(msg.Dialog);
         }
     }
 
     spawnDialog(dialog) {
-        let json_dialog = JSON.stringify(dialog);
-        console.log(json_dialog);
-        external.invoke(json_dialog);
+        let in_msg = {
+            "Dialog": dialog
+        };
+        let ret_msg = external.invoke(JSON.stringify(in_msg));
+        let deserialized_ret_msg = JSON.parse(ret_msg);
+        let msg = {
+            "Dialog": deserialized_ret_msg
+        };
+        let data = JSON.stringify(msg);
+        this.socket.send(data);
     }
 
     injectEvent(event, prop, default_action) {

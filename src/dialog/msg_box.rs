@@ -34,14 +34,46 @@ pub struct MessageBox {
 }
 
 impl MessageBox {
-    pub fn new(box_type: MsgBoxType, title: &str, message: &str, icon: MsgBoxIcon) -> Self {
+    pub fn new_yes_no(title: &str, message: &str) -> Self {
         Self {
-            box_type,
+            box_type: MsgBoxType::YesNo,
             title: title.to_string(),
             message: message.to_string(),
-            icon,
-            default: MessageBoxResult::Ok,
+            icon: MsgBoxIcon::Question,
+            default: MessageBoxResult::Yes
         }
+    }
+
+    pub fn new_ok_cancel(title: &str, message: &str) -> Self {
+        Self {
+            box_type: MsgBoxType::OkCancel,
+            title: title.to_string(),
+            message: message.to_string(),
+            icon: MsgBoxIcon::Question,
+            default: MessageBoxResult::Ok
+        }
+    }
+
+    pub fn new_ok(title: &str, message: &str) -> Self {
+        Self {
+            box_type: MsgBoxType::Ok,
+            title: title.to_string(),
+            message: message.to_string(),
+            icon: MsgBoxIcon::Info,
+            default: MessageBoxResult::Ok
+        }
+    }
+
+    pub fn with_icon(self, icon: MsgBoxIcon) -> Self {
+        let mut x = self;
+        x.icon = icon;
+        x
+    }
+
+    pub fn with_default(self, default: MessageBoxResult) -> Self {
+        let mut x = self;
+        x.default = default;
+        x
     }
 }
 

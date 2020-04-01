@@ -13,7 +13,7 @@ mod dom_event;
 mod event;
 mod mailbox;
 mod node_builder;
-mod pipe;
+pub mod pipe;
 mod runtime;
 mod service;
 mod vdom;
