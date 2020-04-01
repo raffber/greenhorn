@@ -291,13 +291,7 @@ export class Pipe {
         let in_msg = {
             "Dialog": dialog
         };
-        let ret_msg = external.invoke(JSON.stringify(in_msg));
-        let deserialized_ret_msg = JSON.parse(ret_msg);
-        let msg = {
-            "Dialog": deserialized_ret_msg
-        };
-        let data = JSON.stringify(msg);
-        this.socket.send(data);
+        external.invoke(JSON.stringify(in_msg));
     }
 
     injectEvent(event, prop, default_action) {
@@ -370,6 +364,11 @@ export class Application {
     onRunJsMsg(id, js) {
         let ctx = new Context(id, this);
         eval(js);
+    }
+
+    sendReturnMessage(ret_msg) {
+        let data = JSON.stringify(ret_msg);
+        this.pipe.socket.send(data);
     }
 
     onPatch(patch_data) {

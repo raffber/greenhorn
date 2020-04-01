@@ -8,7 +8,7 @@ use async_std::task;
 use greenhorn::dialog::{MessageBox, MsgBoxIcon, MsgBoxType, MessageBoxResult};
 use serde_json::Value as JsonValue;
 use tinyfiledialogs::{message_box_ok, MessageBoxIcon, message_box_ok_cancel, OkCancel, message_box_yes_no, YesNo};
-use greenhorn::pipe::RxMsg;
+use greenhorn::pipe::{RxMsg, TxMsg};
 
 pub struct ViewBuilder {
     pub css: Vec<String>,
@@ -124,59 +124,66 @@ impl<'a> ViewBuilder {
     }
 }
 
-fn handle_dialog(_webview: &mut WebView<()>, value: JsonValue) -> String {
-    let obj = value.as_object().unwrap();
-    let tp = obj.get("__type__").unwrap();
-    let tp_as_str = tp.as_str().unwrap();
-    match tp_as_str {
-        "MessageBox" => {
-            let msgbox: MessageBox = serde_json::from_value(value).unwrap();
-            let icon = match msgbox.icon {
-                MsgBoxIcon::Info => MessageBoxIcon::Info,
-                MsgBoxIcon::Warning => MessageBoxIcon::Warning,
-                MsgBoxIcon::Error => MessageBoxIcon::Error,
-                MsgBoxIcon::Question => MessageBoxIcon::Question,
-            };
-            match msgbox.box_type {
-                MsgBoxType::Ok => {
-                    message_box_ok(&msgbox.title, &msgbox.message, icon);
-                    "".to_string()
-                },
-                MsgBoxType::OkCancel => {
-                    let default = match msgbox.default {
-                        MessageBoxResult::Ok => OkCancel::Ok,
-                        MessageBoxResult::Cancel => OkCancel::Cancel,
-                        _ => panic!(),
-                    };
-                    let result = match message_box_ok_cancel(&msgbox.title, &msgbox.message, icon, default) {
-                        OkCancel::Cancel => MessageBoxResult::Ok,
-                        OkCancel::Ok => MessageBoxResult::Cancel,
-                    };
-                    serde_json::to_string(&result).unwrap()
-                },
-                MsgBoxType::YesNo => {
-                    let default = match msgbox.default {
-                        MessageBoxResult::Yes => YesNo::Yes,
-                        MessageBoxResult::No => YesNo::No,
-                        _ => panic!(),
-                    };
-                    let result = match message_box_yes_no(&msgbox.title, &msgbox.message, icon, default) {
-                        YesNo::Yes => MessageBoxResult::Yes,
-                        YesNo::No => MessageBoxResult::No,
-                    };
-                    serde_json::to_string(&result).unwrap()
-                },
-            }
+fn handle_msgbox(value: JsonValue) -> JsonValue {
+    let msgbox: MessageBox = serde_json::from_value(value).unwrap();
+    let icon = match msgbox.icon {
+        MsgBoxIcon::Info => MessageBoxIcon::Info,
+        MsgBoxIcon::Warning => MessageBoxIcon::Warning,
+        MsgBoxIcon::Error => MessageBoxIcon::Error,
+        MsgBoxIcon::Question => MessageBoxIcon::Question,
+    };
+    match msgbox.box_type {
+        MsgBoxType::Ok => {
+            message_box_ok(&msgbox.title, &msgbox.message, icon);
+            JsonValue::Null
         },
-        _ => {"".to_string()}
+        MsgBoxType::OkCancel => {
+            let default = match msgbox.default {
+                MessageBoxResult::Ok => OkCancel::Ok,
+                MessageBoxResult::Cancel => OkCancel::Cancel,
+                _ => panic!(),
+            };
+            let result = match message_box_ok_cancel(&msgbox.title, &msgbox.message, icon, default) {
+                OkCancel::Cancel => MessageBoxResult::Ok,
+                OkCancel::Ok => MessageBoxResult::Cancel,
+            };
+            serde_json::to_value(&result).unwrap()
+        },
+        MsgBoxType::YesNo => {
+            let default = match msgbox.default {
+                MessageBoxResult::Yes => YesNo::Yes,
+                MessageBoxResult::No => YesNo::No,
+                _ => panic!(),
+            };
+            let result = match message_box_yes_no(&msgbox.title, &msgbox.message, icon, default) {
+                YesNo::Yes => MessageBoxResult::Yes,
+                YesNo::No => MessageBoxResult::No,
+            };
+            serde_json::to_value(&result).unwrap()
+        },
     }
 }
 
-fn handler(webview: &mut WebView<()>, arg: &str) -> String {
+fn handle_dialog(_webview: &mut WebView<()>, value: JsonValue) -> TxMsg {
+    let obj = value.as_object().unwrap();
+    let tp = obj.get("__type__").unwrap();
+    let tp_as_str = tp.as_str().unwrap();
+    let ret = match tp_as_str {
+        "MessageBox" => handle_msgbox(value),
+        _ => panic!()
+    };
+    TxMsg::Dialog(ret)
+}
+
+fn handler(webview: &mut WebView<()>, arg: &str) {
      // if this happens it's a mistake somewhere
     let rx: RxMsg = serde_json::from_str(arg).expect("Invalid message received.");
-    match rx {
+    let ret = match rx {
         RxMsg::Dialog(dialog) => handle_dialog(webview, dialog),
-        _ => "".to_string()
-    }
+        _ => panic!()
+    };
+    // this already produces an escaped js string
+    let ret = serde_json::to_string(&ret).unwrap();
+    let arg = format!("window.app.sendReturnMessage({});", ret);
+    webview.eval(&arg).unwrap();
 }
