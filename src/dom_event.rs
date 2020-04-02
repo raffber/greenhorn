@@ -56,10 +56,26 @@ pub struct MouseEvent {
     pub screen: Point,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub enum InputValue {
+    Bool(bool),
+    Text(String),
+    Number(f64),
+    NoValue,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ChangeEvent {
+    pub target: Id,
+    pub event_name: String,
+    pub value: InputValue,
+}
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum DomEvent {
     Base(Id, String),
+    Change(ChangeEvent),
     Focus(Id, String),
     Keyboard(KeyboardEvent),
     Mouse(MouseEvent),
@@ -74,6 +90,7 @@ impl DomEvent {
             DomEvent::Keyboard(evt) => evt.target.clone(),
             DomEvent::Mouse(evt) => evt.target.clone(),
             DomEvent::Wheel(evt) => evt.target.clone(),
+            DomEvent::Change(evt) => evt.target.clone(),
         }
     }
 
@@ -84,6 +101,7 @@ impl DomEvent {
             DomEvent::Keyboard(evt) => &evt.event_name,
             DomEvent::Mouse(evt) => &evt.event_name,
             DomEvent::Wheel(evt) => &evt.event_name,
+            DomEvent::Change(evt) => &evt.event_name,
         }
     }
 
@@ -94,6 +112,7 @@ impl DomEvent {
             DomEvent::Keyboard(evt) => Some(evt),
             DomEvent::Mouse(_) => None,
             DomEvent::Wheel(_) => None,
+            DomEvent::Change(_) => None,
         }
     }
 
@@ -103,7 +122,20 @@ impl DomEvent {
             DomEvent::Focus(_, _) => None,
             DomEvent::Keyboard(_) => None,
             DomEvent::Mouse(evt) => Some(evt),
-            DomEvent::Wheel(_) => None, // TODO: ...
+            DomEvent::Wheel(evt) => {
+                Some(MouseEvent {
+                    target: evt.target,
+                    event_name: evt.event_name,
+                    modifier_state: evt.modifier_state,
+                    button: evt.button,
+                    buttons: evt.buttons,
+                    client: evt.client,
+                    offset: evt.offset,
+                    page: evt.page,
+                    screen: evt.screen
+                })
+            },
+            DomEvent::Change(_) => None,
         }
     }
 
@@ -114,8 +146,21 @@ impl DomEvent {
             DomEvent::Keyboard(_) => None,
             DomEvent::Mouse(_) => None,
             DomEvent::Wheel(evt) => Some(evt),
+            DomEvent::Change(_) => None,
         }
     }
+
+    pub fn into_change(self) -> Option<ChangeEvent> {
+        match self {
+            DomEvent::Base(_, _) => None,
+            DomEvent::Focus(_, _) => None,
+            DomEvent::Keyboard(_) => None,
+            DomEvent::Mouse(_) => None,
+            DomEvent::Wheel(_) => None,
+            DomEvent::Change(evt) => Some(evt)
+        }
+    }
+
 }
 
 impl From<KeyboardEvent> for DomEvent {

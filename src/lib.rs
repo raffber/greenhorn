@@ -27,7 +27,7 @@ pub mod any;
 pub mod prelude {
     pub use crate::component::{App, Component, Render, Updated};
     pub use crate::node::Node;
-    pub use crate::dom_event::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent};
+    pub use crate::dom_event::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent, ChangeEvent, InputValue};
     pub use crate::event::Event;
     pub use crate::mailbox::Mailbox;
     pub use crate::runtime::{Runtime, RuntimeControl};

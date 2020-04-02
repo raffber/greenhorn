@@ -38,8 +38,20 @@ function serializeMouseEvent(id, name, evt) {
     };
 }
 
-function serializeEvent(id, name, evt) {
+function serializeTargetValue(target) {
+    let v =  target.value;
+    if (typeof v === "string") {
+        return {"Text": v};
+    } else if (typeof v === "boolean") {
+        return {"Bool": v};
+    } else if (typeof v === "number") {
+        return {"Number": v};
+    } else {
+        return "NoValue";
+    }    
+}
 
+function serializeEvent(id, name, evt) {
     if (evt instanceof WheelEvent) {
         let wheel =  {
             "delta_x": evt.deltaX,
@@ -72,6 +84,14 @@ function serializeEvent(id, name, evt) {
         return {
             "Focus": [{"id": id}, name]
         }
+    } else if (evt instanceof ChangeEvent) {
+        return {
+            "Change": {
+                "target": {"id": id},
+                event_name: name,
+                value: serializeTargetValue(evt)
+            }
+        }
     } else {
         return {
             "Base": [{"id": id}, name]
@@ -81,7 +101,7 @@ function serializeEvent(id, name, evt) {
 
 function deserializeEvent(event) {
     if (event.hasOwnProperty("Keyboard")) {
-        var evt = event.Keyboard;
+        let evt = event.Keyboard;
         let ret = new KeyboardEvent(evt.event_name, {
             "code": evt.code,
             "ctrlKey": evt.modifier_state.ctrl_key,
