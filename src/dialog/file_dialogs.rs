@@ -8,14 +8,14 @@ pub struct FileFilter {
 }
 
 impl FileFilter {
-    fn new<T: Into<String>>(description: T) -> Self {
+    pub fn new<T: Into<String>>(description: T) -> Self {
         Self {
             description: description.into(),
             filters: vec![]
         }
     }
 
-    fn new_from_multiple<T: Into<String>>(description: T, filters: Vec<String>) -> Self {
+    pub fn new_from_multiple<T: Into<String>>(description: T, filters: Vec<String>) -> Self {
         Self {
             description: description.into(),
             filters
@@ -23,16 +23,16 @@ impl FileFilter {
 
     }
 
-    fn push<T: Into<String>>(mut self, filter: T) -> Self {
+    pub fn push<T: Into<String>>(mut self, filter: T) -> Self {
         let filter = filter.into();
         self.filters.push(filter);
         self
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum FileOpenMsg {
-    Canceled(),
+    Canceled,
     Selected(String),
     SelectedMultiple(Vec<String>),
 }
@@ -46,7 +46,7 @@ pub struct FileOpenDialog {
 }
 
 impl FileOpenDialog {
-    fn new<A: Into<String>, B: Into<String>>(title: A, path: B) -> Self {
+    pub fn new<A: Into<String>, B: Into<String>>(title: A, path: B) -> Self {
         Self {
             filter: None,
             multiple: false,
@@ -55,12 +55,12 @@ impl FileOpenDialog {
         }
     }
 
-    fn with_filter(mut self, filter: FileFilter) -> Self {
+    pub fn with_filter(mut self, filter: FileFilter) -> Self {
         self.filter = Some(filter);
         self
     }
 
-    fn allow_multiple(mut self) -> Self {
+    pub fn allow_multiple(mut self) -> Self {
         self.multiple = true;
         self
     }
@@ -74,10 +74,10 @@ impl Dialog for FileOpenDialog {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum FileSaveMsg {
     SaveTo(String),
-    Cancel()
+    Cancel
 }
 
 #[derive(Serialize, Deserialize)]
@@ -88,7 +88,7 @@ pub struct FileSaveDialog {
 }
 
 impl FileSaveDialog {
-    fn new<A: Into<String>, B: Into<String>>(title: A, path: B) -> Self {
+    pub fn new<A: Into<String>, B: Into<String>>(title: A, path: B) -> Self {
         Self {
             filter: None,
             title: title.into(),
@@ -96,7 +96,7 @@ impl FileSaveDialog {
         }
     }
 
-    fn with_filter(mut self, filter: FileFilter) -> Self {
+    pub fn with_filter(mut self, filter: FileFilter) -> Self {
         self.filter = Some(filter);
         self
     }

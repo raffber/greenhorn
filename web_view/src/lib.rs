@@ -5,9 +5,11 @@ use std::str::FromStr;
 use greenhorn::prelude::*;
 use async_std::net::TcpListener;
 use async_std::task;
-use greenhorn::dialog::{MessageBox, MsgBoxIcon, MsgBoxType, MessageBoxResult, FileSaveDialog, FileOpenDialog, FileFilter};
+use greenhorn::dialog::{MessageBox, MsgBoxIcon, MsgBoxType, MessageBoxResult, FileSaveDialog, FileOpenDialog};
+use greenhorn::dialog::{FileSaveMsg, FileOpenMsg};
 use serde_json::Value as JsonValue;
 use tinyfiledialogs::{message_box_ok, MessageBoxIcon, message_box_ok_cancel, OkCancel, message_box_yes_no, YesNo};
+use tinyfiledialogs::{open_file_dialog, open_file_dialog_multi, save_file_dialog, save_file_dialog_with_filter};
 use greenhorn::pipe::{RxMsg, TxMsg};
 
 pub struct ViewBuilder {
@@ -164,26 +166,55 @@ fn handle_msgbox(value: JsonValue) -> JsonValue {
     }
 }
 
-fn filter_to_tfd<'a>(filter: &'a FileFilter) ->  Option<(&'a[&'a str], &'a str)> {
-    todo!()
-}
-
 fn handle_file_save(value: JsonValue) -> JsonValue {
-    // let dialog: FileSaveDialog = serde_json::from_value(value).unwrap();
-    // match dialog.filter {
-    //     None => {
-    //
-    //     },
-    //     Some(filter) => {
-    //
-    //     },
-    // }
-    todo!()
+    let dialog: FileSaveDialog = serde_json::from_value(value).unwrap();
+    let ret = match dialog.filter {
+        None => {
+            match save_file_dialog(&dialog.title, &dialog.path) {
+                None => FileSaveMsg::Cancel,
+                Some(path) => FileSaveMsg::SaveTo(path),
+            }
+        },
+        Some(filter) => {
+            let filters: Vec<&str> = filter.filters.iter().map(|x| x.as_ref()).collect();
+            let desc = &filter.description;
+            match save_file_dialog_with_filter(&dialog.title, &dialog.path, &filters, desc) {
+                None => FileSaveMsg::Cancel,
+                Some(path) => FileSaveMsg::SaveTo(path),
+            }
+
+        },
+    };
+    serde_json::to_value(&ret).unwrap()
 }
 
 fn handle_file_open(value: JsonValue) -> JsonValue {
     let dialog: FileOpenDialog = serde_json::from_value(value).unwrap();
-    todo!()
+    let mut filters: Vec<&str> = Vec::new();
+    let filter: Option<(&[&str], &str)> = if let Some(filter) = dialog.filter.as_ref() {
+        for x in &filter.filters {
+            filters.push(x);
+        }
+        Some( (&filters, &filter.description) )
+    } else {
+        None
+    };
+
+    let ret = match dialog.multiple {
+        true => {
+            match open_file_dialog_multi(&dialog.title, &dialog.path, filter) {
+                None => FileOpenMsg::Canceled,
+                Some(files) => FileOpenMsg::SelectedMultiple(files),
+            }
+        },
+        false => {
+            match open_file_dialog(&dialog.title, &dialog.path, filter) {
+                None => FileOpenMsg::Canceled,
+                Some(file) => FileOpenMsg::Selected(file),
+            }
+        }
+    };
+    serde_json::to_value(&ret).unwrap()
 }
 
 fn handle_dialog(_webview: &mut WebView<()>, value: JsonValue) -> TxMsg {
