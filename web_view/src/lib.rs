@@ -5,7 +5,7 @@ use std::str::FromStr;
 use greenhorn::prelude::*;
 use async_std::net::TcpListener;
 use async_std::task;
-use greenhorn::dialog::{MessageBox, MsgBoxIcon, MsgBoxType, MessageBoxResult};
+use greenhorn::dialog::{MessageBox, MsgBoxIcon, MsgBoxType, MessageBoxResult, FileSaveDialog, FileOpenDialog, FileFilter};
 use serde_json::Value as JsonValue;
 use tinyfiledialogs::{message_box_ok, MessageBoxIcon, message_box_ok_cancel, OkCancel, message_box_yes_no, YesNo};
 use greenhorn::pipe::{RxMsg, TxMsg};
@@ -164,12 +164,36 @@ fn handle_msgbox(value: JsonValue) -> JsonValue {
     }
 }
 
+fn filter_to_tfd<'a>(filter: &'a FileFilter) ->  Option<(&'a[&'a str], &'a str)> {
+    todo!()
+}
+
+fn handle_file_save(value: JsonValue) -> JsonValue {
+    // let dialog: FileSaveDialog = serde_json::from_value(value).unwrap();
+    // match dialog.filter {
+    //     None => {
+    //
+    //     },
+    //     Some(filter) => {
+    //
+    //     },
+    // }
+    todo!()
+}
+
+fn handle_file_open(value: JsonValue) -> JsonValue {
+    let dialog: FileOpenDialog = serde_json::from_value(value).unwrap();
+    todo!()
+}
+
 fn handle_dialog(_webview: &mut WebView<()>, value: JsonValue) -> TxMsg {
     let obj = value.as_object().unwrap();
     let tp = obj.get("__type__").unwrap();
     let tp_as_str = tp.as_str().unwrap();
     let ret = match tp_as_str {
         "MessageBox" => handle_msgbox(value),
+        "FileSaveDialog" => handle_file_save(value),
+        "FileOpenDialog" => handle_file_open(value),
         _ => panic!()
     };
     TxMsg::Dialog(ret)

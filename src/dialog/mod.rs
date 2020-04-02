@@ -7,7 +7,7 @@ use serde_json::Value as JsonValue;
 mod file_dialogs;
 mod msg_box;
 
-pub use file_dialogs::{FileOpenDialog, MultipleFileOpenDialog, FileSaveDialog};
+pub use file_dialogs::{FileOpenDialog, FileSaveDialog, FileFilter, FileOpenMsg, FileSaveMsg};
 pub use msg_box::{MessageBox, MessageBoxResult, MsgBoxType, MsgBoxIcon};
 
 // ensure that external crates cannot implement Dialog
@@ -20,7 +20,6 @@ mod private {
     pub trait Sealed {}
 
     impl Sealed for FileOpenDialog {}
-    impl Sealed for MultipleFileOpenDialog {}
     impl Sealed for FileSaveDialog {}
     impl Sealed for MessageBox {}
 }
