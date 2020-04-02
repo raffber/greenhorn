@@ -1,9 +1,11 @@
+# TODOs / Fixes
 
-# Next Tasks
-
- * dialogs
- * more js event types
- * more js callbacks?
+ * comments, documentation
+ * more tests...
+ * development speed convenience features
+   - script for reload with cargo watch
+ * client: more event propagation
+ * desktop notifications
 
 
 # Performance Optimizations - TODO
@@ -39,19 +41,6 @@
    - truncate moves from end of patch
  * separate update() and render() thread
 
-
-# TODOs / Fixes
-
- * Add a NodeList variant to Node
- * deploy with electron
- * comments, documentation
- * more tests...
- * development speed convenience features
-   - script for reload with cargo watch
- * find a reasonable way to test runtime module
- * client: more event propagation
- * change events are not supported yet and should transport content of inputs
- * file save / file open dialogs => electron
 
 
 # Features
