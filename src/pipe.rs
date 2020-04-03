@@ -3,7 +3,7 @@ use futures::Stream;
 use crate::dom_event::DomEvent;
 use crate::service::{RxServiceMessage, TxServiceMessage};
 use serde::{Deserialize, Serialize};
-use crate::mailbox::EventPropagate;
+use crate::context::EventPropagate;
 use serde_json::Value as JsonValue;
 
 #[derive(Debug, Serialize, Deserialize)]

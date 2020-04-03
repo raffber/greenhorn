@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 mod component;
 mod dom_event;
 mod event;
-mod mailbox;
+mod context;
 mod node_builder;
 pub mod pipe;
 mod runtime;
@@ -29,7 +29,7 @@ pub mod prelude {
     pub use crate::node::Node;
     pub use crate::dom_event::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent, ChangeEvent, InputValue};
     pub use crate::event::Event;
-    pub use crate::mailbox::Mailbox;
+    pub use crate::context::Context;
     pub use crate::runtime::{Runtime, RuntimeControl};
     pub use crate::websocket_pipe::WebsocketPipe;
     pub use crate::node_builder::{NodeBuilder, ElementBuilder};

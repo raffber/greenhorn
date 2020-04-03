@@ -1,6 +1,6 @@
 use crate::component::App;
 use crate::event::{Emission};
-use crate::mailbox::{Mailbox, MailboxMsg, MailboxReceiver};
+use crate::context::{Context, ContextMsg, MailboxReceiver};
 use crate::pipe::Sender;
 use crate::pipe::{Pipe, RxMsg, TxMsg};
 use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
@@ -112,7 +112,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
 
     pub async fn run(mut self) -> Metrics {
         self.schedule_render(DEFAULT_RENDER_INTERVAL);
-        let (mailbox, receiver) = Mailbox::<A::Message>::new();
+        let (mailbox, receiver) = Context::<A::Message>::new();
         self.app.mount(mailbox);
         self.handle_mailbox_result(receiver);
         loop {
@@ -244,7 +244,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     }
 
     fn update(&mut self, msg: A::Message) {
-        let (mailbox, receiver) = Mailbox::<A::Message>::new();
+        let (mailbox, receiver) = Context::<A::Message>::new();
         let updated = self.app.update(msg, mailbox);
         if updated.should_render {
             self.invalidate_all = true;
@@ -260,29 +260,29 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     fn handle_mailbox_result(&mut self, receiver: MailboxReceiver<A::Message>) {
         while let Ok(cmd) = receiver.rx.try_recv() {
             match cmd {
-                MailboxMsg::Emission(e) => {
+                ContextMsg::Emission(e) => {
                     self.event_queue.push_back(PendingEvent::Component(e));
                 },
-                MailboxMsg::LoadCss(css) => {
+                ContextMsg::LoadCss(css) => {
                     self.sender.send(TxMsg::LoadCss(css));
                 },
-                MailboxMsg::RunJs(js) => {
+                ContextMsg::RunJs(js) => {
                     self.sender.send(TxMsg::RunJs(js));
                 },
-                MailboxMsg::Propagate(prop) => {
+                ContextMsg::Propagate(prop) => {
                     self.sender.send(TxMsg::Propagate(prop));
                 },
-                MailboxMsg::Subscription(service) => {
+                ContextMsg::Subscription(service) => {
                     self.services.spawn(service);
                 }
-                MailboxMsg::Future(fut) => {
+                ContextMsg::Future(fut) => {
                     let tx = self.tx.clone();
                     async_std::task::spawn(async move {
                         let result = fut.await;
                         let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(result));
                     });
                 }
-                MailboxMsg::Stream(mut stream) => {
+                ContextMsg::Stream(mut stream) => {
                     let tx = self.tx.clone();
                     async_std::task::spawn(async move {
                         while let Some(value) = stream.next().await {
@@ -290,7 +290,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                         }
                     });
                 }
-                MailboxMsg::Dialog(dialog) => {
+                ContextMsg::Dialog(dialog) => {
                     if self.dialogs.len() == 0 {
                         self.sender.send(TxMsg::Dialog(dialog.serialize()))
                     }

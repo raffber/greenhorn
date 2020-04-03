@@ -1,6 +1,6 @@
 use std::ops::DerefMut;
 
-use crate::mailbox::Mailbox;
+use crate::context::Context;
 use crate::Id;
 use std::fmt::{Debug, Formatter, Error};
 use crate::node::Node;
@@ -134,7 +134,7 @@ impl<T: 'static + Render> Component<T> {
 }
 
 impl<T: 'static + App> Component<T> {
-    pub fn update_app(&mut self, msg: T::Message, mailbox: Mailbox<T::Message>) -> Updated {
+    pub fn update_app(&mut self, msg: T::Message, mailbox: Context<T::Message>) -> Updated {
         let mut borrow = self.lock();
         let data = borrow.deref_mut();
         let mut ret = data.update(msg, mailbox);
@@ -153,7 +153,7 @@ pub trait Render {
 }
 
 pub trait App: Render {
-    fn update(&mut self, msg: Self::Message, mailbox: Mailbox<Self::Message>) -> Updated;
-    fn mount(&mut self, _mailbox: Mailbox<Self::Message>) {
+    fn update(&mut self, msg: Self::Message, mailbox: Context<Self::Message>) -> Updated;
+    fn mount(&mut self, _mailbox: Context<Self::Message>) {
     }
 }

@@ -1,7 +1,7 @@
 use crate::{App, Render, Updated};
 use std::any::Any;
 use crate::node::Node;
-use crate::mailbox::Mailbox;
+use crate::context::Context;
 
 pub type AnyMsg = Box<dyn Any + Send>;
 
@@ -26,7 +26,7 @@ impl Render for AnyApp {
 }
 
 impl App for AnyApp {
-    fn update(&mut self, msg: Self::Message, mailbox: Mailbox<Self::Message>) -> Updated {
+    fn update(&mut self, msg: Self::Message, mailbox: Context<Self::Message>) -> Updated {
         self.inner.update(msg, mailbox)
     }
 }
@@ -44,7 +44,7 @@ impl<T: App<Message=M>, M: Any + Send + 'static> Render for AnyAppConverter<T, M
 }
 
 impl<T: App<Message=M>, M: Any + Send + 'static> App for AnyAppConverter<T, M> {
-    fn update(&mut self, msg: Self::Message, mailbox: Mailbox<Self::Message>) -> Updated {
+    fn update(&mut self, msg: Self::Message, mailbox: Context<Self::Message>) -> Updated {
         let new_msg = *msg.downcast().unwrap();
         self.inner.update(new_msg, mailbox.map(|x| Box::new(x) as Box<dyn Any + Send + 'static>))
     }

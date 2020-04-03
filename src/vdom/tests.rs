@@ -4,13 +4,13 @@ use std::fs;
 use crate::runtime::{Frame, RenderResult};
 use std::collections::HashSet;
 use crate::{App, Updated, Render};
-use crate::mailbox::Mailbox;
+use crate::context::Context;
 use crate::node::Node;
 
 struct DummyApp;
 
 impl App for DummyApp {
-    fn update(&mut self, _msg: Self::Message, _mailbox: Mailbox<Self::Message>) -> Updated {
+    fn update(&mut self, _msg: Self::Message, _mailbox: Context<Self::Message>) -> Updated {
         unimplemented!()
     }
 }

@@ -83,11 +83,11 @@ pub struct EventPropagate {
     default_action: bool,
 }
 
-pub struct Mailbox<T: 'static + Send> {
-    tx: MapSender<MailboxMsg<T>>,
+pub struct Context<T: 'static + Send> {
+    tx: MapSender<ContextMsg<T>>,
 }
 
-impl<T: 'static + Send> Clone for Mailbox<T> {
+impl<T: 'static + Send> Clone for Context<T> {
     fn clone(&self) -> Self {
         Self {
             tx: self.tx.clone(),
@@ -96,16 +96,16 @@ impl<T: 'static + Send> Clone for Mailbox<T> {
 }
 
 pub(crate) struct MailboxReceiver<T: 'static + Send> {
-    pub(crate) rx: Receiver<MailboxMsg<T>>,
+    pub(crate) rx: Receiver<ContextMsg<T>>,
 }
 
 impl<T: 'static + Send> MailboxReceiver<T> {
-    fn recv(&self) -> Result<MailboxMsg<T>, RecvError> {
+    fn recv(&self) -> Result<ContextMsg<T>, RecvError> {
         self.rx.recv()
     }
 }
 
-pub(crate) enum MailboxMsg<T: 'static + Send> {
+pub(crate) enum ContextMsg<T: 'static + Send> {
     Emission(Emission),
     LoadCss(String),
     RunJs(String),
@@ -116,35 +116,35 @@ pub(crate) enum MailboxMsg<T: 'static + Send> {
     Dialog(DialogBinding<T>),
 }
 
-impl<T: Send + 'static> MailboxMsg<T> {
-    pub fn map<U, Mapper>(self, mapper: Arc<Mapper>) -> MailboxMsg<U>
+impl<T: Send + 'static> ContextMsg<T> {
+    pub fn map<U, Mapper>(self, mapper: Arc<Mapper>) -> ContextMsg<U>
     where
         U: 'static + Send,
         Mapper: 'static + Fn(T) -> U + Send + Sync
     {
         match self {
-            MailboxMsg::Subscription(subs) => MailboxMsg::Subscription(subs.map(mapper)),
-            MailboxMsg::Future(fut) => {
-                MailboxMsg::Future(Box::pin(async move {
+            ContextMsg::Subscription(subs) => ContextMsg::Subscription(subs.map(mapper)),
+            ContextMsg::Future(fut) => {
+                ContextMsg::Future(Box::pin(async move {
                     (mapper)(fut.await)
                 }))
             },
-            MailboxMsg::Stream(stream) => {
-                MailboxMsg::Stream(Box::pin(stream.map(move |x| (mapper)(x))))
+            ContextMsg::Stream(stream) => {
+                ContextMsg::Stream(Box::pin(stream.map(move |x| (mapper)(x))))
             },
-            MailboxMsg::Dialog(d) => {
-                MailboxMsg::Dialog(d.map(mapper))
+            ContextMsg::Dialog(d) => {
+                ContextMsg::Dialog(d.map(mapper))
             }
             _ => panic!()
         }
     }
 }
 
-impl<T: Send + 'static> Mailbox<T> {
+impl<T: Send + 'static> Context<T> {
     pub(crate) fn new() -> (Self, MailboxReceiver<T>) {
         let (tx, rx) = channel();
         (
-            Mailbox {
+            Context {
                 tx: MapSender::new(tx),
             },
             MailboxReceiver {
@@ -155,15 +155,15 @@ impl<T: Send + 'static> Mailbox<T> {
 
     pub fn emit<D: Any>(&self, event: &Event<D>, data: D) {
         let emission = event.emit(data);
-        self.tx.send(MailboxMsg::Emission(emission));
+        self.tx.send(ContextMsg::Emission(emission));
     }
 
     pub fn load_css<Css: Into<String>>(&self, css: Css) {
-        self.tx.send(MailboxMsg::LoadCss(css.into()));
+        self.tx.send(ContextMsg::LoadCss(css.into()));
     }
 
     pub fn run_js<Js: Into<String>>(&self, js: Js) {
-        self.tx.send(MailboxMsg::RunJs(js.into()));
+        self.tx.send(ContextMsg::RunJs(js.into()));
     }
 
     pub fn run_service<S, F>(&self, service: S, fun: F)
@@ -173,11 +173,11 @@ impl<T: Send + 'static> Mailbox<T> {
         F: 'static + Fn(S::Data) -> T + Send,
     {
         let subs = ServiceSubscription::new(service, fun);
-        self.tx.send(MailboxMsg::Subscription(subs));
+        self.tx.send(ContextMsg::Subscription(subs));
     }
 
     pub fn spawn<Fut: 'static + Send + Future<Output=T>>(&self, fut: Fut) {
-        self.tx.send(MailboxMsg::Future(Box::pin(fut)));
+        self.tx.send(ContextMsg::Future(Box::pin(fut)));
     }
 
     pub fn spawn_blocking<Fut: 'static + Send + Future<Output=T>>(&self, _fut: Fut) {
@@ -185,24 +185,24 @@ impl<T: Send + 'static> Mailbox<T> {
     }
 
     pub fn subscribe<S: 'static + Send + Stream<Item=T>>(&self, stream: S) {
-        self.tx.send(MailboxMsg::Stream(Box::pin(stream)));
+        self.tx.send(ContextMsg::Stream(Box::pin(stream)));
     }
 
     pub fn map<U: Send + 'static, F: 'static + Send + Sync + Fn(U) -> T>(
         &self,
         fun: F,
-    ) -> Mailbox<U> {
+    ) -> Context<U> {
         let mapper = Arc::new(fun);
         let new_sender = self.tx.clone();
-        let mapped = new_sender.map(move |msg: MailboxMsg<U>| msg.map(mapper.clone()));
-        Mailbox {
+        let mapped = new_sender.map(move |msg: ContextMsg<U>| msg.map(mapper.clone()));
+        Context {
             tx: mapped,
         }
     }
 
     pub fn propagate(&self, e: DomEvent) {
         self.tx
-            .send(MailboxMsg::Propagate(EventPropagate {
+            .send(ContextMsg::Propagate(EventPropagate {
                 event: e,
                 propagate: true,
                 default_action: false,
@@ -211,7 +211,7 @@ impl<T: Send + 'static> Mailbox<T> {
 
     pub fn default_action(&self, e: DomEvent) {
         self.tx
-            .send(MailboxMsg::Propagate(EventPropagate {
+            .send(ContextMsg::Propagate(EventPropagate {
                 event: e,
                 propagate: false,
                 default_action: true,
@@ -220,7 +220,7 @@ impl<T: Send + 'static> Mailbox<T> {
 
     pub fn propagate_and_default(&self, e: DomEvent) {
         self.tx
-            .send(MailboxMsg::Propagate(EventPropagate {
+            .send(ContextMsg::Propagate(EventPropagate {
                 event: e,
                 propagate: true,
                 default_action: true,
@@ -229,21 +229,21 @@ impl<T: Send + 'static> Mailbox<T> {
 
     pub fn dialog<D: 'static + Dialog, F: 'static + Fn(D::Msg) -> T>(&self, dialog: D, fun: F) {
         let binding = DialogBinding::new(dialog, fun);
-        self.tx.send(MailboxMsg::Dialog(binding));
+        self.tx.send(ContextMsg::Dialog(binding));
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mailbox::tests::MsgB::ItemB;
+    use crate::context::tests::MsgB::ItemB;
     use assert_matches::assert_matches;
     use futures::task::{Context, Poll};
     use futures::{Stream, StreamExt};
     use std::pin::Pin;
     use crate::service::ServiceMailbox;
-    use crate::mailbox::MailboxMsg::Subscription;
-    use crate::mailbox::tests::MsgA::ItemA;
+    use crate::context::ContextMsg::Subscription;
+    use crate::context::tests::MsgA::ItemA;
 
     #[derive(Debug)]
     enum MsgA {
@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn test_service() {
-        let (mb, rx) = Mailbox::<MsgA>::new();
+        let (mb, rx) = Context::<MsgA>::new();
         let mapped = mb.map(MsgA::ItemA);
         let service = MyService {};
         mapped.run_service(service, ItemB);
@@ -295,10 +295,10 @@ mod tests {
             MsgB::ItemB(123)
         };
 
-        let (mb, rx) = Mailbox::<MsgA>::new();
+        let (mb, rx) = Context::<MsgA>::new();
         let mapped = mb.map(MsgA::ItemA);
         mapped.spawn(fut);
-        if let Ok(MailboxMsg::Future(fut)) = rx.recv() {
+        if let Ok(ContextMsg::Future(fut)) = rx.recv() {
             let result = async_std::task::block_on(fut);
             assert_matches!(result, MsgA::ItemA(MsgB::ItemB(123)));
         } else {
@@ -316,10 +316,10 @@ mod tests {
                 None
             }
         });
-        let (mb, rx) = Mailbox::<MsgA>::new();
+        let (mb, rx) = Context::<MsgA>::new();
         let mapped = mb.map(MsgA::ItemA);
         mapped.subscribe(stream);
-        if let Ok(MailboxMsg::Stream(stream)) = rx.recv() {
+        if let Ok(ContextMsg::Stream(stream)) = rx.recv() {
             let data: Vec<MsgA> = async_std::task::block_on(stream.collect::<Vec<MsgA>>());
             assert_eq!(data.len(), 3);
             assert_matches!(data[0], ItemA(ItemB(0)));
