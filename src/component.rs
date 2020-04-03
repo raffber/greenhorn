@@ -134,10 +134,10 @@ impl<T: 'static + Render> Component<T> {
 }
 
 impl<T: 'static + App> Component<T> {
-    pub fn update_app(&mut self, msg: T::Message, mailbox: Context<T::Message>) -> Updated {
+    pub fn update_app(&mut self, msg: T::Message, ctx: Context<T::Message>) -> Updated {
         let mut borrow = self.lock();
         let data = borrow.deref_mut();
-        let mut ret = data.update(msg, mailbox);
+        let mut ret = data.update(msg, ctx);
         if ret.should_render {
             // improve reporting accuracy
             ret.should_render = false;
@@ -153,7 +153,7 @@ pub trait Render {
 }
 
 pub trait App: Render {
-    fn update(&mut self, msg: Self::Message, mailbox: Context<Self::Message>) -> Updated;
-    fn mount(&mut self, _mailbox: Context<Self::Message>) {
+    fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated;
+    fn mount(&mut self, ctx: Context<Self::Message>) {
     }
 }

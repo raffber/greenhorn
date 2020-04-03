@@ -112,8 +112,8 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
 
     pub async fn run(mut self) -> Metrics {
         self.schedule_render(DEFAULT_RENDER_INTERVAL);
-        let (mailbox, receiver) = Context::<A::Message>::new();
-        self.app.mount(mailbox);
+        let (ctx, receiver) = Context::<A::Message>::new();
+        self.app.mount(ctx);
         self.handle_mailbox_result(receiver);
         loop {
             select! {
@@ -244,8 +244,8 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     }
 
     fn update(&mut self, msg: A::Message) {
-        let (mailbox, receiver) = Context::<A::Message>::new();
-        let updated = self.app.update(msg, mailbox);
+        let (ctx, receiver) = Context::<A::Message>::new();
+        let updated = self.app.update(msg, ctx);
         if updated.should_render {
             self.invalidate_all = true;
             self.schedule_render(DEFAULT_RENDER_INTERVAL);

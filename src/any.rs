@@ -26,8 +26,8 @@ impl Render for AnyApp {
 }
 
 impl App for AnyApp {
-    fn update(&mut self, msg: Self::Message, mailbox: Context<Self::Message>) -> Updated {
-        self.inner.update(msg, mailbox)
+    fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated {
+        self.inner.update(msg, ctx)
     }
 }
 
@@ -44,8 +44,8 @@ impl<T: App<Message=M>, M: Any + Send + 'static> Render for AnyAppConverter<T, M
 }
 
 impl<T: App<Message=M>, M: Any + Send + 'static> App for AnyAppConverter<T, M> {
-    fn update(&mut self, msg: Self::Message, mailbox: Context<Self::Message>) -> Updated {
+    fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated {
         let new_msg = *msg.downcast().unwrap();
-        self.inner.update(new_msg, mailbox.map(|x| Box::new(x) as Box<dyn Any + Send + 'static>))
+        self.inner.update(new_msg, ctx.map(|x| Box::new(x) as Box<dyn Any + Send + 'static>))
     }
 }
