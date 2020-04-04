@@ -143,53 +143,6 @@ function addEvent(app, id, elem, evt) {
     }, {'passive': !evt.prevent_default});
 }
 
-class Element {
-    constructor(id, tag, attrs=[], events=[], children=[], namespace=null) {
-        this.id = id;
-        this.tag = tag;
-        this.attrs = attrs;
-        this.events = events;
-        this.children = children;
-        this.namespace = namespace;
-    }
-
-    create(app) {
-        if (this.namespace !== null) {
-            var elem = document.createElementNS(this.namespace, this.tag);
-        } else {
-            var elem = document.createElement(this.tag);
-        }
-        
-        let id = this.id;
-        if (id !== null) {
-            elem.setAttribute("__id__", id);
-        }
-        for (var k = 0; k < this.attrs.length; ++k) {
-            let attr = this.attrs[k];
-            elem.setAttribute(attr[0], attr[1]);
-        }
-        for (var k = 0; k < this.events.length; ++k) {
-            let evt = this.events[k];
-            addEvent(app, id, elem, evt);
-        }
-        for (var k = 0; k < this.children.length; ++k) {
-            let child = this.children[k].create(app);
-            elem.appendChild(child);
-        }
-        return elem;
-    }
-}
-
-class Text {
-    constructor(text) {
-        this.text = text;
-    }
-
-    create(app) {
-        return document.createTextNode(this.text);
-    }
-}
-
 class EventHandler {
     constructor(name, no_propagate, prevent_default) {
         this.name = name;
@@ -418,6 +371,8 @@ export class Patch {
         this.offset = 0;
         this.element = element;
         this.app = app;
+        this.current_elem_rendered = false;
+        this.elements_rendered = [];
         this.patch_funs = {
             1: Patch.prototype.appendSibling,
             3: Patch.prototype.replace,
@@ -451,6 +406,34 @@ export class Patch {
             let fun = this.patch_funs[x];
             fun.call(this);
         }
+        this.addToRendered();
+        this.invokeRenderedEvent();
+    }
+
+    invokeRenderedEvent() {
+        let len = this.elements_rendered.length;
+        let evt = new Event("render");
+        for (var k = 0; k < len; ++k) {
+            let elem = this.elements_rendered[k];
+            elem.dispatchEvent(evt);
+        }
+    }
+
+    addToRendered() {
+        if (this.current_elem_rendered && this.element["__has_render_event"]) {
+            this.elements_rendered.push(this.element);
+            this.current_elem_rendered = false;
+        }
+    }
+
+    deserializeFunction(value) {
+        let code = this.deserializeString();
+        let self = this;
+        let fun = function() {
+            var func = new Function(code);
+            return func;
+        }();
+        return fun;
     }
 
     deserializeNode() {
@@ -463,16 +446,14 @@ export class Patch {
     }
 
     appendSibling() {
-        let node = this.deserializeNode();
-        let new_elem = node.create(this.app);
+        let new_elem = this.deserializeNode();
         this.element.parentNode.appendChild(new_elem);
         this.element = new_elem;
     }
 
 
     replace() {
-        let node = this.deserializeNode();
-        let new_elem = node.create(this.app);
+        let new_elem = this.deserializeNode();
         this.element.parentNode.replaceChild(new_elem, this.element);
         this.element = new_elem;
     }
@@ -483,17 +464,19 @@ export class Patch {
     }
 
     ascend() {
+        this.addToRendered();
         this.element = this.element.parentNode;
     }
 
     descend() {
+        this.addToRendered();
         this.element = this.element.firstChild;
     }
 
     removeChildren() {
         while (this.element.firstChild) {
             this.element.removeChild(this.element.firstChild);
-          }
+        }
     }
 
     truncateSiblings() {
@@ -506,6 +489,7 @@ export class Patch {
     }
 
     nextNode() {
+        this.addToRendered();
         let len = this.patch.getUint32(this.offset, true);
         this.offset += 4;
         for (let k = 0; k < len; ++k) {
@@ -516,18 +500,21 @@ export class Patch {
     removeAttribute() {
         let attr = this.deserializeString();
         this.element.removeAttribute(attr);
+        this.current_elem_rendered = true;
     }
 
     addAttribute() {
         let key = this.deserializeString();
         let value = this.deserializeString();
         this.element.setAttribute(key, value);
+        this.current_elem_rendered = true;
     }
 
     replaceAttribute() {
         let key = this.deserializeString();
         let value = this.deserializeString();
         this.element.setAttribute(key, value);
+        this.current_elem_rendered = true;
     }
 
     removeJsEvent() {
@@ -536,79 +523,104 @@ export class Patch {
         let attr_value = this.element[attr_key];
         this.element.removeEventListener(attr_value);
         this.element[attr_key] = undefined;
+        this.current_elem_rendered = true;
     }
 
     addJsEvent() {
         let key = this.deserializeString();
-        let value = this.deserializeString();
-        let app = this.app;
-        let fun = function() {
-            eval(value)
-        }();
+        let fun = this.deserializeFunction();
+        if (key == "render") {
+            this.element["__has_render_event"] = true;
+        }
         this.element['__' + key] = fun;
         this.element.addEventListener(key, fun);
+        this.current_elem_rendered = true;
     }
 
     replaceJsEvent() {
         let key = this.deserializeString();
-        let value = this.deserializeString();
-        let app = this.app;
-        let fun = function() {
-            eval(value)
-        }();
+        let fun = this.deserializeFunction();
         let key_attr = '__' + key;
         let attr_value = this.element[key_attr];
         this.element.removeEventListener(attr_value);
         this.element[key_attr] = fun;
         this.element.addEventListener(key, fun);
+        this.current_elem_rendered = true;
     }
 
     addChildren() {
         let len = this.patch.getUint32(this.offset, true);
         this.offset += 4;
         for (var k = 0; k < len; ++k) {
-            let node = this.deserializeNode();
-            this.element.appendChild(node.create());
+            let elem = this.deserializeNode();
+            this.element.appendChild(elem);
         }
     }
 
     deserializeElement() {
-        let id = this.deserializeId();
         let tag = this.deserializeString();
+        
+        let hasNamespace = this.popU8() > 0;
+        if (hasNamespace) {
+            var elem = document.createElementNS(this.deserializeString(), tag);
+        } else {
+            var elem = document.createElement(tag);
+        }
+
+        let id = this.deserializeId();
+        if (id !== null) {
+            elem.setAttribute("__id__", id);
+        }
+
+        // attributes
         let attr_len = this.patch.getUint32(this.offset, true);
         this.offset += 4;
-        let attrs = [];
         for (var k = 0; k < attr_len; ++k) {
             let key = this.deserializeString();
             let value = this.deserializeString();
-            attrs.push([key, value]);
+            elem.setAttribute(key, value);
         }
+
+        // event listeners
         let events_len = this.patch.getUint32(this.offset, true);
         this.offset += 4;
-        let events = [];
         for (var k = 0; k < events_len; ++k) {
-            let event = this.deserializeEventHandler();
-            events.push(event);
+            let evt = this.deserializeEventHandler();
+            addEvent(this.app, id, elem, evt);
         }
+
+        // js events
+        let js_events_len = this.patch.getUint32(this.offset, true);
+        this.offset += 4;
+        let push_to_rendered = false;
+        for (var k = 0; k < js_events_len; ++k) {
+            let key = this.deserializeString();
+            if (key == "render") {
+                elem["__has_render_event"] = true;
+                push_to_rendered = true;
+            }
+            let fun = this.deserializeFunction();
+            elem['__' + key] = fun;
+            elem.addEventListener(key, fun);
+        }
+
+        // children
         let children_len = this.patch.getUint32(this.offset, true);
         this.offset += 4;
-        let children = [];
         for (var k = 0; k < children_len; ++k) {
-            children.push(this.deserializeNode());
+            elem.appendChild(this.deserializeNode());
         }
-        let self = this;
-        let hasNamespace = this.popU8() > 0;
-        if (hasNamespace) {
-            var namespace = this.deserializeString();
-        } else {
-            var namespace = null;
-        }
-        return new Element(id, tag, attrs, events, children, namespace);
+
+        if (push_to_rendered) {
+            this.elements_rendered.push(elem);
+        }        
+
+        return elem;
     }
 
     deserializeText() {
         let text = this.deserializeString();
-        return new Text(text); 
+        return document.createTextNode(text); 
     }
 
     deserializeOption(deserializer) {

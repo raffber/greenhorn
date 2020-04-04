@@ -14,9 +14,11 @@ impl NodeSerialize for VNode {
     fn serialize<A: App>(&self, rendered: &RenderResult<A>, output: &mut Vec<u8>) {
         match self {
             VNode::Element(elem) => {
+                // TODO: serialize js_events
                 output.push(0);
-                elem.id.serialize(output);
                 elem.tag.serialize(output);
+                elem.namespace.serialize(output);
+                elem.id.serialize(output);
                 (elem.attr.len() as u32).serialize(output);
                 for attr in elem.attr.iter() {
                     attr.key.serialize(output);
@@ -26,11 +28,15 @@ impl NodeSerialize for VNode {
                 for evt in elem.events.iter() {
                     evt.serialize(output);
                 }
+                (elem.js_events.len() as u32).serialize(output);
+                for evt in &elem.js_events {
+                    evt.key.serialize(output);
+                    evt.value.serialize(output);
+                }
                 (elem.children.len() as u32).serialize(output);
                 for c in elem.children.iter() {
                     c.serialize(rendered, output);
                 }
-                elem.namespace.serialize(output);
             },
             VNode::Text(elem) => {
                 output.push(1);
