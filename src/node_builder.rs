@@ -4,7 +4,8 @@ use crate::vdom::Attr;
 use crate::{Id, Render};
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
-use crate::node::{Node, NodeElement};
+use crate::node::Node;
+use crate::element::Element;
 use crate::listener::Listener;
 use crate::blob::Blob;
 use std::iter::{Once, once};
@@ -211,7 +212,7 @@ impl<T: 'static> ElementBuilder<T> {
             self.attrs.push(Attr { key: "id".to_string(), value: x })
         });
 
-        Node::Element(NodeElement {
+        Node::Element(Element {
             id: self.id,
             tag: Some(self.tag),
             attrs: Some(self.attrs),
