@@ -20,6 +20,7 @@ mod vdom;
 mod websocket_pipe;
 mod node;
 mod listener;
+mod blob;
 pub mod dialog;
 pub mod services;
 pub mod any;
@@ -33,7 +34,7 @@ pub mod prelude {
     pub use crate::runtime::{Runtime, RuntimeControl};
     pub use crate::websocket_pipe::WebsocketPipe;
     pub use crate::node_builder::{NodeBuilder, ElementBuilder};
-    pub use crate::node::Blob;
+    pub use crate::blob::Blob;
 }
 
 pub use crate::component::{App, Component, Render, Updated};

@@ -1,6 +1,6 @@
 use crate::vdom::{VNode, EventHandler, VElement, Path};
-use crate::node::{Node, ComponentContainer, ComponentMap, Blob, ElementMap};
-
+use crate::node::{Node, ComponentContainer, ComponentMap, ElementMap};
+use crate::blob::Blob;
 use crate::{App, Id};
 use crate::listener::{Listener, ListenerKey};
 use crate::event::Subscription;

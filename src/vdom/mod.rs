@@ -9,7 +9,7 @@ use std::collections::HashMap;
 pub(crate) use serialize::serialize as patch_serialize;
 use std::hash::{Hash, Hasher};
 use crate::listener::Listener;
-use crate::node::Blob;
+use crate::blob::Blob;
 use crate::runtime::RenderResult;
 use std::ops::Deref;
 

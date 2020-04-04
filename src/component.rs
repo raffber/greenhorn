@@ -154,6 +154,6 @@ pub trait Render {
 
 pub trait App: Render {
     fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated;
-    fn mount(&mut self, ctx: Context<Self::Message>) {
+    fn mount(&mut self, _ctx: Context<Self::Message>) {
     }
 }

@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 use crate::node::{Node, NodeElement};
 use crate::listener::Listener;
-use crate::node::Blob;
+use crate::blob::Blob;
 use std::iter::{Once, once};
 
 pub trait AddNodes<T: 'static> {
