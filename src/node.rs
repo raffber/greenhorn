@@ -1,4 +1,4 @@
-use crate::{Id, Render, Component};
+use crate::Id;
 use std::fmt::{Debug, Formatter, Error};
 use std::sync::{Arc, Mutex};
 use crate::event::Subscription;
@@ -6,6 +6,7 @@ use crate::node_builder::{NodeBuilder, AddNodes};
 use std::iter::{once, Once};
 use crate::blob::Blob;
 use crate::element::{Element, ElementMap, ElementRemap, ElementMapDirect};
+use crate::component::{ComponentRemap, ComponentContainer, ComponentMap};
 
 
 pub enum Node<T: 'static> {
@@ -163,104 +164,4 @@ impl<T: 'static, U: Iterator<Item=Node<T>>, S: IntoIterator<Item=Node<T>, IntoIt
         self.into_iter()
     }
 }
-
-
-pub struct ComponentContainer<T> {
-    inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>,
-}
-
-impl<T> Clone for ComponentContainer<T> {
-    fn clone(&self) -> Self {
-        Self { inner: self.inner.clone() }
-    }
-}
-
-impl<T> ComponentContainer<T> {
-   pub(crate) fn new(inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>) -> Self {
-        ComponentContainer {
-            inner
-        }
-   }
-}
-
-impl<T> Debug for ComponentContainer<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        std::fmt::Debug::fmt(&self.inner, f)
-    }
-}
-
-impl<T> ComponentMap<T> for ComponentContainer<T> {
-    fn render(&self) -> Node<T> {
-        self.inner.lock().unwrap().render()
-    }
-
-    fn id(&self) -> Id {
-        self.inner.lock().unwrap().id()
-    }
-}
-
-pub trait ComponentMap<T> : Debug + Send {
-    fn render(&self) -> Node<T>;
-    fn id(&self) -> Id;
-}
-
-struct ComponentMapDirect<R: Send + Render, U> {
-    fun: Arc<Mutex<Box<dyn Send + Fn(R::Message) -> U>>>,
-    inner: Component<R>,
-}
-
-impl<R: Send + Render, U> Debug for ComponentMapDirect<R, U> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        self.inner.fmt(f)
-    }
-}
-
-impl<R: 'static + Send + Render, U: 'static> ComponentMapDirect<R, U> {
-    fn new_box(fun: Arc<Mutex<Box<dyn 'static + Send + Fn(R::Message) -> U>>>, inner: Component<R>) -> Box<dyn ComponentMap<U>> {
-        Box::new(Self { fun, inner })
-    }
-}
-
-impl<R: 'static + Send + Render, U: 'static> ComponentMap<U> for ComponentMapDirect<R, U> {
-    fn render(&self) -> Node<U> {
-        self.inner.lock().render().map_shared(self.fun.clone())
-    }
-
-    fn id(&self) -> Id {
-        self.inner.id()
-    }
-}
-
-struct ComponentRemap<T, U> {
-    fun: Arc<Mutex<Box<dyn Send + Fn(T) -> U>>>,
-    inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>,
-}
-
-impl<T, U> Debug for ComponentRemap<T, U> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        std::fmt::Debug::fmt(&self.inner, f)
-    }
-}
-
-impl<T: 'static, U: 'static> ComponentRemap<T, U> {
-    fn new_container(
-        fun: Arc<Mutex<Box<dyn Send + Fn(T) -> U>>>,
-        inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>,
-    ) -> ComponentContainer<U> {
-        ComponentContainer {
-            inner: Arc::new(Mutex::new(Box::new(Self { fun, inner })))
-        }
-    }
-}
-
-impl<T: 'static, U: 'static> ComponentMap<U> for ComponentRemap<T, U> {
-    fn render(&self) -> Node<U> {
-        self.inner.lock().unwrap().render().map_shared(self.fun.clone())
-    }
-
-    fn id(&self) -> Id {
-        self.inner.lock().unwrap().id()
-    }
-}
-
 

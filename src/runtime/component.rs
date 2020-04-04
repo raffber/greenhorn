@@ -1,7 +1,7 @@
 use crate::{App, Id};
 use crate::vdom::{VNode, Path};
 use crate::runtime::render::{ResultItem, render_component};
-use crate::node::{ComponentContainer, ComponentMap};
+use crate::component::{ComponentContainer, ComponentMap};
 use crate::listener::ListenerKey;
 use crate::runtime::metrics::Metrics;
 

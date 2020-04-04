@@ -11,7 +11,7 @@ use async_timer::Interval;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::{select, FutureExt, StreamExt};
 use std::collections::{HashMap, VecDeque, HashSet};
-use crate::node::{ComponentMap, ComponentContainer};
+use crate::component::{ComponentMap, ComponentContainer};
 use crate::runtime::state::RenderedState;
 pub(crate) use crate::runtime::render::RenderResult;
 pub(crate) use crate::runtime::state::Frame;
