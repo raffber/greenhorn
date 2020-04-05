@@ -32,24 +32,9 @@ impl ImageBuilder {
 
 impl Into<Image> for ImageBuilder {
     fn into(self) -> Image {
-        let hash = Id::new().id;
         let blob_id = Id::new();
-
         let html_id = self.html_id.unwrap_or_else(|| format!("__id_{}", blob_id));
-
-        let js = format!("{{
-            var elem = findElementById({});
-            var blob = app.getBlob({});
-            var img_url = URL.createObjectURL(blob.blob);
-            elem.src = img_url;
-        }}", html_id, blob_id.data());
-
-        let blob: Blob = Blob::build(hash)
-            .data(self.data)
-            .mime_type(self.mime_type)
-            .id(blob_id)
-            .on_change(js)
-            .into();
+        let blob= Image::build_blob(&html_id, blob_id, self.data, self.mime_type);
         Image {
             blob,
             html_id
@@ -58,12 +43,33 @@ impl Into<Image> for ImageBuilder {
 }
 
 impl Image {
+    fn build_blob(html_id: &str, blob_id: Id, data: Vec<u8>, mime_type: String) -> Blob {
+        let js = format!("{{
+            var elem = document.getElementById('{}');
+            var blob = app.getBlob({});
+            var img_url = URL.createObjectURL(blob.blob);
+            elem.src = img_url;
+        }}", html_id, blob_id.data());
+
+        Blob::build(Id::new().id)
+            .data(data)
+            .mime_type(mime_type)
+            .id(blob_id)
+            .on_change(js)
+            .into()
+    }
+
     pub fn build() -> ImageBuilder {
         ImageBuilder {
             data: Vec::new(),
             mime_type: String::new(),
             html_id: None,
         }
+    }
+
+    pub fn update(&mut self, data: Vec<u8>) {
+        let blob = Image::build_blob(&self.html_id, self.blob.id(), data, self.blob.mime_type().into());
+        self.blob = blob;
     }
 
     pub fn render<T>(&self) -> Node<T> {
