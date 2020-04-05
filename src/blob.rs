@@ -23,6 +23,7 @@ pub struct Blob {
 impl Blob {
     pub fn build(hash: u64) -> BlobBuilder {
         BlobBuilder {
+            id: None,
             hash,
             mime_type: "".to_string(),
             data: vec![],
@@ -64,10 +65,11 @@ impl Debug for Blob {
 
 impl From<BlobBuilder> for Blob {
     fn from(builder: BlobBuilder) -> Self {
+        let id = builder.id.unwrap_or_else(|| Id::new());
         Blob {
             inner: Arc::new(BlobData {
                 hash: builder.hash,
-                id: Id::new(),
+                id,
                 data: builder.data,
                 mime_type: builder.mime_type,
                 on_change: builder.on_change,

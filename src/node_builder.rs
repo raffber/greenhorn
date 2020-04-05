@@ -49,6 +49,7 @@ impl<T: 'static> NodeBuilder<T> {
 
     pub fn blob(&self, hash: u64) -> BlobBuilder {
         BlobBuilder {
+            id: None,
             hash,
             mime_type: "".to_string(),
             data: vec![],
@@ -74,16 +75,22 @@ impl<T: 'static> Default for NodeBuilder<T> {
 }
 
 pub struct BlobBuilder {
-    pub hash: u64,
-    pub mime_type: String,
-    pub data: Vec<u8>,
-    pub on_change: Option<String>,
-    pub on_add: Option<String>,
+    pub(crate) id: Option<Id>,
+    pub(crate) hash: u64,
+    pub(crate) mime_type: String,
+    pub(crate) data: Vec<u8>,
+    pub(crate) on_change: Option<String>,
+    pub(crate) on_add: Option<String>,
 }
 
 impl BlobBuilder {
     pub fn mime_type<S: Into<String>>(mut self, mime_type: S) -> Self {
         self.mime_type = mime_type.into();
+        self
+    }
+
+    pub fn id(mut self, id: Id) -> Self {
+        self.id = Some(id);
         self
     }
 
@@ -106,7 +113,6 @@ impl BlobBuilder {
         self.into()
     }
 }
-
 
 pub struct ElementBuilder<T: 'static> {
     id: Id,
