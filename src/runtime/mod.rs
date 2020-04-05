@@ -275,12 +275,23 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 ContextMsg::Subscription(service) => {
                     self.services.spawn(service);
                 }
-                ContextMsg::Future(fut) => {
+                ContextMsg::Future(fut, blocking) => {
                     let tx = self.tx.clone();
-                    async_std::task::spawn(async move {
-                        let result = fut.await;
-                        let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(result));
-                    });
+                    if blocking {
+                        async_std::task::spawn_blocking(|| {
+                            task::block_on(
+                                async move {
+                                    let result = fut.await;
+                                    let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(result));
+                                }
+                            )
+                        });
+                    } else {
+                        async_std::task::spawn(async move {
+                            let result = fut.await;
+                            let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(result));
+                        });
+                    }
                 }
                 ContextMsg::Stream(mut stream) => {
                     let tx = self.tx.clone();

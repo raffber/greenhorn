@@ -111,7 +111,7 @@ pub(crate) enum ContextMsg<T: 'static + Send> {
     RunJs(String),
     Propagate(EventPropagate),
     Subscription(ServiceSubscription<T>),
-    Future(Pin<Box<dyn Send + Future<Output=T>>>),
+    Future(Pin<Box<dyn Send + Future<Output=T>>>, bool), // (future, blocking)
     Stream(Pin<Box<dyn Send + Stream<Item=T>>>),
     Dialog(DialogBinding<T>),
 }
@@ -124,10 +124,10 @@ impl<T: Send + 'static> ContextMsg<T> {
     {
         match self {
             ContextMsg::Subscription(subs) => ContextMsg::Subscription(subs.map(mapper)),
-            ContextMsg::Future(fut) => {
+            ContextMsg::Future(fut, blocking) => {
                 ContextMsg::Future(Box::pin(async move {
                     (mapper)(fut.await)
-                }))
+                }), blocking)
             },
             ContextMsg::Stream(stream) => {
                 ContextMsg::Stream(Box::pin(stream.map(move |x| (mapper)(x))))
@@ -177,11 +177,11 @@ impl<T: Send + 'static> Context<T> {
     }
 
     pub fn spawn<Fut: 'static + Send + Future<Output=T>>(&self, fut: Fut) {
-        self.tx.send(ContextMsg::Future(Box::pin(fut)));
+        self.tx.send(ContextMsg::Future(Box::pin(fut), false));
     }
 
-    pub fn spawn_blocking<Fut: 'static + Send + Future<Output=T>>(&self, _fut: Fut) {
-        todo!()
+    pub fn spawn_blocking<Fut: 'static + Send + Future<Output=T>>(&self, fut: Fut) {
+        self.tx.send(ContextMsg::Future(Box::pin(fut), true));
     }
 
     pub fn subscribe<S: 'static + Send + Stream<Item=T>>(&self, stream: S) {
