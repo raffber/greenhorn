@@ -4,12 +4,15 @@ use crate::node::Node;
 use std::fmt::{Debug, Formatter, Error};
 use std::sync::Arc;
 use crate::Id;
+use std::ops::Deref;
 
 pub struct BlobData {
     hash: u64,
     id: Id,
     data: Vec<u8>,
     mime_type: String,
+    on_change: Option<String>,
+    on_add: Option<String>
 }
 
 #[derive(Clone)]
@@ -18,12 +21,13 @@ pub struct Blob {
 }
 
 impl Blob {
-    pub fn build(id: Id, hash: u64) -> BlobBuilder {
+    pub fn build(hash: u64) -> BlobBuilder {
         BlobBuilder {
-            id,
             hash,
             mime_type: "".to_string(),
-            data: vec![]
+            data: vec![],
+            on_change: None,
+            on_add: None
         }
     }
 
@@ -42,6 +46,14 @@ impl Blob {
     pub fn mime_type(&self) -> &str {
         &self.inner.mime_type
     }
+
+    pub fn on_change(&self) -> Option<&str> {
+        self.inner.on_change.as_ref().map(|x| x.deref())
+    }
+
+    pub fn on_add(&self) -> Option<&str> {
+        self.inner.on_add.as_ref().map(|x| x.deref())
+    }
 }
 
 impl Debug for Blob {
@@ -55,24 +67,22 @@ impl From<BlobBuilder> for Blob {
         Blob {
             inner: Arc::new(BlobData {
                 hash: builder.hash,
-                id: builder.id,
+                id: Id::new(),
                 data: builder.data,
-                mime_type: builder.mime_type
+                mime_type: builder.mime_type,
+                on_change: builder.on_change,
+                on_add: builder.on_add,
             }),
         }
     }
 }
 
-impl<T: 'static> From<Blob> for Node<T> {
-    fn from(blob: Blob) -> Self {
-        Node::Blob(blob)
-    }
-}
-
-impl<T: 'static> AddNodes<T> for Blob {
+impl<T: 'static> AddNodes<T> for &Blob {
     type Output = Once<Node<T>>;
 
     fn into_nodes(self) -> Self::Output {
-        once(Node::Blob(self))
+        once(Node::Blob(Blob {
+            inner: self.inner.clone()
+        }))
     }
 }

@@ -47,12 +47,13 @@ impl<T: 'static> NodeBuilder<T> {
         Node::Text(text.into())
     }
 
-    pub fn blob(&self, id: Id, hash: u64) -> BlobBuilder {
+    pub fn blob(&self, hash: u64) -> BlobBuilder {
         BlobBuilder {
-            id,
             hash,
             mime_type: "".to_string(),
-            data: vec![]
+            data: vec![],
+            on_change: None,
+            on_add: None
         }
     }
 
@@ -73,10 +74,11 @@ impl<T: 'static> Default for NodeBuilder<T> {
 }
 
 pub struct BlobBuilder {
-    pub id: Id,
     pub hash: u64,
     pub mime_type: String,
     pub data: Vec<u8>,
+    pub on_change: Option<String>,
+    pub on_add: Option<String>,
 }
 
 impl BlobBuilder {
@@ -87,6 +89,16 @@ impl BlobBuilder {
 
     pub fn data(mut self, data: Vec<u8>) -> Self {
         self.data = data;
+        self
+    }
+
+    pub fn on_change<T: Into<String>>(mut self, js: T) -> Self {
+        self.on_change = Some(js.into());
+        self
+    }
+
+    pub fn on_add<T: Into<String>>(mut self, js: T) -> Self {
+        self.on_add = Some(js.into());
         self
     }
 

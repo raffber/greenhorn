@@ -373,6 +373,8 @@ export class Patch {
         this.app = app;
         this.current_elem_rendered = false;
         this.elements_rendered = [];
+        this.blobs_changed = [];
+        this.blobs_added = [];
         this.patch_funs = {
             1: Patch.prototype.appendSibling,
             3: Patch.prototype.replace,
@@ -408,6 +410,19 @@ export class Patch {
         }
         this.addToRendered();
         this.invokeRenderedEvent();
+
+        let len = this.blobs_changed.length;
+        for (var k = 0; k < len; ++k) {
+            let blob = this.blobs_changed[k];
+            blob.changed(blob);
+        }
+
+        len = this.blobs_added.length;
+        for (var k = 0; k < len; ++k) {
+            let blob = this.blobs_added[k];
+            blob.added(blob);
+        }
+
     }
 
     invokeRenderedEvent() {
@@ -426,14 +441,9 @@ export class Patch {
         }
     }
 
-    deserializeFunction(value) {
+    deserializeEventFunction() {
         let code = this.deserializeString();
-        let self = this;
-        let fun = function() {
-            var func = new Function(code);
-            return func;
-        }();
-        return fun;
+        return new Function("event", code);
     }
 
     deserializeNode() {
@@ -528,7 +538,7 @@ export class Patch {
 
     addJsEvent() {
         let key = this.deserializeString();
-        let fun = this.deserializeFunction();
+        let fun = this.deserializeEventFunction();
         if (key == "render") {
             this.element["__has_render_event"] = true;
         }
@@ -539,7 +549,7 @@ export class Patch {
 
     replaceJsEvent() {
         let key = this.deserializeString();
-        let fun = this.deserializeFunction();
+        let fun = this.deserializeEventFunction();
         let key_attr = '__' + key;
         let attr_value = this.element[key_attr];
         this.element.removeEventListener(attr_value);
@@ -599,7 +609,7 @@ export class Patch {
                 elem["__has_render_event"] = true;
                 push_to_rendered = true;
             }
-            let fun = this.deserializeFunction();
+            let fun = this.deserializeEventFunction();
             elem['__' + key] = fun;
             elem.addEventListener(key, fun);
         }
@@ -670,8 +680,30 @@ export class Patch {
         let mime_type = this.deserializeString();
         let len = this.patch.getUint32(this.offset, true);
         let view = new Uint8Array(this.buffer, this.offset + 4, len);
-        let blob = {'blob': new Blob([view], {"type": mime_type}), 'hash': hash};
         this.offset += len + 4;
+        let blob = {'blob': new Blob([view], {"type": mime_type}), 'hash': hash, 'changed': null, 'added': null};
+
+        let changed = this.app.blobs.hasOwnProperty(id);
+
+        let add_available = this.popU8() > 0;
+        if (add_available) {
+            let code = this.deserializeString();
+            let fun = new Function("blob", code);
+            blob.added = fun;
+            if (!changed) {
+                this.blobs_added.push(blob);
+            }            
+        }
+
+        let changed_available = this.popU8() > 0;
+        if (changed_available) {
+            let code = this.deserializeString();
+            let fun = new Function("blob", code);
+            blob.changed = fun;
+            if (changed) {
+                this.blobs_changed.push(blob);
+            }            
+        }
         this.app.blobs[id] = blob;
     }
 

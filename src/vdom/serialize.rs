@@ -165,6 +165,8 @@ pub(crate) fn serialize<A: App>(rendered: &RenderResult<A>, patch: &Patch) -> Ve
                 blob.hash().serialize(&mut output);
                 blob.mime_type().serialize(&mut output);
                 blob.data().serialize(&mut output);
+                blob.on_add().serialize(&mut output);
+                blob.on_change().serialize(&mut output);
             }
             PatchItem::RemoveBlob(blob_id) => {
                 output.push(14);

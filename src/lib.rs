@@ -22,6 +22,7 @@ mod node;
 mod listener;
 mod blob;
 mod element;
+pub mod components;
 pub mod dialog;
 pub mod services;
 pub mod any;
