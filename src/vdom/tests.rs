@@ -10,7 +10,7 @@ use crate::node::Node;
 struct DummyApp;
 
 impl App for DummyApp {
-    fn update(&mut self, _msg: Self::Message, ctx: Context<Self::Message>) -> Updated {
+    fn update(&mut self, _msg: Self::Message, _ctx: Context<Self::Message>) -> Updated {
         unimplemented!()
     }
 }

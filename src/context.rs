@@ -238,12 +238,14 @@ mod tests {
     use super::*;
     use crate::context::tests::MsgB::ItemB;
     use assert_matches::assert_matches;
-    use futures::task::{Context, Poll};
+    use futures::task::Poll;
+    use futures::task::Context as TaskContext;
     use futures::{Stream, StreamExt};
     use std::pin::Pin;
     use crate::service::ServiceMailbox;
     use crate::context::ContextMsg::Subscription;
     use crate::context::tests::MsgA::ItemA;
+    use crate::context::Context;
 
     #[derive(Debug)]
     enum MsgA {
@@ -270,7 +272,7 @@ mod tests {
     impl Stream for MyService {
         type Item = i32;
 
-        fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        fn poll_next(self: Pin<&mut Self>, _cx: &mut TaskContext<'_>) -> Poll<Option<Self::Item>> {
             Poll::Ready(Some(1))
         }
     }
@@ -298,7 +300,7 @@ mod tests {
         let (mb, rx) = Context::<MsgA>::new();
         let mapped = mb.map(MsgA::ItemA);
         mapped.spawn(fut);
-        if let Ok(ContextMsg::Future(fut)) = rx.recv() {
+        if let Ok(ContextMsg::Future(fut, _blocking)) = rx.recv() {
             let result = async_std::task::block_on(fut);
             assert_matches!(result, MsgA::ItemA(MsgB::ItemB(123)));
         } else {
