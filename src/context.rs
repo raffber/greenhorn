@@ -95,11 +95,11 @@ impl<T: 'static + Send> Clone for Context<T> {
     }
 }
 
-pub(crate) struct MailboxReceiver<T: 'static + Send> {
+pub(crate) struct ContextReceiver<T: 'static + Send> {
     pub(crate) rx: Receiver<ContextMsg<T>>,
 }
 
-impl<T: 'static + Send> MailboxReceiver<T> {
+impl<T: 'static + Send> ContextReceiver<T> {
     fn recv(&self) -> Result<ContextMsg<T>, RecvError> {
         self.rx.recv()
     }
@@ -141,13 +141,13 @@ impl<T: Send + 'static> ContextMsg<T> {
 }
 
 impl<T: Send + 'static> Context<T> {
-    pub(crate) fn new() -> (Self, MailboxReceiver<T>) {
+    pub(crate) fn new() -> (Self, ContextReceiver<T>) {
         let (tx, rx) = channel();
         (
             Context {
                 tx: MapSender::new(tx),
             },
-            MailboxReceiver {
+            ContextReceiver {
                 rx,
             },
         )

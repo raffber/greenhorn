@@ -1,6 +1,6 @@
 use crate::component::App;
 use crate::event::{Emission};
-use crate::context::{Context, ContextMsg, MailboxReceiver};
+use crate::context::{Context, ContextMsg, ContextReceiver};
 use crate::pipe::Sender;
 use crate::pipe::{Pipe, RxMsg, TxMsg};
 use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
@@ -114,7 +114,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         self.schedule_render(DEFAULT_RENDER_INTERVAL);
         let (ctx, receiver) = Context::<A::Message>::new();
         self.app.mount(ctx);
-        self.handle_mailbox_result(receiver);
+        self.handle_context_result(receiver);
         loop {
             select! {
                 _ = self.render_rx.next().fuse() => {
@@ -254,10 +254,10 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             invalidated.iter().for_each(|x| { invalidated_components.insert(*x); });
             self.schedule_render(DEFAULT_RENDER_INTERVAL);
         };
-        self.handle_mailbox_result(receiver);
+        self.handle_context_result(receiver);
     }
 
-    fn handle_mailbox_result(&mut self, receiver: MailboxReceiver<A::Message>) {
+    fn handle_context_result(&mut self, receiver: ContextReceiver<A::Message>) {
         while let Ok(cmd) = receiver.rx.try_recv() {
             match cmd {
                 ContextMsg::Emission(e) => {
