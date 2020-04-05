@@ -5,12 +5,12 @@ use crate::event::Subscription;
 use crate::node_builder::{NodeBuilder, AddNodes};
 use std::iter::{once, Once};
 use crate::blob::Blob;
-use crate::element::{Element, ElementMap, ElementRemap, ElementMapDirect};
+use crate::element::{Element, ElementMap, ElementRemap, ElementMapDirect, MappedElement};
 use crate::component::{ComponentRemap, ComponentContainer, ComponentMap};
 
 
 pub enum Node<T: 'static> {
-    ElementMap(Box<dyn ElementMap<T>>),
+    ElementMap(MappedElement<T>),
     Component(ComponentContainer<T>),
     Text(String),
     Element(Element<T>),
@@ -52,7 +52,7 @@ impl<T: 'static> Node<T> {
     pub(crate) fn map_shared<U: 'static>(self, fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>) -> Node<U> {
         match self {
             Node::ElementMap(inner) => {
-                let ret = ElementRemap::new_box(fun, inner);
+                let ret = ElementRemap::new_box(fun, inner.inner);
                 Node::ElementMap(ret)
             }
             Node::Component(inner) => Node::Component(ComponentRemap::new_container(fun, inner.inner)),

@@ -3,6 +3,7 @@ use crate::vdom::Attr;
 use crate::listener::Listener;
 use crate::node::Node;
 use std::fmt::{Debug, Formatter, Error};
+use std::fmt;
 use std::sync::{Arc, Mutex};
 
 pub struct Element<T: 'static> {
@@ -63,7 +64,36 @@ impl<T> Debug for Element<T> {
     }
 }
 
-pub trait ElementMap<T> : Debug {
+pub struct MappedElement<T: 'static> {
+    pub(crate) inner: Box<dyn ElementMap<T>>,
+}
+
+impl<T: 'static> Debug for MappedElement<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ret = format!("MappedElement {{ inner: {:?} }}", self.inner);
+        f.write_str(&ret)
+    }
+}
+
+impl<T: 'static> MappedElement<T> {
+    fn new(elem: Box<dyn ElementMap<T>>) -> Self {
+        Self {
+            inner: elem
+        }
+    }
+}
+
+impl<T: 'static> ElementMap<T> for MappedElement<T> {
+    fn take_listeners(&mut self) -> Vec<Listener<T>> { self.inner.take_listeners() }
+    fn take_children(&mut self) -> Vec<Node<T>> { self.inner.take_children() }
+    fn id(&self) -> Id { self.inner.id() }
+    fn take_attrs(&mut self) -> Vec<Attr> { self.inner.take_attrs() }
+    fn take_tag(&mut self) -> String { self.inner.take_tag() }
+    fn take_namespace(&mut self) -> Option<String> { self.inner.take_namespace() }
+    fn take_js_events(&mut self) -> Vec<Attr> { self.inner.take_js_events() }
+}
+
+pub(crate) trait ElementMap<T> : Debug {
     fn take_listeners(&mut self) -> Vec<Listener<T>>;
     fn take_children(&mut self) -> Vec<Node<T>>;
     fn id(&self) -> Id;
@@ -95,8 +125,11 @@ impl<T, U> Debug for ElementMapDirect<T, U> {
 }
 
 impl<T: 'static, U: 'static> ElementMapDirect<T, U> {
-    pub(crate) fn new_box(fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>, inner: Element<T>) -> Box<dyn ElementMap<U>> {
-        Box::new(ElementMapDirect { fun, inner })
+    pub(crate) fn new_box(fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>, inner: Element<T>) -> MappedElement<U> {
+        let ret = Box::new(ElementMapDirect { fun, inner });
+        MappedElement {
+            inner: ret
+        }
     }
 }
 
@@ -154,8 +187,8 @@ impl<T, U> Debug for ElementRemap<T, U> {
 }
 
 impl<T: 'static, U: 'static> ElementRemap<T, U> {
-    pub(crate) fn new_box(fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>, inner: Box<dyn ElementMap<T>>) -> Box<dyn ElementMap<U>> {
-        Box::new(ElementRemap { fun, inner })
+    pub(crate) fn new_box(fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>, inner: Box<dyn ElementMap<T>>) -> MappedElement<U> {
+        MappedElement::new(Box::new(ElementRemap { fun, inner }))
     }
 }
 

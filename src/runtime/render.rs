@@ -28,7 +28,7 @@ pub(crate) fn render_component<A: App>(dom: Node<A::Message>, result: &mut Vec<R
 /// Non-tree elements will be pushed into `result`.
 fn render_recursive<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>, path: &mut Path) -> Option<VNode> {
     match dom {
-        Node::ElementMap(mut elem) => render_element(&mut *elem, result, path),
+        Node::ElementMap(mut elem) => render_element(&mut *elem.inner, result, path),
         Node::Component(comp) => {
             let id = comp.id();
             result.push( ResultItem::Component(comp, path.clone()) );

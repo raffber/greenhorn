@@ -1,0 +1,5 @@
+error: Expected one of `>` or `/>`
+ --> $DIR/test.rs:5:14
+  |
+5 |         <div foo />
+  |              ^^^

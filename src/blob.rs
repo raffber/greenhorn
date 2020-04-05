@@ -59,7 +59,7 @@ impl Blob {
 
 impl Debug for Blob {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        f.write_str(&format!("<Blob id={} hash={}>", self.id(), self.hash()))
+        f.write_str(&format!("Blob {{id: {}, hash: {}}}", self.id(), self.hash()))
     }
 }
 
