@@ -52,7 +52,7 @@ impl WebsocketPipe {
         let resp_tx = channels.resp_tx;
         let req_rx = channels.req_rx;
         let local_addr = listener.local_addr().unwrap();
-        let local_addr_cloned = local_addr.clone();
+        let local_addr_cloned = local_addr;
         task::spawn(async move {
             if let Ok((stream, _)) = listener.accept().await {
                 let ws = accept_async(stream).await.expect("Error during handshake");
@@ -74,7 +74,7 @@ impl WebsocketPipe {
     }
 
     pub fn local_addr(&self) -> SocketAddr {
-        self.addr.clone()
+        self.addr
     }
 
     pub fn port(&self) -> u16 {

@@ -87,10 +87,10 @@ impl DomEvent {
         match self {
             DomEvent::Base(id, _) => *id,
             DomEvent::Focus(id, _) => *id,
-            DomEvent::Keyboard(evt) => evt.target.clone(),
-            DomEvent::Mouse(evt) => evt.target.clone(),
-            DomEvent::Wheel(evt) => evt.target.clone(),
-            DomEvent::Change(evt) => evt.target.clone(),
+            DomEvent::Keyboard(evt) => evt.target,
+            DomEvent::Mouse(evt) => evt.target,
+            DomEvent::Wheel(evt) => evt.target,
+            DomEvent::Change(evt) => evt.target,
         }
     }
 

@@ -35,7 +35,7 @@ impl<'a, A: App> Differ<'a, A> {
 
     /// Diffs all blobs of the two render results and emits PatchItems accordingly.
     fn diff_blobs(&self, patch: &mut Patch<'a>) {
-        for (k, _) in &self.old.rendered.blobs {
+        for k in self.old.rendered.blobs.keys() {
             if !self.new.blobs.contains_key(k) {
                 patch.push(PatchItem::RemoveBlob(*k));
             }
@@ -239,17 +239,17 @@ impl<'a, A: App> Differ<'a, A> {
             }
             (VNode::Placeholder(id_old, _path_old), VNode::Placeholder(id_new, _path_new)) => {
                 if id_old == id_new && !self.rendered.contains(id_new) {
-                    let new_comp = self.new.get_rendered_component(id_new).unwrap();
+                    let new_comp = self.new.get_rendered_component(*id_new).unwrap();
                     for (child_id, child_path) in new_comp.children() {
                         patch.push_path(child_path);
                         let cur_len = patch.len();
 
                         // new vdom must exist since otherwise we wouldn't see the placeholder
-                        let new_vdom = self.new.get_component_vdom(child_id).unwrap();
+                        let new_vdom = self.new.get_component_vdom(*child_id).unwrap();
 
                         // old vdom must exist since this component was not re-rendered.
                         // thus it must have the same children
-                        let old_vdom = self.old.rendered.get_component_vdom(child_id).unwrap();
+                        let old_vdom = self.old.rendered.get_component_vdom(*child_id).unwrap();
 
                         self.diff_recursive(old_vdom,  new_vdom, patch);
 
@@ -265,12 +265,12 @@ impl<'a, A: App> Differ<'a, A> {
                         }
                     }
                 } else if id_old == id_new {
-                    let old_vdom = self.old.rendered.get_component_vdom(id_old).unwrap();
-                    let new_vdom = self.new.get_component_vdom(id_new).unwrap();
+                    let old_vdom = self.old.rendered.get_component_vdom(*id_old).unwrap();
+                    let new_vdom = self.new.get_component_vdom(*id_new).unwrap();
                     ret = self.diff_recursive(old_vdom,  new_vdom, patch);
                 } else {
                     // don't even bother diffing
-                    let new_vdom = self.new.get_component_vdom(id_new).unwrap();
+                    let new_vdom = self.new.get_component_vdom(*id_new).unwrap();
                     patch.push(PatchItem::Replace(new_vdom));
                     ret = true;
                 }

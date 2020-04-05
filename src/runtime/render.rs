@@ -245,12 +245,12 @@ impl<A: App> RenderResult<A> {
         }
     }
 
-    pub(crate) fn get_component_vdom(&self, component_id: &Id) -> Option<&VNode> {
-        self.components.get(component_id).map(|x| x.vdom())
+    pub(crate) fn get_component_vdom(&self, component_id: Id) -> Option<&VNode> {
+        self.components.get(&component_id).map(|x| x.vdom())
     }
 
-    pub(crate) fn get_rendered_component(&self, component_id: &Id) -> Option<&RenderedComponent<A>> {
-        self.components.get(component_id).map(|x| x.deref())
+    pub(crate) fn get_rendered_component(&self, component_id: Id) -> Option<&RenderedComponent<A>> {
+        self.components.get(&component_id).map(|x| x.deref())
     }
 }
 

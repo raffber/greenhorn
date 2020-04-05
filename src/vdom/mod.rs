@@ -134,7 +134,7 @@ impl VNode {
         match self {
             VNode::Element(e) => e.id,
             VNode::Text(_) => Id::empty(),
-            VNode::Placeholder(x, _) => x.clone(),
+            VNode::Placeholder(x, _) => *x,
         }
     }
 }
@@ -190,7 +190,7 @@ impl<'a> Patch<'a> {
     pub(crate) fn from_dom<A: App>(rendered: &'a RenderResult<A>) -> Self { // TODO: rename
         let mut patch = Patch::new();
         patch.push(PatchItem::Replace(&rendered.root));
-        for (_, v) in &rendered.blobs {
+        for v in rendered.blobs.values() {
             patch.push(PatchItem::AddBlob(v.clone()));
         }
         patch

@@ -9,7 +9,7 @@ pub struct ElementSizeNotifier {
     html_id: String,
 }
 
-const JS: &'static str = r#"
+const JS: &str = r#"
 (function(ctx) {
     let size = [-1, -1, -1,-1];
     setInterval(function() {
@@ -82,9 +82,7 @@ impl ElementSizeNotifier {
     }
 
     fn process_msg(&mut self, msg: RxServiceMessage) -> Option<ElementSize> {
-        let data = match msg {
-            RxServiceMessage::Frontend(x) => x,
-        };
+        let RxServiceMessage::Frontend(data) = msg;
         serde_json::from_str(&data).ok()
     }
 

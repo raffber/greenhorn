@@ -52,6 +52,12 @@ impl Updated {
     }
 }
 
+impl Default for Updated {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Into<HashSet<Id>> for Updated {
     fn into(self) -> HashSet<Id, RandomState> {
         let mut ret = HashSet::new();

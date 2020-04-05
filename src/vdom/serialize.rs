@@ -43,7 +43,7 @@ impl NodeSerialize for VNode {
                 elem.serialize(output);
             },
             VNode::Placeholder(id, _path) => {
-                let vdom = rendered.get_component_vdom(id).unwrap();
+                let vdom = rendered.get_component_vdom(*id).unwrap();
                 vdom.serialize(rendered, output);
             }
         }

@@ -32,7 +32,7 @@ impl<T: 'static> Element<T> {
             None
         };
         Some(Self {
-            id: self.id.clone(),
+            id: self.id,
             tag: self.tag.clone(),
             attrs: self.attrs.clone(),
             js_events: self.js_events.clone(),
@@ -106,7 +106,7 @@ pub(crate) trait ElementMap<T> : Debug {
 impl<T: 'static> ElementMap<T> for Element<T> {
     fn take_listeners(&mut self) -> Vec<Listener<T>> { self.listeners.take().unwrap() }
     fn take_children(&mut self) -> Vec<Node<T>> { self.children.take().unwrap() }
-    fn id(&self) -> Id { self.id.clone() }
+    fn id(&self) -> Id { self.id }
     fn take_attrs(&mut self) -> Vec<Attr> { self.attrs.take().unwrap() }
     fn take_tag(&mut self) -> String { self.tag.take().unwrap() }
     fn take_namespace(&mut self) -> Option<String> { self.namespace.take() }

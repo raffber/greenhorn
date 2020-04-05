@@ -43,13 +43,13 @@ impl<A: App> RenderedState<A> {
         }
     }
 
-    pub(crate) fn get_listener(&self, target: &Id, name: &str) -> Option<&Listener<A::Message>>{
-        let target = self.translations.get(target).unwrap_or(target);
+    pub(crate) fn get_listener(&self, target: Id, name: &str) -> Option<&Listener<A::Message>>{
+        let target = self.translations.get(&target).unwrap_or(&target);
         let key = ListenerKey::from_raw(*target, &name);
         self.listeners.get(&key)
     }
 
-    pub(crate) fn get_subscription(&self, event_id: &Id) -> Option<&Subscription<A::Message>> {
+    pub(crate) fn get_subscription(&self, event_id: Id) -> Option<&Subscription<A::Message>> {
         self.subscriptions.get(&event_id)
     }
 

@@ -75,7 +75,7 @@ impl<T: 'static> Node<T> {
             Node::Component(_) => panic!(),
             Node::Text(x) => Node::Text(x),
             Node::Element(elem) => {
-                if elem.listeners.unwrap().len() != 0 {
+                if !elem.listeners.unwrap().is_empty() {
                     panic!();
                 }
                 let children = elem.children.map(

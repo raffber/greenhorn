@@ -61,7 +61,7 @@ impl<T> Clone for Subscription<T> {
     fn clone(&self) -> Self {
         match self {
             Subscription::Mapper(x) => {Subscription::Mapper(x.clone())},
-            Subscription::Handler(id, x) => {Subscription::Handler(id.clone(), x.clone())},
+            Subscription::Handler(id, x) => {Subscription::Handler(*id, x.clone())},
         }
     }
 }

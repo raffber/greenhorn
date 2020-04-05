@@ -167,7 +167,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
 
                 // search in listeners and get a message
                 let msg = self.rendered
-                    .get_listener(&evt.target(), evt.name())
+                    .get_listener(evt.target(), evt.name())
                     .map(|listener| listener.call(evt));
 
                 // inject the message back into the app
@@ -195,7 +195,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 let msg = dialog.resolve(data).unwrap();
                 self.update(msg);
                 self.process_events();
-                if self.dialogs.len() > 0 {
+                if !self.dialogs.is_empty() {
                     // show next dialog
                     let data = self.dialogs.get(0).unwrap().serialize();
                     self.sender.send(TxMsg::Dialog(data))
@@ -302,7 +302,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                     });
                 }
                 ContextMsg::Dialog(dialog) => {
-                    if self.dialogs.len() == 0 {
+                    if self.dialogs.is_empty() {
                         self.sender.send(TxMsg::Dialog(dialog.serialize()))
                     }
                     self.dialogs.push_back(dialog);
@@ -314,7 +314,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     fn process_events(&mut self) {
         while let Some(evt) = self.event_queue.pop_front() {
             let msg = match evt {
-                PendingEvent::Component(e) => self.rendered.get_subscription(&e.event_id)
+                PendingEvent::Component(e) => self.rendered.get_subscription(e.event_id)
                     .map(|subs| subs.call(e.data)),
             };
             if let Some(msg) = msg {

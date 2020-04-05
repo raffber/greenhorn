@@ -15,7 +15,7 @@ struct Histogram(HdrHistogram<u64>);
 
 impl Histogram {
     pub fn new_with_bounds(low: u64, high: u64, sigfig: u8) -> Result<Self, CreationError> {
-        HdrHistogram::new_with_bounds(low, high, sigfig).map(|x| Histogram(x))
+        HdrHistogram::new_with_bounds(low, high, sigfig).map(Histogram)
     }
 
     pub fn record_n(&mut self, value: u64, count: u64) -> Result<(), RecordError> {

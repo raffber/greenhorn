@@ -4,7 +4,6 @@ use crate::node::Node;
 use std::fmt::{Debug, Formatter, Error};
 use std::sync::Arc;
 use crate::Id;
-use std::ops::Deref;
 
 pub struct BlobData {
     hash: u64,
@@ -49,11 +48,11 @@ impl Blob {
     }
 
     pub fn on_change(&self) -> Option<&str> {
-        self.inner.on_change.as_ref().map(|x| x.deref())
+        self.inner.on_change.as_deref()
     }
 
     pub fn on_add(&self) -> Option<&str> {
-        self.inner.on_add.as_ref().map(|x| x.deref())
+        self.inner.on_add.as_deref()
     }
 }
 
@@ -65,7 +64,7 @@ impl Debug for Blob {
 
 impl From<BlobBuilder> for Blob {
     fn from(builder: BlobBuilder) -> Self {
-        let id = builder.id.unwrap_or_else(|| Id::new());
+        let id = builder.id.unwrap_or_else( Id::new);
         Blob {
             inner: Arc::new(BlobData {
                 hash: builder.hash,

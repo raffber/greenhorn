@@ -199,9 +199,8 @@ impl<T: 'static> ElementBuilder<T> {
     where
         S: AddNodes<T>
      {
-         let mut iter = children.into_nodes();
-         while let Some(child) = iter.next() {
-             self.children.push(child.into());
+         for child in children.into_nodes() {
+             self.children.push(child);
          }
         self
     }
@@ -222,13 +221,13 @@ impl<T: 'static> ElementBuilder<T> {
     }
 
     pub fn build(mut self) -> Node<T> {
-        if self.classes.len() != 0 {
+        if !self.classes.is_empty() {
             let cls = self.classes.join(" ");
             self.attrs.push(Attr { key: "class".to_string(), value: cls });
         }
-        self.html_id.take().map(|x| {
+        if let Some(x) = self.html_id.take() {
             self.attrs.push(Attr { key: "id".to_string(), value: x })
-        });
+        }
 
         Node::Element(Element {
             id: self.id,
