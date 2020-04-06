@@ -1,4 +1,4 @@
-use crate::pipe::{Pipe, RxMsg, Sender, TxMsg};
+use crate::pipe::{Pipe, RxMsg, TxMsg};
 use async_std::net::{TcpListener, TcpStream};
 use async_std::task;
 use async_tungstenite::{accept_async, WebSocketStream};
@@ -11,6 +11,9 @@ use log::error;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use tungstenite::protocol::Message;
+use futures::Sink;
+use std::error::Error;
+use futures::channel::mpsc::SendError;
 
 struct PipeChannels {
     req_tx: UnboundedSender<Message>,
@@ -144,8 +147,47 @@ impl ConnectionHandler {
     }
 }
 
+
 pub struct WebsocketSender {
     req_tx: UnboundedSender<Message>,
+}
+
+impl Sink<TxMsg> for WebsocketSender {
+    type Error = Box<dyn Error>;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let ret: Poll<Result<(), SendError>> = UnboundedSender::poll_ready(&self.req_tx, cx);
+        match ret {
+            Poll::Ready(x) => Poll::Ready(x.map_err(|x| Box::new(x).into())),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+
+    fn start_send(mut self: Pin<&mut Self>, item: TxMsg) -> Result<(), Self::Error> {
+        let msg = match item {
+            TxMsg::Patch(p) => {
+                Message::Binary(p)
+            },
+            msg => {
+                // for performance notes regarding serialization and underlying transport, refer to index.js
+                // tldr: JSON.parse() in the browser is very fast
+                let msg = serde_json::to_string(&msg).unwrap();
+                Message::Text(msg)
+            }
+        };
+
+        UnboundedSender::start_send(&mut self.req_tx, msg).map_err(|x| Box::new(x).into())
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let pin = Pin::new(&mut self.req_tx);
+        pin.poll_flush(cx).map_err(|x| Box::new(x).into())
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let pin = Pin::new(&mut self.req_tx);
+        pin.poll_close(cx).map_err(|x| Box::new(x).into())
+    }
 }
 
 impl Clone for WebsocketSender {
@@ -153,26 +195,6 @@ impl Clone for WebsocketSender {
         Self {
             req_tx: self.req_tx.clone(),
         }
-    }
-}
-
-impl Sender for WebsocketSender {
-    fn send(&self, msg: TxMsg) {
-        match msg {
-           TxMsg::Patch(p) => {
-               self.req_tx.unbounded_send(Message::Binary(p)).unwrap();
-           },
-            msg => {
-                // for performance notes regarding serialization and underlying transport, refer to index.js
-                // tldr: JSON.parse() in the browser is very fast
-                let msg = serde_json::to_string(&msg).unwrap();
-                self.req_tx.unbounded_send(Message::Text(msg)).unwrap();
-            }
-        }
-    }
-
-    fn close(&self) {
-        self.req_tx.close_channel();
     }
 }
 

@@ -1,7 +1,6 @@
 use crate::component::App;
 use crate::event::{Emission};
 use crate::context::{Context, ContextMsg, ContextReceiver};
-use crate::pipe::Sender;
 use crate::pipe::{Pipe, RxMsg, TxMsg};
 use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
 use crate::vdom::{Differ, patch_serialize, Patch};
@@ -18,6 +17,7 @@ pub(crate) use crate::runtime::state::Frame;
 use crate::runtime::metrics::Metrics;
 use std::time::{Instant, Duration};
 use crate::dialog::DialogBinding;
+use futures::SinkExt;
 
 mod service_runner;
 mod render;
@@ -114,7 +114,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         self.schedule_render(DEFAULT_RENDER_INTERVAL);
         let (ctx, receiver) = Context::<A::Message>::new();
         self.app.mount(ctx);
-        self.handle_context_result(receiver);
+        self.handle_context_result(receiver).await;
         loop {
             select! {
                 _ = self.render_rx.next().fuse() => {
@@ -132,7 +132,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 },
                 msg = self.rx.next().fuse() => {
                     if let Some(msg) = msg {
-                        if !self.handle_msg(msg) {
+                        if !self.handle_msg(msg).await {
                             break;
                         }
                     } else {
@@ -141,7 +141,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 },
                 msg = self.services.next().fuse() => {
                     if let Some(msg) = msg {
-                        self.handle_service_msg(msg);
+                        self.handle_service_msg(msg).await;
                     }
                 }
             }
@@ -153,10 +153,12 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         async_std::task::block_on(self.run())
     }
 
-    fn handle_service_msg(&mut self, msg: ServiceMessage<A::Message>) {
+    async fn handle_service_msg(&mut self, msg: ServiceMessage<A::Message>) {
         match msg {
-            ServiceMessage::Update(msg) => self.update(msg),
-            ServiceMessage::Tx(id, msg) => self.sender.send(TxMsg::Service(id.data(), msg)),
+            ServiceMessage::Update(msg) => self.update(msg).await,
+            ServiceMessage::Tx(id, msg) => {
+                self.sender.send(TxMsg::Service(id.data(), msg)).await.unwrap();
+            },
             ServiceMessage::Stopped() => {}
         }
     }
@@ -172,8 +174,8 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
 
                 // inject the message back into the app
                 if let Some(msg) = msg {
-                    self.update(msg);
-                    self.process_events();
+                    self.update(msg).await;
+                    self.process_events().await;
                 }
             }
             RxMsg::FrameApplied() => {
@@ -193,23 +195,23 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 let dialog = self.dialogs.pop_front().unwrap();
                 // panic if data was ill formated since that is a bug in the backend
                 let msg = dialog.resolve(data).unwrap();
-                self.update(msg);
-                self.process_events();
+                self.update(msg).await;
+                self.process_events().await;
                 if !self.dialogs.is_empty() {
                     // show next dialog
                     let data = self.dialogs.get(0).unwrap().serialize();
-                    self.sender.send(TxMsg::Dialog(data))
+                    self.sender.send(TxMsg::Dialog(data)).await.unwrap();
                 }
             }
         };
         true
     }
 
-    fn handle_msg(&mut self, msg: RuntimeMsg<A>) -> bool {
+    async fn handle_msg(&mut self, msg: RuntimeMsg<A>) -> bool {
         match msg {
             RuntimeMsg::Cancel => {return false;},
             RuntimeMsg::Update(msg) => {
-                self.update(msg);
+                self.update(msg).await;
             }
             RuntimeMsg::ApplyNextFrame(frame, duration) => {
                 self.next_frame = None;
@@ -223,7 +225,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 self.metrics.diff.record(duration);
             },
             RuntimeMsg::AsyncMsg(msg) => {
-                self.update(msg);
+                self.update(msg).await;
             }
         }
         true
@@ -243,7 +245,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         self.dirty = true;
     }
 
-    fn update(&mut self, msg: A::Message) {
+    async fn update(&mut self, msg: A::Message) {
         let (ctx, receiver) = Context::<A::Message>::new();
         let updated = self.app.update(msg, ctx);
         if updated.should_render {
@@ -254,23 +256,23 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             invalidated.iter().for_each(|x| { invalidated_components.insert(*x); });
             self.schedule_render(DEFAULT_RENDER_INTERVAL);
         };
-        self.handle_context_result(receiver);
+        self.handle_context_result(receiver).await;
     }
 
-    fn handle_context_result(&mut self, receiver: ContextReceiver<A::Message>) {
+    async fn handle_context_result(&mut self, receiver: ContextReceiver<A::Message>) {
         while let Ok(cmd) = receiver.rx.try_recv() {
             match cmd {
                 ContextMsg::Emission(e) => {
                     self.event_queue.push_back(PendingEvent::Component(e));
                 },
                 ContextMsg::LoadCss(css) => {
-                    self.sender.send(TxMsg::LoadCss(css));
+                    self.sender.send(TxMsg::LoadCss(css)).await.unwrap();
                 },
                 ContextMsg::RunJs(js) => {
-                    self.sender.send(TxMsg::RunJs(js));
+                    self.sender.send(TxMsg::RunJs(js)).await.unwrap();
                 },
                 ContextMsg::Propagate(prop) => {
-                    self.sender.send(TxMsg::Propagate(prop));
+                    self.sender.send(TxMsg::Propagate(prop)).await.unwrap();
                 },
                 ContextMsg::Subscription(service) => {
                     self.services.spawn(service);
@@ -303,7 +305,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 }
                 ContextMsg::Dialog(dialog) => {
                     if self.dialogs.is_empty() {
-                        self.sender.send(TxMsg::Dialog(dialog.serialize()))
+                        self.sender.send(TxMsg::Dialog(dialog.serialize())).await.unwrap();
                     }
                     self.dialogs.push_back(dialog);
                 }
@@ -311,14 +313,14 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         }
     }
 
-    fn process_events(&mut self) {
+    async fn process_events(&mut self) {
         while let Some(evt) = self.event_queue.pop_front() {
             let msg = match evt {
                 PendingEvent::Component(e) => self.rendered.get_subscription(e.event_id)
                     .map(|subs| subs.call(e.data)),
             };
             if let Some(msg) = msg {
-                self.update(msg);
+                self.update(msg).await;
             }
         }
     }
@@ -350,7 +352,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         self.invalidate_all = false;
         self.dirty = false;
         let tx = self.tx.clone();
-        let sender = self.sender.clone();
+        let mut sender = self.sender.clone();
 
         async_std::task::spawn_blocking(move || {
             // create a patch
@@ -372,9 +374,8 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 let translations = patch.translations;
                 let frame = Frame::new(result, translations);
                 let _ = tx.unbounded_send(RuntimeMsg::NextFrameRendering(frame, delta));
-
                 // serialize the patch and send it to the client
-                sender.send(TxMsg::Patch(serialized));
+                task::block_on(sender.send(TxMsg::Patch(serialized))).unwrap();
             }
         });
     }

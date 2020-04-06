@@ -1,10 +1,12 @@
 use futures::Stream;
+use futures::Sink;
 
 use crate::dom_event::DomEvent;
 use crate::service::{RxServiceMessage, TxServiceMessage};
 use serde::{Deserialize, Serialize};
 use crate::context::EventPropagate;
 use serde_json::Value as JsonValue;
+use std::error::Error;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum TxMsg {
@@ -25,18 +27,12 @@ pub enum RxMsg {
     Dialog(JsonValue),
 }
 
-pub trait Sender: Clone + Send {
-    fn send(&self, msg: TxMsg);
-    fn close(&self);
-}
-
 pub trait Receiver: Stream<Item = RxMsg> + Unpin + Send + 'static {}
 impl<T> Receiver for T where T: Stream<Item = RxMsg> + Unpin + Send + 'static {}
 
-// TODO: implement Sender for Sink?
+pub trait Sender: Sink<TxMsg, Error=Box<dyn Error>> + Unpin + Send + Clone + 'static {}
+impl<T> Sender for T where T: Sink<TxMsg, Error=Box<dyn Error>> + Unpin + Send + Clone + 'static {}
 
-// TODO: make macro work
-//trait_alias!(Receiver = Stream<Item=RxMsg> + Unpin + Send + 'static);
 
 pub trait Pipe {
     type Sender: Sender;
