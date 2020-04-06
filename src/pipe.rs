@@ -1,5 +1,5 @@
-use futures::Stream;
-use futures::Sink;
+use futures::{Stream, StreamExt};
+use futures::{Sink, SinkExt};
 
 use crate::dom_event::DomEvent;
 use crate::service::{RxServiceMessage, TxServiceMessage};
@@ -50,28 +50,58 @@ pub(crate) mod tests {
     use std::pin::Pin;
     use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 
-    struct DummyPipe;
+    #[derive(Clone)]
+    struct DummySender(UnboundedSender<TxMsg>);
 
-    struct DummySender;
-    impl Sender for DummySender {
-        fn send(&self, msg: TxMsg) { }
-        fn close(&self) { }
+    impl Sink<TxMsg> for DummySender {
+        type Error = Box<dyn Error>;
+
+        fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Pin::new(&mut self.0).poll_ready(cx).map_err(|x| Box::new(x).into())
+        }
+
+        fn start_send(mut self: Pin<&mut Self>, item: TxMsg) -> Result<(), Self::Error> {
+            Pin::new(&mut self.0).start_send(item).map_err(|x| Box::new(x).into())
+        }
+
+        fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Pin::new(&mut self.0).poll_flush(cx).map_err(|x| Box::new(x).into())
+        }
+
+        fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Pin::new(&mut self.0).poll_close(cx).map_err(|x| Box::new(x).into())
+        }
+    }
+
+    struct DummyPipe {
+        sender_tx: UnboundedSender<TxMsg>,
+        sender_rx: UnboundedReceiver<TxMsg>,
+        receiver_tx: UnboundedSender<RxMsg>,
+        receiver_rx: UnboundedReceiver<RxMsg>,
+    }
+
+    impl DummyPipe {
+        fn new() -> Self {
+            let (sender_tx, sender_rx) = unbounded();
+            let (receiver_tx, receiver_rx) = unbounded();
+            Self {
+                sender_tx,
+                sender_rx,
+                receiver_tx,
+                receiver_rx,
+            }
+        }
     }
 
     impl Pipe for DummyPipe {
         type Sender = DummySender;
-        type Receiver = UnboundedReceiver<RxMsg>;
+        type Receiver = Box<dyn Receiver>;
 
         fn split(self) -> (Self::Sender, Self::Receiver) {
-
             unimplemented!()
+            // let sender_tx = Box::new(self.sender_tx.sink_map_err(|x| Box::new(x).into()) ).into();
+            // let receiver_rx = Box::new(self.receiver_rx).into();
+            // (sender_tx, receiver_rx)
         }
     }
-
-    #[test]
-    fn test_render_loop() {
-        let mut component = DummyComponent(1);
-
-    }
-
 }
