@@ -21,6 +21,20 @@ impl Updated {
         }
     }
 
+    pub fn yes() -> Updated {
+        Updated {
+            should_render: true,
+            components_render: None
+        }
+    }
+
+    pub fn no() -> Updated {
+        Updated {
+            should_render: false,
+            components_render: None
+        }
+    }
+
     pub fn render(mut self) -> Self {
         self.should_render = true;
         self

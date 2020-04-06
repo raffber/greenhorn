@@ -379,3 +379,31 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         });
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Render, Updated};
+    use crate::node::Node;
+
+    struct DummyComponent(u32);
+    impl Render for DummyComponent {
+        type Message = ();
+
+        fn render(&self) -> Node<Self::Message> {
+            Node::html()
+                .elem("div")
+                .id("html-id")
+                .add(Node::text(self.0.to_string()) )
+                .build()
+        }
+    }
+
+    impl App for DummyComponent {
+        fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated {
+            Updated::yes()
+        }
+    }
+
+}

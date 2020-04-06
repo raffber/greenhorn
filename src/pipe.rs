@@ -33,6 +33,8 @@ pub trait Sender: Clone + Send {
 pub trait Receiver: Stream<Item = RxMsg> + Unpin + Send + 'static {}
 impl<T> Receiver for T where T: Stream<Item = RxMsg> + Unpin + Send + 'static {}
 
+// TODO: implement Sender for Sink?
+
 // TODO: make macro work
 //trait_alias!(Receiver = Stream<Item=RxMsg> + Unpin + Send + 'static);
 
@@ -41,4 +43,39 @@ pub trait Pipe {
     type Receiver: Receiver;
 
     fn split(self) -> (Self::Sender, Self::Receiver);
+}
+
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+    use async_std::sync;
+    use futures::task::{Context, Poll};
+    use std::pin::Pin;
+    use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
+
+    struct DummyPipe;
+
+    struct DummySender;
+    impl Sender for DummySender {
+        fn send(&self, msg: TxMsg) { }
+        fn close(&self) { }
+    }
+
+    impl Pipe for DummyPipe {
+        type Sender = DummySender;
+        type Receiver = UnboundedReceiver<RxMsg>;
+
+        fn split(self) -> (Self::Sender, Self::Receiver) {
+
+            unimplemented!()
+        }
+    }
+
+    #[test]
+    fn test_render_loop() {
+        let mut component = DummyComponent(1);
+
+    }
+
 }
