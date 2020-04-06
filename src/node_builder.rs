@@ -129,7 +129,7 @@ pub struct ElementBuilder<T: 'static> {
 impl<T: 'static> ElementBuilder<T> {
     fn new(tag: String, namespace: Option<String>) -> ElementBuilder<T> {
         ElementBuilder {
-            id: Id::empty(),
+            id: Id::new_empty(),
             tag,
             attrs: Vec::new(),
             js_events: Vec::new(),

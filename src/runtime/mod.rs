@@ -185,7 +185,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 }
             }
             RxMsg::Service(id, msg) => {
-                self.services.send(Id::from_data(id), msg);
+                self.services.send(Id::new_from_data(id), msg);
             },
             RxMsg::Dialog(data) => {
                 // cannot receive a dialog message if no dialog is active

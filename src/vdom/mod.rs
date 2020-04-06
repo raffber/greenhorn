@@ -133,7 +133,7 @@ impl VNode {
     fn id(&self) -> Id {
         match self {
             VNode::Element(e) => e.id,
-            VNode::Text(_) => Id::empty(),
+            VNode::Text(_) => Id::new_empty(),
             VNode::Placeholder(x, _) => *x,
         }
     }

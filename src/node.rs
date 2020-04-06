@@ -100,7 +100,7 @@ impl<T: 'static> Node<T> {
         match self {
             Node::ElementMap(inner) => inner.id(),
             Node::Component(inner) => inner.id(),
-            Node::Text(_) => Id::empty(),
+            Node::Text(_) => Id::new_empty(),
             Node::Element(elem) => elem.id,
             Node::EventSubscription(id, _) => *id,
             Node::Blob(blob) => blob.id(),
