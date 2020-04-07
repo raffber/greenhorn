@@ -78,8 +78,8 @@ pub(crate) mod tests {
     }
 
     pub(crate) struct DummyFrontend {
-        sender_rx: UnboundedReceiver<TxMsg>,
-        receiver_tx: UnboundedSender<RxMsg>,
+        pub(crate) sender_rx: UnboundedReceiver<TxMsg>,
+        pub(crate) receiver_tx: UnboundedSender<RxMsg>,
     }
 
     impl DummyPipe {

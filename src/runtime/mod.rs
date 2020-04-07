@@ -388,6 +388,10 @@ mod tests {
     use crate::{Render, Updated};
     use crate::node::Node;
     use crate::pipe::tests::DummyPipe;
+    use async_std::task;
+    use futures::stream::StreamExt;
+    use crate::vdom::{VNode, VElement, PatchItem, Patch};
+    use crate::vdom::Attr;
 
     struct DummyComponent(u32);
     impl Render for DummyComponent {
@@ -411,8 +415,32 @@ mod tests {
     #[test]
     fn test_empty_render() {
         let app = DummyComponent(1);
-        let (pipe, frontend) = DummyPipe::new();
-        let rt = Runtime::new(app, pipe);
+        let (pipe, mut frontend) = DummyPipe::new();
+        let (rt, control) = Runtime::new(app, pipe);
+        let handle = task::spawn_blocking(move || {
+            match task::block_on(frontend.sender_rx.next()) {
+                Some(TxMsg::Patch(msg)) => {
+                    let elem = VNode::element(VElement {
+                        id: Id::new_empty(),
+                        tag: "div".to_string(),
+                        attr: vec![Attr::new("id", "html-id")],
+                        js_events: vec![],
+                        events: vec![],
+                        children: vec![VNode::Text("1".to_string())],
+                        namespace: None
+                    });
+                    let patch = Patch {
+                        items: vec![PatchItem::Replace(&elem)],
+                        translations: Default::default()
+                    };
+                    let node = VNode::Element(elem);
+                    println!("{:?}", msg);
+                },
+                _ => {panic!()}
+            }
+        });
+        rt.run_blocking();
+        task::block_on(handle);
     }
 
 }

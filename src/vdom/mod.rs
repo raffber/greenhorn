@@ -44,7 +44,7 @@ pub struct Attr {
 }
 
 impl Attr {
-    fn new<K: Into<String>, V: Into<String>>(key: K, value: V) -> Self {
+    pub fn new<K: Into<String>, V: Into<String>>(key: K, value: V) -> Self {
         Attr {
             key: key.into(),
             value: value.into(),
