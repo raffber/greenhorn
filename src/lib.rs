@@ -32,8 +32,8 @@ pub mod pipe;
 mod runtime;
 mod service;
 mod vdom;
-mod websocket_pipe;
-mod node;
+pub mod websockets;
+pub mod node;
 mod listener;
 mod blob;
 mod element;
@@ -51,12 +51,12 @@ pub mod any;
 /// ```
 pub mod prelude {
     pub use crate::component::{App, Component, Render, Updated};
-    pub use crate::node::Node;
+    pub use crate::node::{Node, nodes};
     pub use crate::dom_event::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent, ChangeEvent, InputValue};
     pub use crate::event::Event;
     pub use crate::context::Context;
     pub use crate::runtime::{Runtime, RuntimeControl};
-    pub use crate::websocket_pipe::WebsocketPipe;
+    pub use crate::websockets::WebsocketPipe;
     pub use crate::node_builder::{NodeBuilder, ElementBuilder};
     pub use crate::blob::Blob;
 }

@@ -433,7 +433,8 @@ mod tests {
                         items: vec![PatchItem::Replace(&elem)],
                         translations: Default::default()
                     };
-                    let node = VNode::Element(elem);
+                    // patch_serialize()
+
                     println!("{:?}", msg);
                 },
                 _ => {panic!()}
