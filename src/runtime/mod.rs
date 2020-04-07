@@ -387,6 +387,7 @@ mod tests {
     use super::*;
     use crate::{Render, Updated};
     use crate::node::Node;
+    use crate::pipe::tests::DummyPipe;
 
     struct DummyComponent(u32);
     impl Render for DummyComponent {
@@ -405,6 +406,13 @@ mod tests {
         fn update(&mut self, _msg: Self::Message, _ctx: Context<Self::Message>) -> Updated {
             Updated::yes()
         }
+    }
+
+    #[test]
+    fn test_empty_render() {
+        let app = DummyComponent(1);
+        let (pipe, frontend) = DummyPipe::new();
+        let rt = Runtime::new(app, pipe);
     }
 
 }

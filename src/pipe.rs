@@ -50,7 +50,7 @@ pub(crate) mod tests {
     use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 
     #[derive(Clone)]
-    struct DummySender(UnboundedSender<TxMsg>);
+    pub(crate) struct DummySender(UnboundedSender<TxMsg>);
 
     impl Sink<TxMsg> for DummySender {
         type Error = Box<dyn Error>;
@@ -72,23 +72,27 @@ pub(crate) mod tests {
         }
     }
 
-    struct DummyPipe {
+    pub(crate) struct DummyPipe {
         sender_tx: UnboundedSender<TxMsg>,
-        sender_rx: UnboundedReceiver<TxMsg>,
-        receiver_tx: UnboundedSender<RxMsg>,
         receiver_rx: UnboundedReceiver<RxMsg>,
     }
 
+    pub(crate) struct DummyFrontend {
+        sender_rx: UnboundedReceiver<TxMsg>,
+        receiver_tx: UnboundedSender<RxMsg>,
+    }
+
     impl DummyPipe {
-        fn new() -> Self {
+        pub(crate) fn new() -> (Self, DummyFrontend) {
             let (sender_tx, sender_rx) = unbounded();
             let (receiver_tx, receiver_rx) = unbounded();
-            Self {
+            (Self {
                 sender_tx,
-                sender_rx,
-                receiver_tx,
                 receiver_rx,
-            }
+            }, DummyFrontend {
+                sender_rx,
+                receiver_tx
+            })
         }
     }
 
