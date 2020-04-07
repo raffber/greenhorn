@@ -185,6 +185,7 @@ impl Sink<TxMsg> for WebsocketSender {
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.req_tx.close_channel();
         let pin = Pin::new(&mut self.req_tx);
         pin.poll_close(cx).map_err(|x| Box::new(x).into())
     }
@@ -298,8 +299,8 @@ mod tests {
             }
             stream.close(None).await.unwrap();
         });
-        let (tx, mut rx) = pipe.split();
-        tx.send(TxMsg::Ping());
+        let (mut tx, mut rx) = pipe.split();
+        task::block_on(tx.send(TxMsg::Ping())).unwrap();
         task::block_on(async move {
             while let Some(_) = rx.next().await {
                 // we are not expecting any message, but the stream
@@ -327,8 +328,8 @@ mod tests {
                 }
             }
         });
-        let (tx, mut rx) = pipe.split();
-        tx.close();
+        let (mut tx, mut rx) = pipe.split();
+        task::block_on(tx.close()).unwrap();
         task::block_on(async move {
             while let Some(_) = rx.next().await {
                 // we are not expecting any message, but the stream

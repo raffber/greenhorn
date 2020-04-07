@@ -1,5 +1,5 @@
-use futures::{Stream, StreamExt};
-use futures::{Sink, SinkExt};
+use futures::Stream;
+use futures::Sink;
 
 use crate::dom_event::DomEvent;
 use crate::service::{RxServiceMessage, TxServiceMessage};
@@ -45,7 +45,6 @@ pub trait Pipe {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use async_std::sync;
     use futures::task::{Context, Poll};
     use std::pin::Pin;
     use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
@@ -98,10 +97,9 @@ pub(crate) mod tests {
         type Receiver = Box<dyn Receiver>;
 
         fn split(self) -> (Self::Sender, Self::Receiver) {
-            unimplemented!()
-            // let sender_tx = Box::new(self.sender_tx.sink_map_err(|x| Box::new(x).into()) ).into();
-            // let receiver_rx = Box::new(self.receiver_rx).into();
-            // (sender_tx, receiver_rx)
+            let sender_tx = DummySender(self.sender_tx);
+            let receiver_rx: Box<dyn Receiver> = Box::new(self.receiver_rx);
+            (sender_tx, receiver_rx)
         }
     }
 }

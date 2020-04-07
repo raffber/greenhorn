@@ -402,7 +402,7 @@ mod tests {
     }
 
     impl App for DummyComponent {
-        fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated {
+        fn update(&mut self, _msg: Self::Message, _ctx: Context<Self::Message>) -> Updated {
             Updated::yes()
         }
     }
