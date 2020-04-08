@@ -416,7 +416,7 @@ mod tests {
     fn test_empty_render() {
         let app = DummyComponent(1);
         let (pipe, mut frontend) = DummyPipe::new();
-        let (rt, control) = Runtime::new(app, pipe);
+        let (rt, _control) = Runtime::new(app, pipe);
         let handle = task::spawn_blocking(move || {
             match task::block_on(frontend.sender_rx.next()) {
                 Some(TxMsg::Patch(msg)) => {
@@ -429,7 +429,7 @@ mod tests {
                         children: vec![VNode::Text("1".to_string())],
                         namespace: None
                     });
-                    let patch = Patch {
+                    let _patch = Patch {
                         items: vec![PatchItem::Replace(&elem)],
                         translations: Default::default()
                     };

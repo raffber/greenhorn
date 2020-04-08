@@ -318,9 +318,15 @@ impl<T: 'static> From<Option<Node<T>>> for NodeIter<T, option::IntoIter<Node<T>>
     }
 }
 
-impl<T: 'static> From<Blob> for NodeIter<T, once<Node<T>>> {
+impl<T: 'static> From<Blob> for NodeIter<T, Once<Node<T>>> {
     fn from(value: Blob) -> Self {
         NodeIter { inner: once(Node::Blob(value)) }
+    }
+}
+
+impl<T: 'static, U: Iterator<Item=Node<T>>> From<U> for NodeIter<T, U> {
+    fn from(value: U) -> Self {
+        NodeIter { inner: value }
     }
 }
 
