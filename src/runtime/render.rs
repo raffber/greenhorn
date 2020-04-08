@@ -105,6 +105,19 @@ impl<A: App> RenderResult<A> {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn new_empty() -> Self {
+        Self {
+            listeners: Default::default(),
+            subscriptions: Default::default(),
+            blobs: Default::default(),
+            components: Default::default(),
+            root_components: vec![],
+            root: Arc::new(VNode::Text("".to_string())),
+
+        }
+    }
+
     /// Create a new RenderResult if the root component was re-rendered.
     /// Re-renders the whole component tree.
     pub(crate) fn new_from_root(root_rendered: Node<A::Message>, metrics: &mut Metrics) -> Self {

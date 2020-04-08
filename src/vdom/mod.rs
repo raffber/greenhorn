@@ -180,7 +180,7 @@ pub struct Patch<'a> {
 }
 
 impl<'a> Patch<'a> {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Patch {
             items: vec![],
             translations: HashMap::new(),

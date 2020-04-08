@@ -408,6 +408,7 @@ mod tests {
 
     impl App for DummyComponent {
         fn update(&mut self, _msg: Self::Message, _ctx: Context<Self::Message>) -> Updated {
+            self.0 += 1;
             Updated::yes()
         }
     }
@@ -429,19 +430,65 @@ mod tests {
                         children: vec![VNode::Text("1".to_string())],
                         namespace: None
                     });
-                    let _patch = Patch {
+                    let patch = Patch {
                         items: vec![PatchItem::Replace(&elem)],
                         translations: Default::default()
                     };
-                    // patch_serialize()
-
-                    println!("{:?}", msg);
+                    let render_result = RenderResult::<DummyComponent>::new_empty();
+                    let serialized = patch_serialize(&render_result, &patch);
+                    assert_eq!(serialized, msg);
                 },
-                _ => {panic!()}
+                _ => panic!()
             }
         });
         rt.run_blocking();
         task::block_on(handle);
+    }
+
+    #[test]
+    fn test_empty_render_plus_update() {
+        let app = DummyComponent(1);
+        let (pipe, mut frontend) = DummyPipe::new();
+        let (rt, control) = Runtime::new(app, pipe);
+        let handle = task::spawn_blocking(move || {
+            let _ = task::block_on(frontend.sender_rx.next()).unwrap();
+            control.update(());
+            task::block_on(frontend.receiver_tx.send(RxMsg::FrameApplied())).unwrap();
+            let msg2 = task::block_on(frontend.sender_rx.next());
+            match msg2 {
+                Some(TxMsg::Patch(msg)) => {
+                    let new_text = "2";
+                    let patch = Patch {
+                        items: vec![PatchItem::Descend(), PatchItem::ChangeText(&new_text)],
+                        translations: Default::default()
+                    };
+                    let render_result= RenderResult::<DummyComponent>::new_empty();
+                    let serialized = patch_serialize(&render_result, &patch);
+                    assert_eq!(serialized, msg);
+                },
+                _ => panic!()
+            }
+
+        });
+        rt.run_blocking();
+        task::block_on(handle);
+    }
+
+    #[test]
+    fn test_rerender_if_timeout() {
+        let app = DummyComponent(1);
+        let (pipe, mut frontend) = DummyPipe::new();
+        let (rt, control) = Runtime::new(app, pipe);
+        let handle = task::spawn_blocking(move || {
+            let _ = task::block_on(frontend.sender_rx.next()).unwrap();
+            control.update(());
+            let _ = task::block_on(frontend.sender_rx.next()).unwrap();
+            control.update(());
+            // don't do this now
+            // task::block_on(frontend.receiver_tx.send(RxMsg::FrameApplied())).unwrap();
+            let msg2 = task::block_on(frontend.sender_rx.next());
+            todo!(); // check msg2 == msg1 except for "1" != "2"
+        });
     }
 
 }
