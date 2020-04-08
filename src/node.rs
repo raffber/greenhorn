@@ -7,8 +7,6 @@ use std::iter::{once, Once};
 use crate::blob::Blob;
 use crate::element::{Element, ElementMap, ElementRemap, ElementMapDirect, MappedElement};
 use crate::component::{ComponentRemap, ComponentContainer, ComponentMap};
-use std::option;
-use std::vec;
 
 
 pub enum Node<T: 'static> {
@@ -122,107 +120,6 @@ impl<T: 'static> Node<T> {
             Node::Blob(blob) => Some(Node::Blob(blob.clone())),
             _ => None
         }
-    }
-}
-
-impl<T: 'static> AddNodes<T> for Node<T> {
-    type Output = Once<Node<T>>;
-
-    fn into_nodes(self) -> Self::Output {
-        once(self)
-    }
-}
-
-impl<T: 'static> From<String> for Node<T> {
-    fn from(value: String) -> Self {
-        Node::Text(value)
-    }
-}
-
-impl<T: 'static> From<&str> for Node<T> {
-    fn from(value: &str) -> Self {
-        Node::Text(value.into())
-    }
-}
-
-impl<T: 'static> From<Subscription<T>> for Node<T> {
-    fn from(value: Subscription<T>) -> Self {
-        Node::EventSubscription(value.id(), value)
-    }
-}
-
-impl<T: 'static> AddNodes<T> for Subscription<T> {
-    type Output = Once<Node<T>>;
-
-    fn into_nodes(self) -> Self::Output {
-        once(Node::EventSubscription(self.id(), self))
-    }
-}
-
-
-pub struct NodeIter<T: 'static, U: Iterator<Item=Node<T>>> {
-    inner: U,
-}
-
-impl<T: 'static, U: Iterator<Item=Node<T>>> Iterator for NodeIter<T, U> {
-    type Item = Node<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next()
-    }
-}
-
-impl<T: 'static, U: Iterator<Item=Node<T>>> AddNodes<T> for NodeIter<T, U> {
-    type Output = NodeIter<T, U>;
-
-    fn into_nodes(self) -> Self::Output {
-        self.into_iter()
-    }
-}
-
-impl<T: 'static, U: Iterator<Item=Node<T>>> From<U> for NodeIter<T, U> {
-    fn from(inner: U) -> Self {
-        NodeIter {
-            inner
-        }
-    }
-}
-
-impl<T: 'static> AddNodes<T> for Vec<Node<T>> {
-    type Output = vec::IntoIter<Node<T>>;
-
-    fn into_nodes(self) -> Self::Output {
-        self.into_iter()
-    }
-}
-
-impl<T: 'static> AddNodes<T> for Option<Node<T>> {
-    type Output = option::IntoIter<Node<T>>;
-
-    fn into_nodes(self) -> Self::Output {
-        self.into_iter()
-    }
-}
-
-pub fn nodes<T: 'static, U: Iterator<Item=Node<T>>, S: IntoIterator<Item=Node<T>, IntoIter=U>>(x: S) -> NodeIter<T, U> {
-    NodeIter {
-        inner: x.into_iter()
-    }
-}
-
-impl<T: 'static> AddNodes<T> for &str {
-    type Output = Once<Node<T>>;
-
-    fn into_nodes(self) -> Self::Output {
-        once(Node::text(self))
-    }
-}
-
-impl<T: 'static> AddNodes<T> for String {
-    type Output = Once<Node<T>>;
-
-    fn into_nodes(self) -> Self::Output {
-        once(Node::text(self))
     }
 }
 

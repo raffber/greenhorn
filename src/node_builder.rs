@@ -9,12 +9,10 @@ use crate::element::Element;
 use crate::listener::Listener;
 use crate::blob::Blob;
 use std::iter::{Once, once};
+use crate::event::Subscription;
+use std::option;
+use std::vec;
 
-pub trait AddNodes<T: 'static> {
-    type Output: Iterator<Item=Node<T>>;
-
-    fn into_nodes(self) -> Self::Output;
-}
 
 pub struct NodeBuilder<T> {
     namespace: Option<String>,
@@ -195,13 +193,14 @@ impl<T: 'static> ElementBuilder<T> {
         self
     }
 
-    pub fn add<S>(mut self, children: S) -> Self
-    where
-        S: AddNodes<T>
-     {
-         for child in children.into_nodes() {
-             self.children.push(child);
-         }
+    pub fn add<U, V>(mut self, children: V) -> Self
+        where
+            U: Iterator<Item=Node<T>>,
+            V: Into<NodeIter<T,U>>,
+    {
+        for child in children.into() {
+            self.children.push(child);
+        }
         self
     }
 
@@ -275,19 +274,101 @@ impl<T: 'static> ListenerBuilder<T> {
     }
 }
 
+
 impl<T: 'static> From<ElementBuilder<T>> for Node<T> {
     fn from(builder: ElementBuilder<T>) -> Self {
         builder.build()
     }
 }
 
-impl<T: 'static> AddNodes<T> for ElementBuilder<T> {
-    type Output = Once<Node<T>>;
-
-    fn into_nodes(self) -> Self::Output {
-        once(self.build())
+impl<T: 'static> From<String> for Node<T> {
+    fn from(value: String) -> Self {
+        Node::Text(value)
     }
 }
+
+impl<T: 'static> From<&str> for Node<T> {
+    fn from(value: &str) -> Self {
+        Node::Text(value.into())
+    }
+}
+
+impl<T: 'static> From<Subscription<T>> for Node<T> {
+    fn from(value: Subscription<T>) -> Self {
+        Node::EventSubscription(value.id(), value)
+    }
+}
+
+
+pub struct NodeIter<T: 'static, U: Iterator<Item=Node<T>>> {
+    inner: U,
+}
+
+impl<T: 'static, U: Iterator<Item=Node<T>>> Iterator for NodeIter<T, U> {
+    type Item = Node<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+
+impl<T: 'static> From<Option<Node<T>>> for NodeIter<T, option::IntoIter<Node<T>>> {
+    fn from(value: Option<Node<T>>) -> Self {
+        NodeIter { inner: value.into_iter() }
+    }
+}
+
+impl<T: 'static> From<Blob> for NodeIter<T, once<Node<T>>> {
+    fn from(value: Blob) -> Self {
+        NodeIter { inner: once(Node::Blob(value)) }
+    }
+}
+
+impl<T: 'static> From<Vec<Node<T>>> for NodeIter<T, vec::IntoIter<Node<T>>> {
+    fn from(value: Vec<Node<T>>) -> Self {
+        NodeIter { inner: value.into_iter() }
+    }
+}
+
+impl<T: 'static> From<&str> for NodeIter<T, Once<Node<T>>> {
+    fn from(value: &str) -> Self {
+        NodeIter { inner: once(Node::Text(value.to_string())) }
+    }
+}
+
+impl<T: 'static> From<String> for NodeIter<T, Once<Node<T>>> {
+    fn from(value: String) -> Self {
+        NodeIter { inner: once(Node::text(value)) }
+    }
+}
+
+impl<T: 'static> From<Subscription<T>> for NodeIter<T, Once<Node<T>>> {
+    fn from(value: Subscription<T>) -> Self {
+        NodeIter { inner: once(value.into())}
+    }
+}
+
+impl<T: 'static> From<Node<T>> for NodeIter<T, Once<Node<T>>> {
+    fn from(value: Node<T>) -> Self {
+        NodeIter { inner: once(value) }
+    }
+}
+
+impl<T: 'static> From<ElementBuilder<T>> for NodeIter<T, Once<Node<T>>> {
+    fn from(value: ElementBuilder<T>) -> Self {
+        NodeIter { inner: once(value.build()) }
+    }
+}
+
+
+impl<T: 'static> From<&Blob> for NodeIter<T, Once<Node<T>>> {
+    fn from(value: &Blob) -> Self {
+        NodeIter { inner: once(Node::Blob(Blob {
+            inner: value.inner.clone()
+        })) }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

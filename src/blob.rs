@@ -16,7 +16,7 @@ pub struct BlobData {
 
 #[derive(Clone)]
 pub struct Blob {
-    inner: Arc<BlobData>
+    pub(crate) inner: Arc<BlobData>
 }
 
 impl Blob {
@@ -78,12 +78,3 @@ impl From<BlobBuilder> for Blob {
     }
 }
 
-impl<T: 'static> AddNodes<T> for &Blob {
-    type Output = Once<Node<T>>;
-
-    fn into_nodes(self) -> Self::Output {
-        once(Node::Blob(Blob {
-            inner: self.inner.clone()
-        }))
-    }
-}
