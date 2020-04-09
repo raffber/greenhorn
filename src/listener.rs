@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use crate::Id;
-use crate::dom_event::DomEvent;
+use crate::dom::DomEvent;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hasher, Hash};
 

@@ -1,4 +1,4 @@
-use crate::dom_event::DomEvent;
+use crate::dom::DomEvent;
 use crate::event::{Emission, Event};
 use crate::service::{Service, ServiceSubscription};
 use std::any::Any;

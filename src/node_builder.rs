@@ -1,5 +1,5 @@
 use crate::component::Component;
-use crate::dom_event::DomEvent;
+use crate::dom::DomEvent;
 use crate::vdom::Attr;
 use crate::{Id, Render};
 use std::marker::PhantomData;

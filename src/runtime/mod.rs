@@ -10,7 +10,7 @@ use async_timer::Interval;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::{select, FutureExt, StreamExt};
 use std::collections::{HashMap, VecDeque, HashSet};
-use crate::component::{ComponentMap, ComponentContainer};
+use crate::component::ComponentContainer;
 use crate::runtime::state::RenderedState;
 pub(crate) use crate::runtime::render::RenderResult;
 pub(crate) use crate::runtime::state::Frame;
@@ -28,20 +28,16 @@ mod state;
 const DEFAULT_RENDER_INTERVAL: u64 = 30;
 const RENDER_RETRY_INTERVAL: u64 = 10;
 
-enum PendingEvent {
-    Component(Emission),
-}
 
-struct ComponentDom<M: 'static> {
-    component: Box<dyn ComponentMap<M>>,
-}
-
+/// `RuntimeControl` objects are used to control a `Runtime`, which in turn manages a user-defined
+/// application (implementing [`App`](trait.App.html)).
+#[derive(Clone)]
 pub struct RuntimeControl<A: App> {
     tx: UnboundedSender<RuntimeMsg<A>>,
 }
 
 impl<A: App> RuntimeControl<A> {
-    pub fn cancel(&self) {
+    pub fn quit(&self) {
         self.tx.unbounded_send(RuntimeMsg::Quit).unwrap();
     }
 
@@ -50,6 +46,7 @@ impl<A: App> RuntimeControl<A> {
     }
 }
 
+/// Message passed to the runtime from different actors (and/or threads) to modify its state
 enum RuntimeMsg<A: App> {
     Quit,
     Update(A::Message),
@@ -64,7 +61,9 @@ enum RuntimeMsg<A: App> {
 ///
 /// A `Runtime` owns a type implementing `Pipe` which allows it to communicate with the frontend
 /// part of the application.
-///
+/// Paired to a runtime, there is a set of `Clone`-able and `Send`-able
+/// [`RuntimeControl`](struct.RuntimeControl.html) objects.
+/// They are used to update the `App` underlying the `Runtime` or to affect its lifecycle.
 ///
 /// # Example
 ///
@@ -122,7 +121,7 @@ pub struct Runtime<A: 'static + App, P: 'static + Pipe> {
     app: A,
     sender: P::Sender,
     receiver: P::Receiver,
-    event_queue: VecDeque<PendingEvent>,
+    event_queue: VecDeque<Emission>,
     rendered: RenderedState<A>,
     current_frame: Option<Frame<A>>,
     next_frame: Option<Frame<A>>,
@@ -143,10 +142,6 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     /// Create a new `Runtime`, which allows executing a given Application.
     /// Also returns an associated control object, which allows controlling the runtime and changing
     /// the state of the application.
-    ///
-    /// ```
-    /// ```
-    ///
     pub fn new(app: A, pipe: P) -> (Runtime<A, P>, RuntimeControl<A>) {
         let (tx, rx) = unbounded();
         let (sender, receiver) = pipe.split();
@@ -352,7 +347,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         while let Ok(cmd) = receiver.rx.try_recv() {
             match cmd {
                 ContextMsg::Emission(e) => {
-                    self.event_queue.push_back(PendingEvent::Component(e));
+                    self.event_queue.push_back(e);
                 },
                 ContextMsg::LoadCss(css) => {
                     self.sender.send(TxMsg::LoadCss(css)).await.unwrap();
@@ -405,12 +400,13 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         }
     }
 
+    /// Processes all events in the event queue, retrieves subscriptions and updates the app-state
+    /// accordingly.
     async fn process_events(&mut self) {
         while let Some(evt) = self.event_queue.pop_front() {
-            let msg = match evt {
-                PendingEvent::Component(e) => self.rendered.get_subscription(e.event_id)
-                    .map(|subs| subs.call(e.data)),
-            };
+            let msg = self.rendered
+                .get_subscription(evt.event_id)
+                .map(|subs| subs.call(evt.data));
             if let Some(msg) = msg {
                 self.update(msg).await;
             }

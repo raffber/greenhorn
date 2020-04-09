@@ -23,20 +23,20 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-mod component;
-mod dom_event;
-mod event;
-mod context;
-mod node_builder;
+pub mod component;
+pub mod dom;
+pub mod event;
+pub mod context;
+pub mod node_builder;
 pub mod pipe;
-mod runtime;
-mod service;
+pub mod runtime;
+pub mod service;
 mod vdom;
 pub mod websockets;
 pub mod node;
-mod listener;
-mod blob;
-mod element;
+pub mod listener;
+pub mod blob;
+pub mod element;
 pub mod components;
 pub mod dialog;
 pub mod services;
@@ -52,16 +52,18 @@ pub mod any;
 pub mod prelude {
     pub use crate::component::{App, Component, Render, Updated};
     pub use crate::node::Node;
-    pub use crate::dom_event::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent, ChangeEvent, InputValue};
+    pub use crate::dom::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent, ChangeEvent, InputValue};
     pub use crate::event::Event;
     pub use crate::context::Context;
-    pub use crate::runtime::{Runtime, RuntimeControl};
     pub use crate::websockets::WebsocketPipe;
     pub use crate::node_builder::{NodeBuilder, ElementBuilder};
     pub use crate::blob::Blob;
+    pub use crate::runtime::{Runtime, RuntimeControl};
 }
 
 pub use crate::component::{App, Component, Render, Updated};
+pub use crate::runtime::{Runtime, RuntimeControl};
+pub use crate::websockets::WebsocketPipe;
 
 /// Type to produce unique IDs within the process.
 ///

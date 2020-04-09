@@ -1,7 +1,7 @@
 use futures::Stream;
 use futures::Sink;
 
-use crate::dom_event::DomEvent;
+use crate::dom::DomEvent;
 use crate::service::{RxServiceMessage, TxServiceMessage};
 use serde::{Deserialize, Serialize};
 use crate::context::EventPropagate;
