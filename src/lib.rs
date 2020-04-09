@@ -42,7 +42,7 @@ pub mod dialog;
 pub mod services;
 pub mod any;
 
-/// Prelude
+/// Prelude, `use greehorn::prelude::*` imports the most important symbols for quick access
 ///
 /// This module allows importing the most common types for building a greenhorn powered application
 /// ```
@@ -151,16 +151,73 @@ impl Hash for Id {
     }
 }
 
-
+/// Marks a type as render-able to the DOM.
+///
+/// A `Render` type also defines a `Message` type, which defines a type being emitted
+/// by the [`Nodes`](node/enum.Node.html) it emits.
+/// Implementing this trait is the minimum requirement to create
+/// a [Component](component/struct.Component.html).
+///
+/// # Example
+///
+/// ```
+/// # use greenhorn::Render;
+/// # use greenhorn::node::Node;
+/// # use greenhorn::dom::DomEvent;
+/// # use greenhorn::html;
+///
+/// struct Button {
+///     text: String,
+/// }
+///
+/// enum ButtonMessage {
+///     Clicked(DomEvent),
+///     KeyDown(DomEvent),
+/// }
+///
+/// impl Render for Button {
+///     type Message = ButtonMessage;
+///
+///     fn render(&self) -> Node<Self::Message> {
+///         html!(
+///             <button type="button" @keydown={ButtonMessage::KeyDown} @mousedown={ButtonMessage::Clicked}>
+///                 {&self.text}
+///             </>
+///         ).into()
+///     }
+/// }
+/// ```
+///
 pub trait Render {
+    /// Defines a type which is emitted when capturing DOM events or component events
+    ///
+    /// Typically this is an enum.
     type Message: 'static + Send;
+
+    /// Renders k
     fn render(&self) -> Node<Self::Message>;
 }
 
+/// Marks a type as render-able as well as update-able
+///
+/// The update method should modify the state of the object and return an
+/// [`Updated`](component/struct.Updated.html) object marking whether the update should
+/// requires a re-render of the DOM.
+///
+/// At the same time an optional `mount()` function may be provided to allow a component to
+/// hook into the startup cycle of a component or application.
 pub trait App: Render {
+
+    /// Modify the state of this object based on the received `Message`.
+    /// Returns an [`Updated`](component/struct.Updated.html) which should mark whether this
+    /// component is to be re-rendered.
+    ///
+    /// Each component is required to dispatch messages its child components if applicable.
     fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated;
-    fn mount(&mut self, _ctx: Context<Self::Message>) {
-    }
+
+    /// Shall be called upon application startup.
+    /// A parent component is required to call this function of all child components.
+    fn mount(&mut self, _ctx: Context<Self::Message>) {}
 }
 
 
@@ -186,7 +243,6 @@ use proc_macro_hack::proc_macro_hack;
 /// }
 /// ```
 ///
-/// For more details, refer to the [greenhorn_web_view](https://docs.rs/greenhorn_html_macro) crate.
 #[proc_macro_hack(support_nested)]
 pub use html_macro::html;
 
@@ -210,7 +266,6 @@ pub use html_macro::html;
 /// }
 /// ```
 ///
-/// For more details, refer to the [greenhorn_web_view](https://docs.rs/greenhorn_html_macro) crate.
 #[proc_macro_hack(support_nested)]
 pub use html_macro::svg;
 use crate::context::Context;

@@ -375,6 +375,12 @@ impl<T: 'static> From<&Blob> for NodeIter<T, Once<Node<T>>> {
     }
 }
 
+impl<T: 'static> From<&String> for NodeIter<T, Once<Node<T>>> {
+    fn from(value: &String) -> Self {
+        NodeIter { inner: once(Node::Text(value.clone())) }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
