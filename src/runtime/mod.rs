@@ -36,6 +36,86 @@ struct ComponentDom<M: 'static> {
     component: Box<dyn ComponentMap<M>>,
 }
 
+pub struct RuntimeControl<A: App> {
+    tx: UnboundedSender<RuntimeMsg<A>>,
+}
+
+impl<A: App> RuntimeControl<A> {
+    pub fn cancel(&self) {
+        self.tx.unbounded_send(RuntimeMsg::Quit).unwrap();
+    }
+
+    pub fn update(&self, msg: A::Message) {
+        self.tx.unbounded_send(RuntimeMsg::Update(msg)).unwrap();
+    }
+}
+
+enum RuntimeMsg<A: App> {
+    Quit,
+    Update(A::Message),
+    ApplyNextFrame(Frame<A>, Duration),
+    NextFrameRendering(Frame<A>, Duration),
+    AsyncMsg(A::Message),
+}
+
+
+/// The `Runtime` object manages the main application life-cycle as well as event distribution.
+/// It is the central object executing the backend portion of an application.
+///
+/// A `Runtime` owns a type implementing `Pipe` which allows it to communicate with the frontend
+/// part of the application.
+///
+///
+/// # Example
+///
+/// ```
+/// use greenhorn::prelude::*;
+/// use greenhorn::html;
+/// # use std::net::SocketAddr;
+/// # use std::str::FromStr;
+///
+/// struct MyApp {
+///     my_app_state: u32
+/// }
+///
+/// impl Render for  MyApp {
+///    type Message = ();
+///
+///    fn render(&self) -> Node<Self::Message> {
+///         html!(
+///             <div .app>
+///                 {format!("Hello, World: {}", self.my_app_state)}
+///             </>
+///         ).into()
+///     }
+/// }
+///
+/// impl App for MyApp {
+///     fn update(&mut self,msg: Self::Message,ctx: Context<Self::Message>) -> Updated {
+///         self.my_app_state += 1;
+///         Updated::yes()
+///     }
+///
+///     fn mount(&mut self, ctx: Context<Self::Message>) {
+///         // perform tasks on application startup
+/// #       ctx.quit(); // such that doctest exits
+///     }
+/// }
+///
+/// fn main() {
+///     let app = MyApp {
+///         my_app_state: 123,
+///     };
+///     let pipe =  WebsocketPipe::listen_to_addr(SocketAddr::from_str("127.0.0.1:1234").unwrap());
+///     let (runtime, control) = Runtime::new(app, pipe);
+///     runtime.run_blocking();
+/// }
+/// ```
+///
+/// To execute the runtime, it features to methods, the async `run` function and the `run_blocking`
+/// function. Both return a [`Metrics`](struct.Metrics.html) object which provides performance
+/// data of the executed application.
+///
 pub struct Runtime<A: 'static + App, P: 'static + Pipe> {
     tx: UnboundedSender<RuntimeMsg<A>>,
     rx: UnboundedReceiver<RuntimeMsg<A>>,
@@ -58,51 +138,13 @@ pub struct Runtime<A: 'static + App, P: 'static + Pipe> {
     dialogs: VecDeque<DialogBinding<A::Message>>
 }
 
-pub struct RuntimeControl<A: App> {
-    tx: UnboundedSender<RuntimeMsg<A>>,
-}
-
-impl<A: App> RuntimeControl<A> {
-    pub fn cancel(&self) {
-        self.tx.unbounded_send(RuntimeMsg::Cancel).unwrap();
-    }
-
-    pub fn update(&self, msg: A::Message) {
-        self.tx.unbounded_send(RuntimeMsg::Update(msg)).unwrap();
-    }
-}
-
-enum RuntimeMsg<A: App> {
-    Cancel,
-    Update(A::Message),
-    ApplyNextFrame(Frame<A>, Duration),
-    NextFrameRendering(Frame<A>, Duration),
-    AsyncMsg(A::Message),
-}
-
 impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
 
     /// Create a new `Runtime`, which allows executing a given Application.
     /// Also returns an associated control object, which allows controlling the runtime and changing
     /// the state of the application.
     ///
-    /// # Example
-    ///
     /// ```
-    /// # use greenhorn::prelude::*;
-    /// # struct MyApp;
-    /// # impl Render for  MyApp {
-    /// #    type Message = ();
-    /// #
-    /// #    fn render(&self) -> Node<Self::Message> { unimplemented!() }
-    /// # }
-    /// # impl App for MyApp {
-    /// #     fn update(&mut self,msg: Self::Message,ctx: Context<Self::Message>) -> Updated {
-    /// #        unimplemented!()
-    /// #     }
-    /// #
-    /// # }
-    ///
     /// ```
     ///
     pub fn new(app: A, pipe: P) -> (Runtime<A, P>, RuntimeControl<A>) {
@@ -151,7 +193,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 },
                 msg = self.receiver.next().fuse() => {
                     if let Some(msg) = msg {
-                        if !self.handle_pipe_msg(msg).await {
+                        if !self.handle_frontend_msg(msg).await {
                             break;
                         }
                     } else {
@@ -160,7 +202,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 },
                 msg = self.rx.next().fuse() => {
                     if let Some(msg) = msg {
-                        if !self.handle_msg(msg).await {
+                        if !self.handle_runtime_msg(msg).await {
                             break;
                         }
                     } else {
@@ -243,7 +285,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     /// Processes a message as received by the runtime control handle.
     async fn handle_runtime_msg(&mut self, msg: RuntimeMsg<A>) -> bool {
         match msg {
-            RuntimeMsg::Cancel => {return false;},
+            RuntimeMsg::Quit => {return false;},
             RuntimeMsg::Update(msg) => {
                 self.update(msg).await;
             }
@@ -356,6 +398,9 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                     }
                     self.dialogs.push_back(dialog);
                 }
+                ContextMsg::Quit => {
+                    self.tx.unbounded_send(RuntimeMsg::Quit).unwrap();
+                }
             }
         }
     }
@@ -372,6 +417,11 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         }
     }
 
+    /// This function manages rendering and DOM diffing. Its invocation may be scheduled by calling
+    /// `self.schedule_render()`.
+    ///
+    /// In case the a render was not yet processed by the frontend, this function delays the rendering
+    /// operation several time to avoid overloading the frontend process.
     fn render_dom(&mut self) {
         if self.next_frame.is_some() && self.current_frame.is_none() && self.not_applied_counter < 3 {
             self.not_applied_counter += 1;

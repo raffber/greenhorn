@@ -114,6 +114,7 @@ pub(crate) enum ContextMsg<T: 'static + Send> {
     Future(Pin<Box<dyn Send + Future<Output=T>>>, bool), // (future, blocking)
     Stream(Pin<Box<dyn Send + Stream<Item=T>>>),
     Dialog(DialogBinding<T>),
+    Quit,
 }
 
 impl<T: Send + 'static> ContextMsg<T> {
@@ -230,6 +231,10 @@ impl<T: Send + 'static> Context<T> {
     pub fn dialog<D: 'static + Dialog, F: 'static + Fn(D::Msg) -> T>(&self, dialog: D, fun: F) {
         let binding = DialogBinding::new(dialog, fun);
         self.tx.send(ContextMsg::Dialog(binding));
+    }
+
+    pub fn quit(&self) {
+        self.tx.send(ContextMsg::Quit);
     }
 }
 
