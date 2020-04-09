@@ -81,6 +81,30 @@ enum RuntimeMsg<A: App> {
 }
 
 impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
+
+    /// Create a new `Runtime`, which allows executing a given Application.
+    /// Also returns an associated control object, which allows controlling the runtime and changing
+    /// the state of the application.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use greenhorn::prelude::*;
+    /// # struct MyApp;
+    /// # impl Render for  MyApp {
+    /// #    type Message = ();
+    /// #
+    /// #    fn render(&self) -> Node<Self::Message> { unimplemented!() }
+    /// # }
+    /// # impl App for MyApp {
+    /// #     fn update(&mut self,msg: Self::Message,ctx: Context<Self::Message>) -> Updated {
+    /// #        unimplemented!()
+    /// #     }
+    /// #
+    /// # }
+    ///
+    /// ```
+    ///
     pub fn new(app: A, pipe: P) -> (Runtime<A, P>, RuntimeControl<A>) {
         let (tx, rx) = unbounded();
         let (sender, receiver) = pipe.split();
@@ -110,7 +134,11 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         (runtime, control)
     }
 
+    /// Async runs this application and returns the collected
+    /// performance metrics upon completion.
     pub async fn run(mut self) -> Metrics {
+        // schedule a first render, but wait a few milliseconds in case some
+        // startup services decide to update the application state immediately
         self.schedule_render(DEFAULT_RENDER_INTERVAL);
         let (ctx, receiver) = Context::<A::Message>::new();
         self.app.mount(ctx);
@@ -149,10 +177,14 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         self.metrics
     }
 
+    /// Execute the application. This function blocks until the application exits.
+    ///
+    /// Returns: The performance metrics collected during exeuction of the application
     pub fn run_blocking(self) -> Metrics {
         async_std::task::block_on(self.run())
     }
 
+    /// Handle messages as received from services
     async fn handle_service_msg(&mut self, msg: ServiceMessage<A::Message>) {
         match msg {
             ServiceMessage::Update(msg) => self.update(msg).await,
@@ -163,7 +195,8 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         }
     }
 
-    async fn handle_pipe_msg(&mut self, msg: RxMsg) -> bool {
+    /// Handles a message received from the frontend
+    async fn handle_frontend_msg(&mut self, msg: RxMsg) -> bool {
         match msg {
             RxMsg::Event(evt) => {
 
@@ -207,7 +240,8 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         true
     }
 
-    async fn handle_msg(&mut self, msg: RuntimeMsg<A>) -> bool {
+    /// Processes a message as received by the runtime control handle.
+    async fn handle_runtime_msg(&mut self, msg: RuntimeMsg<A>) -> bool {
         match msg {
             RuntimeMsg::Cancel => {return false;},
             RuntimeMsg::Update(msg) => {
@@ -231,6 +265,14 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         true
     }
 
+    /// Schedules a render of the application.
+    ///
+    /// Rendering happens with at most a certain period. Once an `update()` was issued
+    /// the runtime checks if the application requires re-rendering. If yes, the
+    /// runtime sets a flag and starts a timer. Once this timer has expired, the rendering happens.
+    ///
+    /// This debouncing is used to limit the maximum frame rate and thus maximum CPU usage
+    /// of the application.
     fn schedule_render(&mut self, wait_time: u64) {
         if self.dirty {
             return;
@@ -245,6 +287,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         self.dirty = true;
     }
 
+    /// Inserts a message into the update loop of the application.
     async fn update(&mut self, msg: A::Message) {
         let (ctx, receiver) = Context::<A::Message>::new();
         let updated = self.app.update(msg, ctx);
@@ -259,7 +302,11 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         self.handle_context_result(receiver).await;
     }
 
+    /// Handles the result of calling a function with a `Context`. The `Context` may be used by
+    /// components to interface with the current application state and to execute global services
+    /// such as dialogs, running futures, streams, ...
     async fn handle_context_result(&mut self, receiver: ContextReceiver<A::Message>) {
+        // TODO: refactor ContextReceiver to Vec<> since not async anymore
         while let Ok(cmd) = receiver.rx.try_recv() {
             match cmd {
                 ContextMsg::Emission(e) => {
@@ -413,6 +460,15 @@ mod tests {
         }
     }
 
+    fn make_patch(patch: Vec<PatchItem>) -> Vec<u8> {
+        let patch = Patch {
+            items: patch,
+            translations: Default::default()
+        };
+        let render_result = RenderResult::<DummyComponent>::new_empty();
+        patch_serialize(&render_result, &patch)
+    }
+
     #[test]
     fn test_empty_render() {
         let app = DummyComponent(1);
@@ -430,12 +486,7 @@ mod tests {
                         children: vec![VNode::Text("1".to_string())],
                         namespace: None
                     });
-                    let patch = Patch {
-                        items: vec![PatchItem::Replace(&elem)],
-                        translations: Default::default()
-                    };
-                    let render_result = RenderResult::<DummyComponent>::new_empty();
-                    let serialized = patch_serialize(&render_result, &patch);
+                    let serialized = make_patch(vec![PatchItem::Replace(&elem)]);
                     assert_eq!(serialized, msg);
                 },
                 _ => panic!()
@@ -458,12 +509,7 @@ mod tests {
             match msg2 {
                 Some(TxMsg::Patch(msg)) => {
                     let new_text = "2";
-                    let patch = Patch {
-                        items: vec![PatchItem::Descend(), PatchItem::ChangeText(&new_text)],
-                        translations: Default::default()
-                    };
-                    let render_result= RenderResult::<DummyComponent>::new_empty();
-                    let serialized = patch_serialize(&render_result, &patch);
+                    let serialized = make_patch(vec![PatchItem::Descend(), PatchItem::ChangeText(&new_text)]);
                     assert_eq!(serialized, msg);
                 },
                 _ => panic!()
@@ -482,13 +528,35 @@ mod tests {
         let handle = task::spawn_blocking(move || {
             let _ = task::block_on(frontend.sender_rx.next()).unwrap();
             control.update(());
-            let _ = task::block_on(frontend.sender_rx.next()).unwrap();
-            control.update(());
             // don't do this now
             // task::block_on(frontend.receiver_tx.send(RxMsg::FrameApplied())).unwrap();
             let msg2 = task::block_on(frontend.sender_rx.next());
-            todo!(); // check msg2 == msg1 except for "1" != "2"
+
+            let elem = VNode::element(VElement {
+                id: Id::new_empty(),
+                tag: "div".to_string(),
+                attr: vec![Attr::new("id", "html-id")],
+                js_events: vec![],
+                events: vec![],
+                children: vec![VNode::Text("2".to_string())],
+                namespace: None
+            });
+            let serialized = make_patch(vec![PatchItem::Replace(&elem)]);
+
+            match msg2 {
+                Some(TxMsg::Patch(msg)) => {
+                    assert_eq!(msg, serialized);
+                },
+                _ => panic!(),
+            }
         });
+        rt.run_blocking();
+        task::block_on(handle);
+    }
+
+    #[test]
+    fn test() {
+
     }
 
 }
