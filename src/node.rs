@@ -5,7 +5,7 @@ use crate::event::Subscription;
 use crate::node_builder::NodeBuilder;
 use crate::blob::Blob;
 use crate::element::{Element, ElementMap, ElementRemap, ElementMapDirect, MappedElement};
-use crate::component::{ComponentRemap, ComponentContainer, ComponentMap};
+use crate::component::{MappedComponent, ComponentContainer, ComponentMap};
 
 
 pub enum Node<T: 'static> {
@@ -54,7 +54,7 @@ impl<T: 'static> Node<T> {
                 let ret = ElementRemap::new_box(fun, inner.inner);
                 Node::ElementMap(ret)
             }
-            Node::Component(inner) => Node::Component(ComponentRemap::new_container(fun, inner.inner)),
+            Node::Component(inner) => Node::Component(MappedComponent::new_container(fun, inner.inner)),
             Node::Text(text) => Node::Text(text),
             Node::Element(elem) => Node::ElementMap(ElementMapDirect::new_box(fun, elem)),
             Node::EventSubscription(id, evt) => Node::EventSubscription(id, evt.map(fun)),

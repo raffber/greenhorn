@@ -50,7 +50,8 @@ pub mod any;
 /// use greenhorn::prelude::*;
 /// ```
 pub mod prelude {
-    pub use crate::component::{App, Component, Render, Updated};
+    pub use crate::component::{Component, Updated};
+    pub use crate::{App, Render};
     pub use crate::node::Node;
     pub use crate::dom::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent, ChangeEvent, InputValue};
     pub use crate::event::Event;
@@ -61,7 +62,7 @@ pub mod prelude {
     pub use crate::runtime::{Runtime, RuntimeControl};
 }
 
-pub use crate::component::{App, Component, Render, Updated};
+pub use crate::component::{Component, Updated};
 pub use crate::runtime::{Runtime, RuntimeControl};
 pub use crate::websockets::WebsocketPipe;
 
@@ -150,6 +151,19 @@ impl Hash for Id {
     }
 }
 
+
+pub trait Render {
+    type Message: 'static + Send;
+    fn render(&self) -> Node<Self::Message>;
+}
+
+pub trait App: Render {
+    fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated;
+    fn mount(&mut self, _ctx: Context<Self::Message>) {
+    }
+}
+
+
 use proc_macro_hack::proc_macro_hack;
 
 /// Proc macro to generate HTML [Nodes](struct.Node.html) implementing a JSX like syntax.
@@ -199,4 +213,6 @@ pub use html_macro::html;
 /// For more details, refer to the [greenhorn_web_view](https://docs.rs/greenhorn_html_macro) crate.
 #[proc_macro_hack(support_nested)]
 pub use html_macro::svg;
+use crate::context::Context;
+use crate::node::Node;
 

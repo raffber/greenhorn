@@ -1,7 +1,7 @@
 use std::ops::DerefMut;
 
 use crate::context::Context;
-use crate::Id;
+use crate::{Id, Render, App};
 use std::fmt::{Debug, Formatter, Error};
 use crate::node::Node;
 use std::collections::HashSet;
@@ -40,11 +40,11 @@ impl Updated {
         self
     }
 
-    pub fn invalidate(mut self, id: Id) -> Self {
+    pub fn invalidate<T: Render>(mut self, component: &Component<T>) -> Self {
         if let Some(ref mut ids) = self.components_render {
-            ids.push(id)
+            ids.push(component.id)
         } else {
-            self.components_render = Some(vec![id])
+            self.components_render = Some(vec![component.id])
         }
         self
     }
@@ -167,18 +167,6 @@ impl<T: 'static + App> Component<T> {
     }
 }
 
-pub trait Render {
-    type Message: 'static + Send;
-    fn render(&self) -> Node<Self::Message>;
-}
-
-pub trait App: Render {
-    fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated;
-    fn mount(&mut self, _ctx: Context<Self::Message>) {
-    }
-}
-
-
 pub struct ComponentContainer<T> {
     pub(crate) inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>,
 }
@@ -245,18 +233,18 @@ impl<R: 'static + Send + Render, U: 'static> ComponentMap<U> for ComponentMapDir
     }
 }
 
-pub(crate) struct ComponentRemap<T, U> {
+pub(crate) struct MappedComponent<T, U> {
     fun: Arc<Mutex<Box<dyn Send + Fn(T) -> U>>>,
     inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>,
 }
 
-impl<T, U> Debug for ComponentRemap<T, U> {
+impl<T, U> Debug for MappedComponent<T, U> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         std::fmt::Debug::fmt(&self.inner, f)
     }
 }
 
-impl<T: 'static, U: 'static> ComponentRemap<T, U> {
+impl<T: 'static, U: 'static> MappedComponent<T, U> {
     pub(crate) fn new_container(
         fun: Arc<Mutex<Box<dyn Send + Fn(T) -> U>>>,
         inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>,
@@ -267,7 +255,7 @@ impl<T: 'static, U: 'static> ComponentRemap<T, U> {
     }
 }
 
-impl<T: 'static, U: 'static> ComponentMap<U> for ComponentRemap<T, U> {
+impl<T: 'static, U: 'static> ComponentMap<U> for MappedComponent<T, U> {
     fn render(&self) -> Node<U> {
         self.inner.lock().unwrap().render().map_shared(self.fun.clone())
     }

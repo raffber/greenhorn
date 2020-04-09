@@ -1,10 +1,9 @@
-use crate::component::App;
 use crate::event::{Emission};
 use crate::context::{Context, ContextMsg, ContextReceiver};
 use crate::pipe::{Pipe, RxMsg, TxMsg};
 use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
 use crate::vdom::{Differ, patch_serialize, Patch};
-use crate::Id;
+use crate::{Id, App};
 use async_std::task;
 use async_timer::Interval;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
@@ -25,12 +24,17 @@ mod metrics;
 mod component;
 mod state;
 
-const DEFAULT_RENDER_INTERVAL: u64 = 30;
-const RENDER_RETRY_INTERVAL: u64 = 10;
+/// Wait time from an update() and a subsequent render
+/// Defines the maximum frame rate.
+const DEFAULT_RENDER_INTERVAL_MS: u64 = 30;
+
+/// applies in case a render is still in progress on the frontend
+/// but a render is scheduled in the runtime
+const RENDER_RETRY_INTERVAL_MS: u64 = 10;
 
 
 /// `RuntimeControl` objects are used to control a `Runtime`, which in turn manages a user-defined
-/// application (implementing [`App`](trait.App.html)).
+/// application (implementing [`App`](../component/trait.App.html)).
 #[derive(Clone)]
 pub struct RuntimeControl<A: App> {
     tx: UnboundedSender<RuntimeMsg<A>>,
@@ -176,7 +180,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     pub async fn run(mut self) -> Metrics {
         // schedule a first render, but wait a few milliseconds in case some
         // startup services decide to update the application state immediately
-        self.schedule_render(DEFAULT_RENDER_INTERVAL);
+        self.schedule_render(DEFAULT_RENDER_INTERVAL_MS);
         let (ctx, receiver) = Context::<A::Message>::new();
         self.app.mount(ctx);
         self.handle_context_result(receiver).await;
@@ -330,11 +334,11 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         let updated = self.app.update(msg, ctx);
         if updated.should_render {
             self.invalidate_all = true;
-            self.schedule_render(DEFAULT_RENDER_INTERVAL);
+            self.schedule_render(DEFAULT_RENDER_INTERVAL_MS);
         } else if let Some(invalidated) = updated.components_render {
             let invalidated_components = self.invalidated_components.as_mut().unwrap();
             invalidated.iter().for_each(|x| { invalidated_components.insert(*x); });
-            self.schedule_render(DEFAULT_RENDER_INTERVAL);
+            self.schedule_render(DEFAULT_RENDER_INTERVAL_MS);
         };
         self.handle_context_result(receiver).await;
     }
@@ -422,7 +426,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         if self.next_frame.is_some() && self.current_frame.is_none() && self.not_applied_counter < 3 {
             self.not_applied_counter += 1;
             self.dirty = false;
-            self.schedule_render(RENDER_RETRY_INTERVAL);
+            self.schedule_render(RENDER_RETRY_INTERVAL_MS);
             return;
         }
         self.not_applied_counter = 0;
