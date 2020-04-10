@@ -69,7 +69,6 @@
 //! }
 //!
 //! ```
-//!
 
 use serde::{Deserialize, Serialize};
 use std::cmp::Eq;
@@ -270,7 +269,9 @@ impl Hash for Id {
 ///
 ///     fn render(&self) -> Node<Self::Message> {
 ///         html!(
-///             <button type="button" @keydown={ButtonMessage::KeyDown} @mousedown={ButtonMessage::Clicked}>
+///             <button type="button"
+///                     @keydown={ButtonMessage::KeyDown}
+///                     @mousedown={ButtonMessage::Clicked}>
 ///                 {&self.text}
 ///             </>
 ///         ).into()
@@ -284,7 +285,10 @@ pub trait Render {
     /// Typically this is an enum.
     type Message: 'static + Send;
 
-    /// Renders k
+    /// Renders this type to a DOM.
+    ///
+    /// The nodes may emit messages of type `Self::Message` which are passed again into
+    /// the `update()` cycle of the application.
     fn render(&self) -> Node<Self::Message>;
 }
 
@@ -296,13 +300,58 @@ pub trait Render {
 ///
 /// At the same time an optional `mount()` function may be provided to allow a component to
 /// hook into the startup cycle of a component or application.
+///
+///
+/// ## Example
+///
+/// ```
+/// use greenhorn::prelude::*;
+/// use greenhorn::html;
+///
+/// struct MyApp {
+///     text: String,
+/// }
+///
+/// enum MyMsg {
+///     Clicked(DomEvent),
+///     KeyDown(DomEvent),
+/// }
+///
+/// impl Render for MyApp {
+///     type Message = MyMsg;
+///
+///     fn render(&self) -> Node<Self::Message> {
+///         html!(
+///             <div #my-app>
+///                 <button type="button"
+///                         @keydown={MyMsg::KeyDown}
+///                         @mousedown={MyMsg::Clicked}>
+///                     {&self.text}
+///                 </>
+///             </>
+///         ).into()
+///     }
+/// }
+///
+/// impl App for MyApp {
+///     fn update(&mut self,msg: Self::Message,ctx: Context<Self::Message>) -> Updated {
+///         match msg {
+///             MyMsg::Clicked(evt) => self.text = "Button clicked!".into(),
+///             MyMsg::KeyDown(evt) => self.text = "Button keypress!".into()
+///         }
+///         Updated::yes()
+///     }
+///
+/// }
+///
+/// ```
 pub trait App: Render {
 
     /// Modify the state of this object based on the received `Message`.
     /// Returns an [`Updated`](component/struct.Updated.html) which should mark whether this
     /// component is to be re-rendered.
     ///
-    /// Each component is required to dispatch messages its child components if applicable.
+    /// Each component is required to dispatch messages to its child components if applicable.
     fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated;
 
     /// Shall be called upon application startup.

@@ -41,10 +41,14 @@ pub struct RuntimeControl<A: App> {
 }
 
 impl<A: App> RuntimeControl<A> {
+    /// Quits the event loop of the `Runtime`.
+    ///
+    /// As a result, the `Runtime::run()` future resolves and the `Runtime::run_blocking()` returns.
     pub fn quit(&self) {
         self.tx.unbounded_send(RuntimeMsg::Quit).unwrap();
     }
 
+    /// Sends a message into the update cycle of the application.
     pub fn update(&self, msg: A::Message) {
         self.tx.unbounded_send(RuntimeMsg::Update(msg)).unwrap();
     }
