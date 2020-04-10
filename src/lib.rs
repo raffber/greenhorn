@@ -1,20 +1,75 @@
 #![allow(dead_code)]
 #![recursion_limit = "256"]
 
-///
-/// Greenhorn - API Documentation
-///
-/// Greenhorn is a rust library for building desktop applications with web technologies in (almost)
-/// pure rust.
-///
-/// This is accomplished by separating the application into a server-side process and web view.
-/// While most HTML-based desktop applications leave the synchronization of state up to the application logic, this
-/// library syncs its state at DOM-level.
-/// Thus, the user may implement the application logic purely in server-side rust.
-/// This facilitates the integration of the frontend with system services and simplifies application development
-/// considerably.
-///
-///
+//!
+//! # Greenhorn - API Documentation
+//!
+//! Greenhorn is a rust library for building desktop applications with web technologies in (almost)
+//! pure rust.
+//!
+//! This is accomplished by separating the application into a server-side process
+//! (the backend) and web view implemented in javascript (the frontend).
+//! While most HTML-based desktop applications leave state synchronization up to the
+//! application logic, this library synchronizes its state at DOM-level.
+//! Thus, the user may implement the application logic purely in the backend using rust.
+//! This facilitates the integration of a desktop GUI with system
+//! services and simplifies application development considerably.
+//!
+//! ## Features
+//!
+//! * Elm-like architecture but also supports components
+//! * Components support fine-grained update/render cycle
+//! * Components are owned by the application state and may interact with each other using events
+//! * Macros to write SVG and HTML in-line with Rust code
+//! * Most tasks can be accomplished using pure-rust. If required, injecting and calling js is supported.
+//! * Built-in performance metrics
+//! * Spawning system dialogs
+//! * Optionally deploy using [web_view](https://github.com/Boscop/web-view) and [tinyfiledialogs-rs](https://github.com/jdm/tinyfiledialogs-rs)
+//!
+//! ## Example
+//!
+//! ```
+//! use greenhorn::prelude::*;
+//! use greenhorn::html;
+//!
+//! struct MyApp {
+//!     text: String,
+//! }
+//!
+//! enum MyMsg {
+//!     Clicked(DomEvent),
+//!     KeyDown(DomEvent),
+//! }
+//!
+//! impl Render for MyApp {
+//!     type Message = MyMsg;
+//!
+//!     fn render(&self) -> Node<Self::Message> {
+//!         html!(
+//!             <div #my-app>
+//!                 <button type="button"
+//!                         @keydown={MyMsg::KeyDown}
+//!                         @mousedown={MyMsg::Clicked}>
+//!                     {&self.text}
+//!                 </>
+//!             </>
+//!         ).into()
+//!     }
+//! }
+//!
+//! impl App for MyApp {
+//!     fn update(&mut self,msg: Self::Message,ctx: Context<Self::Message>) -> Updated {
+//!         match msg {
+//!             MyMsg::Clicked(evt) => self.text = "Button clicked!".into(),
+//!             MyMsg::KeyDown(evt) => self.text = "Button keypress!".into()
+//!         }
+//!         Updated::yes()
+//!     }
+//!
+//! }
+//!
+//! ```
+//!
 
 use serde::{Deserialize, Serialize};
 use std::cmp::Eq;
@@ -23,23 +78,58 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+/// Components allow code reuse and support modularization
 pub mod component;
+
+/// Maps javascript DOM types to rust types. In particular DOM events.
 pub mod dom;
+
+/// Defines events which allow components to interact with each other
 pub mod event;
+
+/// Supports interaction between the applications `update()` cycle and system services
 pub mod context;
+
+/// Rust API for building DOM nodes. Alternative to the `html!()` and `svg!()` macros
 pub mod node_builder;
+
+/// Defines the interface for interacting between frontend and backend
 pub mod pipe;
+
+/// Implments the `Runtime` type, which executes the render/update cycle of the application
 pub mod runtime;
+
+/// Supports spawning tasks running on the frontend. Experimental, might be removed in the future.
 pub mod service;
+
+/// Virtual DOM implementation with diffing and patch generation
 mod vdom;
+
+/// Implements a `Pipe` using websockets
 pub mod websockets;
+
+/// Defines `Node<T>` type for building DOMs in pure rust
 pub mod node;
+
+/// Implements listeners of DOM events on DOM elements
 pub mod listener;
+
+/// Supports syncing binary data from backend to frontend. Useful for images, media files, ...
 pub mod blob;
+
+/// TODO: make private
 pub mod element;
+
+/// Provides a set of built-in and commonly used components
 pub mod components;
+
+/// Allows spawning native dialogs such as file-open dialogs and retrieving their results.
 pub mod dialog;
+
+/// Exposes a built-in set of commonly used services
 pub mod services;
+
+/// Supports dynamic binding of components. Experimental, might be removed in the future.
 pub mod any;
 
 /// Prelude, `use greehorn::prelude::*` imports the most important symbols for quick access
