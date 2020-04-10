@@ -6,22 +6,22 @@ use std::sync::{Arc, Mutex};
 use std::fmt::{Debug, Formatter, Error};
 use std::sync::atomic::AtomicPtr;
 
-pub(crate) struct Emission {
+pub struct Emission {
     pub(crate) event_id: Id,
     pub(crate) data: Box<dyn Any>,
 }
 
-pub trait SubscriptionMap<T> : Send {
+pub(crate) trait SubscriptionMap<T> : Send {
     fn call(&self, value: Box<dyn Any>) -> T;
     fn id(&self) -> Id;
 }
 
-struct SubscriptionMapImpl<U, T> {
+struct MappedSubscription<U, T> {
     mapper: Arc<Mutex<Box<dyn Send + Fn(U) -> T>>>,
     child: Subscription<U>
 }
 
-impl<U: 'static, T: 'static> SubscriptionMap<T> for SubscriptionMapImpl<U, T> {
+impl<U: 'static, T: 'static> SubscriptionMap<T> for MappedSubscription<U, T> {
     fn call(&self, value: Box<dyn Any>) -> T {
         let mapper = self.mapper.lock().unwrap();
         let ret = self.child.call(value);
@@ -33,36 +33,50 @@ impl<U: 'static, T: 'static> SubscriptionMap<T> for SubscriptionMapImpl<U, T> {
     }
 }
 
-pub trait SubscriptionHandler<T> : Send {
-    fn call(&self, value: Box<dyn Any>) -> T;
-}
-
-struct SubscriptionHandlerImpl<T, V, F: Send + Fn(V) -> T> {
+struct SubscriptionHandler<T, V, F: Send + Fn(V) -> T> {
     handler: Mutex<F>,
+    id: Id,
     a: std::marker::PhantomData<AtomicPtr<T>>,
     b: std::marker::PhantomData<AtomicPtr<V>>,
 }
 
-impl<T: 'static, V: 'static, F: Send + Fn(V) -> T> SubscriptionHandler<T>
-    for SubscriptionHandlerImpl<T, V, F>
+impl<T: 'static, V: 'static, F: Send + Fn(V) -> T> SubscriptionMap<T>
+    for SubscriptionHandler<T, V, F>
 {
     fn call(&self, value: Box<dyn Any>) -> T {
         let v = value.downcast::<V>().unwrap();
         (self.handler.lock().unwrap())(*v)
     }
+
+    fn id(&self) -> Id {
+        self.id.clone()
+    }
 }
 
-pub enum Subscription<T> {
-    Mapper(Arc<Mutex<dyn SubscriptionMap<T>>>),
-    Handler(Id, Arc<Mutex<dyn SubscriptionHandler<T>>>),
-}
+pub struct Subscription<T>(Arc<Mutex<dyn SubscriptionMap<T>>>);
+
 
 impl<T> Clone for Subscription<T> {
     fn clone(&self) -> Self {
-        match self {
-            Subscription::Mapper(x) => {Subscription::Mapper(x.clone())},
-            Subscription::Handler(id, x) => {Subscription::Handler(*id, x.clone())},
-        }
+        Subscription(self.0.clone())
+    }
+}
+
+
+impl<T: 'static> Subscription<T> {
+    pub(crate) fn map<U: 'static>(self, fun: Arc<Mutex<Box<dyn Send + Fn(T) -> U>>>) -> Subscription<U> {
+        Subscription(Arc::new(Mutex::new(MappedSubscription {
+            mapper: fun,
+            child: self
+        })))
+    }
+
+    pub(crate) fn call(&self, value: Box<dyn Any>) -> T {
+        self.0.lock().unwrap().call(value)
+    }
+
+    pub(crate) fn id(&self) -> Id {
+        self.0.lock().unwrap().id()
     }
 }
 
@@ -72,28 +86,6 @@ impl<T: 'static> Debug for Subscription<T> {
     }
 }
 
-impl<T: 'static> Subscription<T> {
-    pub(crate) fn map<U: 'static>(self, fun: Arc<Mutex<Box<dyn Send + Fn(T) -> U>>>) -> Subscription<U> {
-        Subscription::Mapper(Arc::new(Mutex::new(SubscriptionMapImpl {
-            mapper: fun,
-            child: self
-        })))
-    }
-
-    pub(crate) fn call(&self, value: Box<dyn Any>) -> T {
-        match self {
-            Subscription::Mapper(map) => map.lock().unwrap().call(value),
-            Subscription::Handler(_, fun) => fun.lock().unwrap().call(value),
-        }
-    }
-
-    pub(crate) fn id(&self) -> Id {
-        match self {
-            Subscription::Mapper(map) => map.lock().unwrap().id(),
-            Subscription::Handler(id, _) => *id,
-        }
-    }
-}
 
 #[derive(Clone, Copy)]
 pub struct Event<T: Any> {
@@ -109,7 +101,7 @@ impl<T: Any> Event<T> {
         }
     }
 
-    pub(crate) fn emit<V: Any>(&self, value: V) -> Emission {
+    pub fn emit<V: Any>(&self, value: V) -> Emission {
         let data = Box::new(value);
         Emission {
             event_id: self.id,
@@ -118,14 +110,12 @@ impl<T: Any> Event<T> {
     }
 
     pub fn subscribe<M: 'static, F: 'static + Send + Fn(T) -> M>(&self, fun: F) -> Subscription<M> {
-        Subscription::Handler(
-            self.id,
-            Arc::new(Mutex::new(SubscriptionHandlerImpl {
-                handler: Mutex::new(fun),
-                a: PhantomData,
-                b: PhantomData,
-            })),
-        )
+        Subscription(Arc::new(Mutex::new(SubscriptionHandler {
+            handler: Mutex::new(fun),
+            id: self.id,
+            a: PhantomData,
+            b: PhantomData,
+        })))
     }
 }
 

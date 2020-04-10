@@ -167,7 +167,7 @@ impl<T: 'static + App> Component<T> {
     }
 }
 
-pub struct ComponentContainer<T> {
+pub(crate) struct ComponentContainer<T> {
     pub(crate) inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>,
 }
 
@@ -201,7 +201,7 @@ impl<T> ComponentMap<T> for ComponentContainer<T> {
     }
 }
 
-pub trait ComponentMap<T> : Debug + Send {
+pub(crate) trait ComponentMap<T> : Debug + Send {
     fn render(&self) -> Node<T>;
     fn id(&self) -> Id;
 }

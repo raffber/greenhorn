@@ -3,7 +3,7 @@ use std::fmt::{Debug, Formatter, Error};
 use std::sync::Arc;
 use crate::Id;
 
-pub struct BlobData {
+pub(crate) struct BlobData {
     hash: u64,
     id: Id,
     data: Vec<u8>,
