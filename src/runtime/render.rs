@@ -1,5 +1,5 @@
 use crate::vdom::{VNode, EventHandler, VElement, Path};
-use crate::node::Node;
+use crate::node::{Node, NodeItems};
 use crate::component::{ComponentContainer, ComponentMap};
 use crate::element::ElementMap;
 use crate::blob::Blob;
@@ -27,20 +27,20 @@ pub(crate) fn render_component<A: App>(dom: Node<A::Message>, result: &mut Vec<R
 /// Recursively renders an arbitrary node.
 /// Non-tree elements will be pushed into `result`.
 fn render_recursive<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>, path: &mut Path) -> Option<VNode> {
-    match dom {
-        Node::ElementMap(mut elem) => render_element(&mut *elem.inner, result, path),
-        Node::Component(comp) => {
+    match dom.0 {
+        NodeItems::ElementMap(mut elem) => render_element(&mut *elem.inner, result, path),
+        NodeItems::Component(comp) => {
             let id = comp.id();
             result.push( ResultItem::Component(comp, path.clone()) );
             Some(VNode::Placeholder(id, path.clone()))
         }
-        Node::Text(text) => Some(VNode::text(text)),
-        Node::Element(mut elem) => render_element(&mut elem, result, path),
-        Node::EventSubscription(event_id, subs) => {
+        NodeItems::Text(text) => Some(VNode::text(text)),
+        NodeItems::Element(mut elem) => render_element(&mut elem, result, path),
+        NodeItems::EventSubscription(event_id, subs) => {
             result.push( ResultItem::Subscription(event_id, subs) );
             None
         }
-        Node::Blob(blob) => {
+        NodeItems::Blob(blob) => {
             result.push( ResultItem::Blob(blob) );
             None
         }

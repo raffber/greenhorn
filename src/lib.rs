@@ -116,8 +116,8 @@ pub mod listener;
 /// Supports syncing binary data from backend to frontend. Useful for images, media files, ...
 pub mod blob;
 
-/// TODO: make private
-pub mod element;
+/// Implements DOM elements
+mod element;
 
 /// Provides a set of built-in and commonly used components
 pub mod components;

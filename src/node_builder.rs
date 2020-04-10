@@ -4,7 +4,7 @@ use crate::vdom::Attr;
 use crate::{Id, Render};
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
-use crate::node::Node;
+use crate::node::{Node, NodeItems};
 use crate::element::Element;
 use crate::listener::Listener;
 use crate::blob::Blob;
@@ -42,7 +42,7 @@ impl<T: 'static> NodeBuilder<T> {
     }
 
     pub fn text<S: Into<String>>(&self, text: S) -> Node<T> {
-        Node::Text(text.into())
+        Node(NodeItems::Text(text.into()))
     }
 
     pub fn blob(&self, hash: u64) -> BlobBuilder {
@@ -205,7 +205,7 @@ impl<T: 'static> ElementBuilder<T> {
     }
 
     pub fn text<S: Into<String>>(mut self, text: S) -> Self {
-        self.children.push(Node::Text(text.into()));
+        self.children.push(Node(NodeItems::Text(text.into())));
         self
     }
 
@@ -228,7 +228,7 @@ impl<T: 'static> ElementBuilder<T> {
             self.attrs.push(Attr { key: "id".to_string(), value: x })
         }
 
-        Node::Element(Element {
+        Node(NodeItems::Element(Element {
             id: self.id,
             tag: Some(self.tag),
             attrs: Some(self.attrs),
@@ -236,7 +236,7 @@ impl<T: 'static> ElementBuilder<T> {
             listeners: Some(self.listeners),
             children: Some(self.children),
             namespace: self.namespace,
-        })
+        }))
     }
 }
 
@@ -283,19 +283,19 @@ impl<T: 'static> From<ElementBuilder<T>> for Node<T> {
 
 impl<T: 'static> From<String> for Node<T> {
     fn from(value: String) -> Self {
-        Node::Text(value)
+        Node(NodeItems::Text(value))
     }
 }
 
 impl<T: 'static> From<&str> for Node<T> {
     fn from(value: &str) -> Self {
-        Node::Text(value.into())
+        Node(NodeItems::Text(value.into()))
     }
 }
 
 impl<T: 'static> From<Subscription<T>> for Node<T> {
     fn from(value: Subscription<T>) -> Self {
-        Node::EventSubscription(value.id(), value)
+        Node(NodeItems::EventSubscription(value.id(), value))
     }
 }
 
@@ -320,7 +320,7 @@ impl<T: 'static> From<Option<Node<T>>> for NodeIter<T, option::IntoIter<Node<T>>
 
 impl<T: 'static> From<Blob> for NodeIter<T, Once<Node<T>>> {
     fn from(value: Blob) -> Self {
-        NodeIter { inner: once(Node::Blob(value)) }
+        NodeIter { inner: once(Node(NodeItems::Blob(value))) }
     }
 }
 
@@ -338,13 +338,13 @@ impl<T: 'static> From<Vec<Node<T>>> for NodeIter<T, vec::IntoIter<Node<T>>> {
 
 impl<T: 'static> From<&str> for NodeIter<T, Once<Node<T>>> {
     fn from(value: &str) -> Self {
-        NodeIter { inner: once(Node::Text(value.to_string())) }
+        NodeIter { inner: once(Node(NodeItems::Text(value.to_string()))) }
     }
 }
 
 impl<T: 'static> From<String> for NodeIter<T, Once<Node<T>>> {
     fn from(value: String) -> Self {
-        NodeIter { inner: once(Node::text(value)) }
+        NodeIter { inner: once(Node(NodeItems::Text(value))) }
     }
 }
 
@@ -369,15 +369,15 @@ impl<T: 'static> From<ElementBuilder<T>> for NodeIter<T, Once<Node<T>>> {
 
 impl<T: 'static> From<&Blob> for NodeIter<T, Once<Node<T>>> {
     fn from(value: &Blob) -> Self {
-        NodeIter { inner: once(Node::Blob(Blob {
+        NodeIter { inner: once(Node(NodeItems::Blob(Blob {
             inner: value.inner.clone()
-        })) }
+        }))) }
     }
 }
 
 impl<T: 'static> From<&String> for NodeIter<T, Once<Node<T>>> {
     fn from(value: &String) -> Self {
-        NodeIter { inner: once(Node::Text(value.clone())) }
+        NodeIter { inner: once(Node(NodeItems::Text(value.clone()))) }
     }
 }
 
@@ -406,7 +406,7 @@ mod tests {
             .on("click", |_| Msg::Clicked)
             .build();
 
-        if let Node::Element(e) = elem {
+        if let NodeItems::Element(e) = elem.0 {
             assert_eq!(e.tag.unwrap(), "div");
             let listeners = &e.listeners.unwrap();
             let listener = listeners.get(0).unwrap();
@@ -432,7 +432,7 @@ mod tests {
     fn test_namespace() {
         let render = RenderImpl {};
         let node = render.render();
-        if let Node::Element(e) = node {
+        if let NodeItems::Element(e) = node.0 {
             assert_eq!(e.namespace, Some("http://www.w3.org/2000/svg".into()))
         } else {
             panic!()
@@ -450,7 +450,7 @@ mod tests {
             .build()
             .attr("foo", "bar")
             .build();
-        if let Node::Element(elem) = node {
+        if let NodeItems::Element(elem) = node.0 {
             let attrs = elem.attrs.as_ref().unwrap();
             assert_eq!(attrs.len(), 2);
             assert_eq!(attrs[0].key, "test");
@@ -471,11 +471,11 @@ mod tests {
     #[test]
     fn test_children() {
         let node = builder().elem("div").add(builder().elem("pre")).build();
-        if let Node::Element(elem) = node {
+        if let NodeItems::Element(elem) = node.0 {
             assert_eq!(elem.tag.unwrap(), "div");
             assert_eq!(elem.children.as_ref().unwrap().len(), 1);
             let child_node = &elem.children.as_ref().unwrap()[0];
-            if let Node::Element(elem) = child_node {
+            if let NodeItems::Element(elem) = &child_node.0 {
                 assert_eq!(elem.tag.as_ref().unwrap(), "pre");
             } else {
                 panic!();

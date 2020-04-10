@@ -87,14 +87,19 @@ pub fn parse_from_string<T: 'static>(value: &str) -> Result<Vec<Node<T>>> {
     match value {
         ScraperNode::Fragment => {
             if let Some(node) = document.tree.root().children().next() {
-                // Fragment type
-                return match load_tree(node) {
-                    Some(Node::Element(mut elem)) => {
-                        Ok(elem.children.take().unwrap())
+                match node.value() {
+                    ScraperNode::Text(txt) => {
+                        Ok(vec![Node::html().text(txt.deref())])
                     },
-                    Some(Node::Text(txt)) => {Ok(vec![Node::Text(txt)])}
+                    ScraperNode::Element(_) => {
+                        Ok(
+                            node.children()
+                            .flat_map(|x| load_tree(x))
+                            .collect::<Vec<_>>()
+                        )
+                    },
                     _ => Err(LoadError::Empty)
-                };
+                }
             } else {
                 Err(LoadError::Empty)
             }
