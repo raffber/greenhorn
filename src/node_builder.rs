@@ -55,15 +55,6 @@ impl<T: 'static> NodeBuilder<T> {
             on_add: None
         }
     }
-
-    pub fn mount<ChildMsg, R, Mapper>(&self, comp: &Component<R>, mapper: Mapper) -> Node<T>
-    where
-        ChildMsg: 'static + Send,
-        R: 'static + Render<Message = ChildMsg>,
-        Mapper: 'static + Send + Fn(ChildMsg) -> T,
-    {
-        comp.render().map(mapper)
-    }
 }
 
 impl<T: 'static> Default for NodeBuilder<T> {
@@ -365,7 +356,6 @@ impl<T: 'static> From<ElementBuilder<T>> for NodeIter<T, Once<Node<T>>> {
         NodeIter { inner: once(value.build()) }
     }
 }
-
 
 impl<T: 'static> From<&Blob> for NodeIter<T, Once<Node<T>>> {
     fn from(value: &Blob) -> Self {

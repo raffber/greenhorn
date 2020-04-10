@@ -151,6 +151,10 @@ impl<T: 'static + Render> Component<T> {
         let mut data = self.lock();
         fun(data.deref_mut())
     }
+
+    pub fn mount<R: 'static, F: 'static + Send + Fn(T::Message) -> R>(&self, mapper: F) -> Node<R> {
+        self.render().map(mapper)
+    }
 }
 
 impl<T: 'static + App> Component<T> {

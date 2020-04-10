@@ -7,6 +7,66 @@ use crate::blob::Blob;
 use crate::element::{Element, ElementMap, ElementRemap, ElementMapDirect, MappedElement};
 use crate::component::{MappedComponent, ComponentContainer, ComponentMap};
 
+/// Represents a DOM node which might emit a message of type `T`.
+///
+/// `Node` objects are produced by `Render::render()` functions.
+/// Each [Render](../trait.Render.html) implementation has an associated `Message` type,
+/// which is emitted by the returned `Node`s, thus feeding information back into the
+/// `update()` cycle of the application.
+///
+/// Nodes may be constructed using a [NodeBuilder](../node_builder/struct.NodeBuilder.html):
+///  * Elements by using an [ElementBuilder](../node_builder/struct.ElementBuilder.html)
+///  * Text
+///  * [Component](../component/struct.Component.html) instances
+///  * Event subscriptions
+///  * Blobs
+///
+/// Furthermore, `Node`s can be constructed using the `html!()` and `svg!()` macros.
+/// Nodes may not necessarily lead to a node rendered in the DOM but merely represent
+/// *state in the frontend*.
+///
+/// # Example
+///
+/// ```
+/// # use greenhorn::{Render, Component};
+/// # use greenhorn::node::Node;
+/// # use greenhorn::blob::Blob;
+/// # use greenhorn::event::Event;
+/// #
+/// # struct Button {
+/// #     clicked: Event<()>
+/// # }
+/// # impl Render for Button {
+/// #    type Message = ();
+/// #    fn render(&self) -> Node<Self::Message> {
+/// #        unimplemented!()
+/// #    }
+/// # }
+/// #
+/// struct MyRenderable {
+///     blob: Blob,
+///     button: Component<Button>,
+/// };
+/// #
+/// # enum MyMsg {
+/// #    ButtonMsg(()),
+/// #    Clicked,
+/// # }
+///
+/// impl Render for MyRenderable {
+///     type Message = MyMsg;
+///
+///     fn render(&self) -> Node<Self::Message> {
+///         Node::html().elem("div").class("primary").id("my-div")  // an HTML element
+///             .add(Node::text("Some Text"))                       // a text node
+///             .add(&self.blob)                                    // a blob
+///             .add(self.button.mount(MyMsg::ButtonMsg))           // a component
+///             .add(self.button.lock().clicked.subscribe(|_| MyMsg::Clicked)) // an event
+///             .build()
+///     }
+/// }
+/// ```
+///
 pub struct Node<T: 'static>(pub(crate) NodeItems<T>);
 
 pub(crate) enum NodeItems<T: 'static> {
@@ -32,23 +92,64 @@ impl<T: 'static> Debug for Node<T> {
 }
 
 impl<T: 'static> Node<T> {
+    /// Create a [NodeBuilder](../node_builder/struct.NodeBuilder.html) for HTML elements
     pub fn html() -> NodeBuilder<T> {
         NodeBuilder::new()
     }
 
+    /// Create a [NodeBuilder](../node_builder/struct.NodeBuilder.html) for SVG elements
     pub fn svg() -> NodeBuilder<T> {
         NodeBuilder::new_with_ns("http://www.w3.org/2000/svg")
     }
 
+    /// Produce a text node
     pub fn text<S: ToString>(data: S) -> Self {
         Node(NodeItems::Text(data.to_string()))
     }
 
+    /// Maps the message type of the node to a new message type
+    ///
+    /// When nesting different `Render` implementations or components, the message types need
+    /// to be nested as well. The `Node::map()` function allows the emitted messages
+    /// of type `T` to be mapped to another message type `U`.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// # use greenhorn::dom::DomEvent;
+    /// # use greenhorn::node::Node;
+    /// # use greenhorn::html;
+    ///
+    /// enum ButtonMsg {
+    ///     KeyDown(DomEvent),
+    ///     Clicked(DomEvent),
+    /// }
+    ///
+    /// enum MyAppMsg {
+    ///     ButtonOk(ButtonMsg),
+    ///     ButtonCancel(ButtonMsg),
+    /// }
+    ///
+    /// fn render_button(text: &str) -> Node<ButtonMsg> {
+    ///     // ...
+    /// #    unimplemented!()
+    /// }
+    ///
+    /// fn render() -> Node<MyAppMsg> {
+    ///     html!(
+    ///         <div>
+    ///             {render_button("Ok").map(MyAppMsg::ButtonOk)}
+    ///             {render_button("Cancel").map(MyAppMsg::ButtonCancel)}
+    ///         </>
+    ///     ).into()
+    /// }
+    /// ```
     pub fn map<U: 'static, F: 'static + Send + Fn(T) -> U>(self, fun: F) -> Node<U> {
         let fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>> = Arc::new(Mutex::new(Box::new(fun)));
         self.map_shared(fun)
     }
 
+    /// same as `Node::map()` but uses a shared reference of an already created mapping function
     pub(crate) fn map_shared<U: 'static>(self, fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>) -> Node<U> {
         let ret = match self.0 {
             NodeItems::ElementMap(inner) => {
@@ -64,6 +165,7 @@ impl<T: 'static> Node<T> {
         Node(ret)
     }
 
+    /// Move all children out of this node
     pub(crate) fn take_children(self) -> Vec<Node<T>> {
         match self.0 {
             NodeItems::ElementMap(mut x) => x.take_children(),
@@ -105,7 +207,8 @@ impl<T: 'static> Node<T> {
         }
     }
 
-    pub fn id(&self) -> Id {
+    /// Returns the `Id` associated with the underlying object
+    pub(crate) fn id(&self) -> Id {
         match &self.0 {
             NodeItems::ElementMap(inner) => inner.id(),
             NodeItems::Component(inner) => inner.id(),
@@ -116,6 +219,10 @@ impl<T: 'static> Node<T> {
         }
     }
 
+    /// Attempt to clone this `Node`.
+    ///
+    /// If the `Node` has been mapped to a different type, the `Node` cannot be cloned anymore.
+    /// Also, mounted components and event subscriptions cannot be cloned.
     pub fn try_clone(&self) -> Option<Self> {
         match &self.0 {
             NodeItems::Element(elem) => {
