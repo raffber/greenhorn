@@ -52,21 +52,20 @@
 //! }
 //! ```
 //!
-//!
-//!
-
 use crate::{App, Render, Updated};
 use std::any::Any;
 use crate::node::Node;
 use crate::context::Context;
 
-pub type AnyMsg = Box<dyn Any + Send>;
 
+/// Wraps an type implementing [App](../trait.App.html), and as a consequence also [Render](../trait.Render.html)),
+/// and exposes a new `App`/`Render` implementation with the dynamic [AnyMsg](type.AnyMsg.htm) type.
 pub struct AnyApp {
     inner: Box<dyn App<Message=AnyMsg> + Send>,
 }
 
 impl AnyApp {
+    /// Construct an `AnyApp` object, consuming the underlying component.
     pub fn new<T, M>(app: T) -> AnyApp
         where
             T: 'static + App<Message=M> + Send,
@@ -77,8 +76,11 @@ impl AnyApp {
     }
 }
 
+/// Type alias for the dynamic message type used by `AnyApp`.
+pub type AnyMsg = Box<dyn Any + Send>;
+
 impl Render for AnyApp {
-    type Message = Box<dyn Any + Send>;
+    type Message = AnyMsg;
 
     fn render(&self) -> Node<Self::Message> {
         self.inner.render()
@@ -91,6 +93,8 @@ impl App for AnyApp {
     }
 }
 
+/// internal type for erasing the type of an App implementation.
+/// Note that when receiving a wrong message type, the `update()` function panics.
 struct AnyAppConverter<T: App<Message=M>, M: Any + Send + 'static> {
     inner: T,
 }

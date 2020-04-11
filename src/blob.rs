@@ -3,6 +3,9 @@ use std::fmt::{Debug, Formatter, Error};
 use std::sync::Arc;
 use crate::Id;
 
+/// keeps track of all the blob data. `BlobData` objects are
+/// shared between serveral blobs.
+/// Since they are wrapped in `Arc<...>`, blobs are immutable.
 pub(crate) struct BlobData {
     hash: u64,
     id: Id,
@@ -12,6 +15,27 @@ pub(crate) struct BlobData {
     on_add: Option<String>
 }
 
+///
+/// A `Blob` corresponds to some binary data,
+///
+/// `Blob` objects have an assoociated `id` and `hash` to make them comparable.
+/// The user of this type is responsible for providing unique `id` and `hash` value combinations.
+///
+/// The `id` field is supposed to identify the purpose of the `Blob` within the application.
+/// For example, it might be used to point to an image in the frontend.
+///
+/// The `hash` field should reflect the content of the `Blob`.
+/// It might also be considered the version of the underlying data.
+///
+/// Associated to the `Blob` a MIME-type can be provided. This is useful meta information for
+/// media files or similar.
+///
+/// ## Example
+///
+/// ```
+/// // TODO ...
+/// ```
+///
 #[derive(Clone)]
 pub struct Blob {
     pub(crate) inner: Arc<BlobData>
@@ -51,6 +75,12 @@ impl Blob {
 
     pub fn on_add(&self) -> Option<&str> {
         self.inner.on_add.as_deref()
+    }
+}
+
+impl PartialEq for Blob {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.hash == other.inner.hash && self.inner.id == other.inner.id
     }
 }
 
