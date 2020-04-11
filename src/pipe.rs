@@ -1,3 +1,14 @@
+//! This modules defines an interface for the communication interface between
+//! frontend and backend.
+//!
+//! The central trait is the [Pipe](trait.Pipe.html) type, which exposes
+//! both a `Sender` and a `Receiver`.
+//!
+//! A `Sender` can be used to send [TxMsg message](enum.TxMsg.html), i.e. message from backend to the frontend.
+//! A `Receiver` can be used to receive [RxMsg message](enum.RxMsg.html), i.e. message from frontend to the backend.
+//!
+
+
 use futures::Stream;
 use futures::Sink;
 

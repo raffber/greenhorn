@@ -24,7 +24,8 @@
 //! * Most tasks can be accomplished using pure-rust. If required, injecting and calling js is supported.
 //! * Built-in performance metrics
 //! * Spawning system dialogs
-//! * Optionally deploy using [web_view](https://github.com/Boscop/web-view) and [tinyfiledialogs-rs](https://github.com/jdm/tinyfiledialogs-rs)
+//! * This crate does not itself implement a frontend. A frontend is implmented using `greenhorn_web_view`.
+//!   It makes use of [web_view](https://github.com/Boscop/web-view) and [tinyfiledialogs-rs](https://github.com/jdm/tinyfiledialogs-rs).
 //!
 //! ## Example
 //!
@@ -69,6 +70,16 @@
 //! }
 //!
 //! ```
+//!
+//! # Acknowledgments
+//!
+//! The concpet of this library is not at all new. It was already implemented before at least by the
+//! [Threepenny-GUI library](https://github.com/HeinrichApfelmus/threepenny-gui).
+//!
+//! The API was inspired by the many great rust frontend libraries:
+//!  * [Yew](https://github.com/yewstack/yew)
+//!  * [Seed-rs](https://github.com/seed-rs/seed)
+//!
 
 use serde::{Deserialize, Serialize};
 use std::cmp::Eq;
