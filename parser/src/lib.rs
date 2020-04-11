@@ -45,7 +45,7 @@ impl Display for LoadError {
     }
 }
 
-fn load_element<T: 'static>(elem: &scraper::node::Element) -> ElementBuilder<T> {
+fn load_element<T: 'static + Send>(elem: &scraper::node::Element) -> ElementBuilder<T> {
     let ns: &str = elem.name.ns.as_ref();
     let builder = if ns == "http://www.w3.org/1999/xhtml" || ns == "" {
         NodeBuilder::new()
@@ -59,7 +59,7 @@ fn load_element<T: 'static>(elem: &scraper::node::Element) -> ElementBuilder<T> 
     builder.into()
 }
 
-fn load_tree<T: 'static>(node: NodeRef<scraper::node::Node>) -> Option<Node<T>> {
+fn load_tree<T: 'static + Send>(node: NodeRef<scraper::node::Node>) -> Option<Node<T>> {
     match node.value() {
         ScraperNode::Document => { None },
         ScraperNode::Fragment => { None },
@@ -77,7 +77,7 @@ fn load_tree<T: 'static>(node: NodeRef<scraper::node::Node>) -> Option<Node<T>> 
     }
 }
 
-pub fn parse_from_string<T: 'static>(value: &str) -> Result<Vec<Node<T>>> {
+pub fn parse_from_string<T: 'static + Send>(value: &str) -> Result<Vec<Node<T>>> {
     let document = Html::parse_fragment(value.trim());
     if document.errors.len() != 0 {
         let errs = document.errors.iter().map(|x| x.to_string()).collect();
@@ -108,12 +108,12 @@ pub fn parse_from_string<T: 'static>(value: &str) -> Result<Vec<Node<T>>> {
     }
 }
 
-pub fn parse_from_file_sync<T: 'static>(path: &str) -> Result<Vec<Node<T>>> {
+pub fn parse_from_file_sync<T: 'static + Send>(path: &str) -> Result<Vec<Node<T>>> {
     let data = fs::read_to_string(path).map_err(LoadError::Io)?;
     parse_from_string(&data)
 }
 
-pub fn parse_from_file_async<T: 'static>(path: &str) -> impl Future<Output=Result<Vec<Node<T>>>> {
+pub fn parse_from_file_async<T: 'static + Send>(path: &str) -> impl Future<Output=Result<Vec<Node<T>>>> {
     let path = path.to_string();
     async move {
         let path = Path::new(&path);

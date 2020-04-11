@@ -3,7 +3,7 @@ use std::ops::DerefMut;
 use crate::context::Context;
 use crate::{Id, Render, App};
 use std::fmt::{Debug, Formatter, Error};
-use crate::node::Node;
+use crate::node::{Node, NodeItems};
 use std::collections::HashSet;
 use std::collections::hash_map::RandomState;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -40,7 +40,7 @@ impl Updated {
         self
     }
 
-    pub fn invalidate<T: Render>(mut self, component: &Component<T>) -> Self {
+    pub fn invalidate<T: Render + Send>(mut self, component: &Component<T>) -> Self {
         if let Some(ref mut ids) = self.components_render {
             ids.push(component.id)
         } else {
@@ -102,18 +102,18 @@ impl From<Id> for Updated {
     }
 }
 
-pub struct Component<T: Render> {
+pub struct Component<T: Render + Send> {
     id: Id,
     comp: Arc<Mutex<T>>,
 }
 
-impl<T: Render> Debug for Component<T> {
+impl<T: Render + Send> Debug for Component<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         f.write_fmt(format_args!("<Component {:?} />", self.id) )
     }
 }
 
-impl<T: Render> Clone for Component<T> {
+impl<T: Render + Send> Clone for Component<T> {
     fn clone(&self) -> Self {
         Self {
             id: self.id,
@@ -122,7 +122,7 @@ impl<T: Render> Clone for Component<T> {
     }
 }
 
-impl<T: 'static + Render> Component<T> {
+impl<T: 'static + Render + Send> Component<T> {
     pub fn new(inner: T) -> Self {
         Self {
             id: Id::new(),
@@ -152,12 +152,12 @@ impl<T: 'static + Render> Component<T> {
         fun(data.deref_mut())
     }
 
-    pub fn mount<R: 'static, F: 'static + Send + Fn(T::Message) -> R>(&self, mapper: F) -> Node<R> {
-        self.render().map(mapper)
+    pub fn mount(&self) -> Node<T::Message> {
+        Node(NodeItems::Component(ComponentContainer::new(self)))
     }
 }
 
-impl<T: 'static + App> Component<T> {
+impl<T: 'static + App + Send> Component<T> {
     pub fn update_app(&mut self, msg: T::Message, ctx: Context<T::Message>) -> Updated {
         let mut borrow = self.lock();
         let data = borrow.deref_mut();
@@ -171,31 +171,35 @@ impl<T: 'static + App> Component<T> {
     }
 }
 
-pub(crate) struct ComponentContainer<T> {
-    pub(crate) inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>,
+pub(crate) struct ComponentContainer<T: 'static + Send> {
+    pub(crate) inner: Arc<Mutex<dyn ComponentMap<T>>>,
 }
 
-impl<T> Clone for ComponentContainer<T> {
-    fn clone(&self) -> Self {
-        Self { inner: self.inner.clone() }
-    }
-}
-
-impl<T> ComponentContainer<T> {
-    pub(crate) fn new(inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>) -> Self {
+impl<T: 'static + Send> ComponentContainer<T> {
+    fn new<U: 'static + Render<Message=T> + Send>(comp: &Component<U>) -> Self {
+        let mounted = ComponentMapDirect {
+            inner: comp.clone()
+        };
+        let inner = Arc::new(Mutex::new(mounted));
         ComponentContainer {
             inner
         }
     }
 }
 
-impl<T> Debug for ComponentContainer<T> {
+impl<T: 'static + Send> Clone for ComponentContainer<T> {
+    fn clone(&self) -> Self {
+        Self { inner: self.inner.clone() }
+    }
+}
+
+impl<T: 'static + Send> Debug for ComponentContainer<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         std::fmt::Debug::fmt(&self.inner, f)
     }
 }
 
-impl<T> ComponentMap<T> for ComponentContainer<T> {
+impl<T: 'static + Send> ComponentMap<T> for ComponentContainer<T> {
     fn render(&self) -> Node<T> {
         self.inner.lock().unwrap().render()
     }
@@ -205,31 +209,24 @@ impl<T> ComponentMap<T> for ComponentContainer<T> {
     }
 }
 
-pub(crate) trait ComponentMap<T> : Debug + Send {
+pub(crate) trait ComponentMap<T: 'static + Send> : Debug + Send {
     fn render(&self) -> Node<T>;
     fn id(&self) -> Id;
 }
 
-pub(crate) struct ComponentMapDirect<R: Send + Render, U> {
-    fun: Arc<Mutex<Box<dyn Send + Fn(R::Message) -> U>>>,
+pub(crate) struct ComponentMapDirect<R: Render + Send> {
     inner: Component<R>,
 }
 
-impl<R: Send + Render, U> Debug for ComponentMapDirect<R, U> {
+impl<R: Render + Send> Debug for ComponentMapDirect<R> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         self.inner.fmt(f)
     }
 }
 
-impl<R: 'static + Send + Render, U: 'static> ComponentMapDirect<R, U> {
-    fn new_box(fun: Arc<Mutex<Box<dyn 'static + Send + Fn(R::Message) -> U>>>, inner: Component<R>) -> Box<dyn ComponentMap<U>> {
-        Box::new(Self { fun, inner })
-    }
-}
-
-impl<R: 'static + Send + Render, U: 'static> ComponentMap<U> for ComponentMapDirect<R, U> {
-    fn render(&self) -> Node<U> {
-        self.inner.lock().render().map_shared(self.fun.clone())
+impl<R: 'static + Render + Send> ComponentMap<R::Message> for ComponentMapDirect<R> {
+    fn render(&self) -> Node<R::Message> {
+        self.inner.render()
     }
 
     fn id(&self) -> Id {
@@ -238,8 +235,8 @@ impl<R: 'static + Send + Render, U: 'static> ComponentMap<U> for ComponentMapDir
 }
 
 pub(crate) struct MappedComponent<T, U> {
-    fun: Arc<Mutex<Box<dyn Send + Fn(T) -> U>>>,
-    inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>,
+    fun: Arc<Mutex<dyn Send + Fn(T) -> U>>,
+    inner: Arc<Mutex<dyn ComponentMap<T>>>,
 }
 
 impl<T, U> Debug for MappedComponent<T, U> {
@@ -248,18 +245,18 @@ impl<T, U> Debug for MappedComponent<T, U> {
     }
 }
 
-impl<T: 'static, U: 'static> MappedComponent<T, U> {
+impl<T: 'static + Send, U: 'static + Send> MappedComponent<T, U> {
     pub(crate) fn new_container(
-        fun: Arc<Mutex<Box<dyn Send + Fn(T) -> U>>>,
-        inner: Arc<Mutex<Box<dyn ComponentMap<T>>>>,
+        fun: Arc<Mutex<dyn Send + Fn(T) -> U>>,
+        inner: Arc<Mutex<dyn ComponentMap<T>>>,
     ) -> ComponentContainer<U> {
         ComponentContainer {
-            inner: Arc::new(Mutex::new(Box::new(Self { fun, inner })))
+            inner: Arc::new(Mutex::new(Self { fun, inner }))
         }
     }
 }
 
-impl<T: 'static, U: 'static> ComponentMap<U> for MappedComponent<T, U> {
+impl<T: Send + 'static, U: Send + 'static> ComponentMap<U> for MappedComponent<T, U> {
     fn render(&self) -> Node<U> {
         self.inner.lock().unwrap().render().map_shared(self.fun.clone())
     }

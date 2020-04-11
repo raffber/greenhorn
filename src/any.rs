@@ -6,11 +6,14 @@ use crate::context::Context;
 pub type AnyMsg = Box<dyn Any + Send>;
 
 pub struct AnyApp {
-    inner: Box<dyn App<Message=AnyMsg>>,
+    inner: Box<dyn App<Message=AnyMsg> + Send>,
 }
 
 impl AnyApp {
-    pub fn from_app<T: 'static + App<Message=M>, M: Any + Send + 'static>(app: T) -> AnyApp {
+    pub fn from_app<T, M>(app: T) -> AnyApp
+        where
+            T: 'static + App<Message=M> + Send,
+            M: Any + Send + 'static {
         AnyApp {
             inner: Box::new(AnyAppConverter { inner: app })
         }

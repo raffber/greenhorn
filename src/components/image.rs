@@ -72,7 +72,7 @@ impl Image {
         self.blob = blob;
     }
 
-    pub fn render<T>(&self) -> Node<T> {
+    pub fn render<T: 'static + Send>(&self) -> Node<T> {
         let js = format!("{{
             var blob = app.getBlob({});
             var img_url = URL.createObjectURL(blob.blob);

@@ -6,7 +6,7 @@ use std::fmt::{Debug, Formatter, Error};
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
-pub(crate) struct Element<T: 'static> {
+pub(crate) struct Element<T: 'static + Send> {
     pub(crate) id: Id,
     pub(crate) tag: Option<String>,
     pub(crate) attrs: Option<Vec<Attr>>,
@@ -16,7 +16,7 @@ pub(crate) struct Element<T: 'static> {
     pub(crate) namespace: Option<String>,
 }
 
-impl<T: 'static> Element<T> {
+impl<T: 'static + Send> Element<T> {
     pub(crate) fn try_clone(&self) -> Option<Self> {
         let children = if let Some(children) = self.children.as_ref() {
             let mut new_children = Vec::with_capacity(children.len());
@@ -43,7 +43,7 @@ impl<T: 'static> Element<T> {
     }
 }
 
-impl<T> Debug for Element<T> {
+impl<T: 'static + Send> Debug for Element<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         if let Some(tag) = &self.tag {
             let _ = f.write_fmt(format_args!("<{} ", tag));
@@ -64,18 +64,18 @@ impl<T> Debug for Element<T> {
     }
 }
 
-pub(crate) struct MappedElement<T: 'static> {
+pub(crate) struct MappedElement<T: 'static + Send> {
     pub(crate) inner: Box<dyn ElementMap<T>>,
 }
 
-impl<T: 'static> Debug for MappedElement<T> {
+impl<T: 'static + Send> Debug for MappedElement<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let ret = format!("MappedElement {{ inner: {:?} }}", self.inner);
         f.write_str(&ret)
     }
 }
 
-impl<T: 'static> MappedElement<T> {
+impl<T: 'static + Send> MappedElement<T> {
     fn new(elem: Box<dyn ElementMap<T>>) -> Self {
         Self {
             inner: elem
@@ -83,7 +83,7 @@ impl<T: 'static> MappedElement<T> {
     }
 }
 
-impl<T: 'static> ElementMap<T> for MappedElement<T> {
+impl<T: 'static + Send> ElementMap<T> for MappedElement<T> {
     fn take_listeners(&mut self) -> Vec<Listener<T>> { self.inner.take_listeners() }
     fn take_children(&mut self) -> Vec<Node<T>> { self.inner.take_children() }
     fn id(&self) -> Id { self.inner.id() }
@@ -93,7 +93,7 @@ impl<T: 'static> ElementMap<T> for MappedElement<T> {
     fn take_js_events(&mut self) -> Vec<Attr> { self.inner.take_js_events() }
 }
 
-pub(crate) trait ElementMap<T> : Debug {
+pub(crate) trait ElementMap<T: 'static + Send> : Debug {
     fn take_listeners(&mut self) -> Vec<Listener<T>>;
     fn take_children(&mut self) -> Vec<Node<T>>;
     fn id(&self) -> Id;
@@ -103,7 +103,7 @@ pub(crate) trait ElementMap<T> : Debug {
     fn take_js_events(&mut self) -> Vec<Attr>;
 }
 
-impl<T: 'static> ElementMap<T> for Element<T> {
+impl<T: 'static + Send> ElementMap<T> for Element<T> {
     fn take_listeners(&mut self) -> Vec<Listener<T>> { self.listeners.take().unwrap() }
     fn take_children(&mut self) -> Vec<Node<T>> { self.children.take().unwrap() }
     fn id(&self) -> Id { self.id }
@@ -113,19 +113,19 @@ impl<T: 'static> ElementMap<T> for Element<T> {
     fn take_js_events(&mut self) -> Vec<Attr> { self.js_events.take().unwrap() }
 }
 
-pub(crate) struct ElementMapDirect<T: 'static, U> {
-    fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>,
+pub(crate) struct ElementMapDirect<T: 'static + Send, U: 'static + Send> {
+    fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>,
     inner: Element<T>,
 }
 
-impl<T, U> Debug for ElementMapDirect<T, U> {
+impl<T: 'static + Send, U: 'static + Send> Debug for ElementMapDirect<T, U> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         self.inner.fmt(f)
     }
 }
 
-impl<T: 'static, U: 'static> ElementMapDirect<T, U> {
-    pub(crate) fn new_box(fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>, inner: Element<T>) -> MappedElement<U> {
+impl<T: 'static + Send, U: 'static + Send> ElementMapDirect<T, U> {
+    pub(crate) fn new_box(fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>, inner: Element<T>) -> MappedElement<U> {
         let ret = Box::new(ElementMapDirect { fun, inner });
         MappedElement {
             inner: ret
@@ -133,7 +133,7 @@ impl<T: 'static, U: 'static> ElementMapDirect<T, U> {
     }
 }
 
-impl<T: 'static, U: 'static> ElementMap<U> for ElementMapDirect<T, U> {
+impl<T: 'static + Send, U: 'static + Send> ElementMap<U> for ElementMapDirect<T, U> {
     fn take_listeners(&mut self) -> Vec<Listener<U>> {
         self.inner
             .listeners
@@ -176,7 +176,7 @@ impl<T: 'static, U: 'static> ElementMap<U> for ElementMapDirect<T, U> {
 }
 
 pub(crate) struct ElementRemap<T, U> {
-    fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>,
+    fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>,
     inner: Box<dyn ElementMap<T>>,
 }
 
@@ -186,13 +186,13 @@ impl<T, U> Debug for ElementRemap<T, U> {
     }
 }
 
-impl<T: 'static, U: 'static> ElementRemap<T, U> {
-    pub(crate) fn new_box(fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>, inner: Box<dyn ElementMap<T>>) -> MappedElement<U> {
+impl<T: 'static + Send, U: 'static + Send> ElementRemap<T, U> {
+    pub(crate) fn new_box(fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>, inner: Box<dyn ElementMap<T>>) -> MappedElement<U> {
         MappedElement::new(Box::new(ElementRemap { fun, inner }))
     }
 }
 
-impl<T: 'static, U: 'static> ElementMap<U> for ElementRemap<T, U> {
+impl<T: 'static + Send, U: 'static + Send> ElementMap<U> for ElementRemap<T, U> {
     fn take_listeners(&mut self) -> Vec<Listener<U>> {
         self.inner
             .take_listeners()

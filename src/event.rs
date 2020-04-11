@@ -17,7 +17,7 @@ pub(crate) trait SubscriptionMap<T> : Send {
 }
 
 struct MappedSubscription<U, T> {
-    mapper: Arc<Mutex<Box<dyn Send + Fn(U) -> T>>>,
+    mapper: Arc<Mutex<dyn Send + Fn(U) -> T>>,
     child: Subscription<U>
 }
 
@@ -64,7 +64,7 @@ impl<T> Clone for Subscription<T> {
 
 
 impl<T: 'static> Subscription<T> {
-    pub(crate) fn map<U: 'static>(self, fun: Arc<Mutex<Box<dyn Send + Fn(T) -> U>>>) -> Subscription<U> {
+    pub(crate) fn map<U: 'static>(self, fun: Arc<Mutex<dyn Send + Fn(T) -> U>>) -> Subscription<U> {
         Subscription(Arc::new(Mutex::new(MappedSubscription {
             mapper: fun,
             child: self

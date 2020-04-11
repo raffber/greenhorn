@@ -60,16 +60,16 @@ use crate::component::{MappedComponent, ComponentContainer, ComponentMap};
 ///         Node::html().elem("div").class("primary").id("my-div")  // an HTML element
 ///             .add(Node::text("Some Text"))                       // a text node
 ///             .add(&self.blob)                                    // a blob
-///             .add(self.button.mount(MyMsg::ButtonMsg))           // a component
+///             .add(self.button.mount().map(MyMsg::ButtonMsg))     // a component
 ///             .add(self.button.lock().clicked.subscribe(|_| MyMsg::Clicked)) // an event
 ///             .build()
 ///     }
 /// }
 /// ```
 ///
-pub struct Node<T: 'static>(pub(crate) NodeItems<T>);
+pub struct Node<T: 'static + Send>(pub(crate) NodeItems<T>);
 
-pub(crate) enum NodeItems<T: 'static> {
+pub(crate) enum NodeItems<T: 'static + Send> {
     ElementMap(MappedElement<T>),
     Component(ComponentContainer<T>),
     Text(String),
@@ -78,7 +78,7 @@ pub(crate) enum NodeItems<T: 'static> {
     EventSubscription(Id, Subscription<T>),
 }
 
-impl<T: 'static> Debug for Node<T> {
+impl<T: 'static + Send> Debug for Node<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match &self.0 {
             NodeItems::ElementMap(x) => {std::fmt::Debug::fmt(&x, f)},
@@ -91,7 +91,7 @@ impl<T: 'static> Debug for Node<T> {
     }
 }
 
-impl<T: 'static> Node<T> {
+impl<T: 'static + Send> Node<T> {
     /// Create a [NodeBuilder](../node_builder/struct.NodeBuilder.html) for HTML elements
     pub fn html() -> NodeBuilder<T> {
         NodeBuilder::new()
@@ -144,13 +144,13 @@ impl<T: 'static> Node<T> {
     ///     ).into()
     /// }
     /// ```
-    pub fn map<U: 'static, F: 'static + Send + Fn(T) -> U>(self, fun: F) -> Node<U> {
+    pub fn map<U: 'static + Send, F: 'static + Send + Fn(T) -> U>(self, fun: F) -> Node<U> {
         let fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>> = Arc::new(Mutex::new(Box::new(fun)));
         self.map_shared(fun)
     }
 
     /// same as `Node::map()` but uses a shared reference of an already created mapping function
-    pub(crate) fn map_shared<U: 'static>(self, fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>>) -> Node<U> {
+    pub(crate) fn map_shared<U: 'static + Send>(self, fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>) -> Node<U> {
         let ret = match self.0 {
             NodeItems::ElementMap(inner) => {
                 let ret = ElementRemap::new_box(fun, inner.inner);
@@ -180,7 +180,7 @@ impl<T: 'static> Node<T> {
     /// any child node.
     /// This allows mapping node-hierarchies without listeners efficiently without
     /// keeping the target message type around, for example when caching rendered nodes.
-    pub fn empty_map<U: 'static>(self) -> Node<U> {
+    pub fn empty_map<U: 'static + Send>(self) -> Node<U> {
         match self.0 {
             NodeItems::ElementMap(_) => panic!(),
             NodeItems::Component(_) => panic!(),
