@@ -24,7 +24,7 @@
 //! * Most tasks can be accomplished using pure-rust. If required, injecting and calling js is supported.
 //! * Built-in performance metrics
 //! * Spawning system dialogs
-//! * This crate does not itself implement a frontend. A frontend is implmented using `greenhorn_web_view`.
+//! * This crate does not itself implement a frontend. A frontend is implemented in `greenhorn_web_view`.
 //!   It makes use of [web_view](https://github.com/Boscop/web-view) and [tinyfiledialogs-rs](https://github.com/jdm/tinyfiledialogs-rs).
 //!
 //! ## Example
@@ -75,7 +75,6 @@
 //!
 //! The concpet of this library is not at all new. It was already implemented before at least by the
 //! [Threepenny-GUI library](https://github.com/HeinrichApfelmus/threepenny-gui).
-//!
 //! The API was inspired by the many great rust frontend libraries:
 //!  * [Yew](https://github.com/yewstack/yew)
 //!  * [Seed-rs](https://github.com/seed-rs/seed)
@@ -139,7 +138,6 @@ pub mod dialog;
 /// Exposes a built-in set of commonly used services
 pub mod services;
 
-/// Supports dynamic binding of components. Experimental, might be removed in the future.
 pub mod any;
 
 /// Prelude, `use greehorn::prelude::*` imports the most important symbols for quick access

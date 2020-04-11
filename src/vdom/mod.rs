@@ -16,23 +16,23 @@ use std::ops::Deref;
 const DEFAULT_PATH_CAPACITY : usize = 64;
 
 #[derive(Debug, Clone)]
-pub struct Path {
+pub(crate) struct Path {
     inner: Vec<usize>
 }
 
 impl Path {
-    pub fn new() -> Path {
+    pub(crate) fn new() -> Path {
         // preallocate as length probably fairly small
         Path {
             inner: Vec::with_capacity(DEFAULT_PATH_CAPACITY)
         }
     }
 
-    pub fn push(&mut self, idx: usize) {
+    pub(crate) fn push(&mut self, idx: usize) {
         self.inner.push(idx);
     }
 
-    pub fn pop(&mut self) -> Option<usize> {
+    pub(crate) fn pop(&mut self) -> Option<usize> {
         self.inner.pop()
     }
 }
@@ -95,22 +95,22 @@ pub struct VElement {
 }
 
 #[derive(Debug, Clone)]
-pub enum VNode {
+pub(crate) enum VNode {
     Element(VElement),
     Text(String),
     Placeholder(Id, Path),
 }
 
 impl VNode {
-    pub fn text<T: Into<String>>(data: T) -> VNode {
+    pub(crate) fn text<T: Into<String>>(data: T) -> VNode {
         VNode::Text(data.into())
     }
 
-    pub fn element(elem: VElement) -> VNode {
+    pub(crate) fn element(elem: VElement) -> VNode {
         VNode::Element(elem)
     }
 
-    pub fn replace(&mut self, path: &[usize], value: VNode) {
+    pub(crate) fn replace(&mut self, path: &[usize], value: VNode) {
         match self {
             VNode::Element(elem) => {
                 let idx = path[0];
@@ -126,7 +126,7 @@ impl VNode {
         }
     }
 
-    pub fn from_string<T: Into<String>>(s: T) -> VNode {
+    pub(crate) fn from_string<T: Into<String>>(s: T) -> VNode {
         VNode::Text(s.into())
     }
 
@@ -140,7 +140,7 @@ impl VNode {
 }
 
 #[derive(Clone, Debug)]
-pub enum PatchItem<'a> {
+pub(crate) enum PatchItem<'a> {
     AppendSibling(&'a VNode),
     Replace(&'a VNode),
     ChangeText(&'a str),
@@ -174,9 +174,9 @@ impl<'a> PatchItem<'a> {
 }
 
 #[derive(Debug)]
-pub struct Patch<'a> {
-    pub items: Vec<PatchItem<'a>>,
-    pub translations: HashMap<Id, Id>,
+pub(crate) struct Patch<'a> {
+    pub(crate) items: Vec<PatchItem<'a>>,
+    pub(crate) translations: HashMap<Id, Id>,
 }
 
 impl<'a> Patch<'a> {

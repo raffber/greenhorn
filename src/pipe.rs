@@ -19,6 +19,8 @@ use crate::context::EventPropagate;
 use serde_json::Value as JsonValue;
 use std::error::Error;
 
+
+/// Serializable message type to be sent from the backend to the frontend
 #[derive(Debug, Serialize, Deserialize)]
 pub enum TxMsg {
     Ping(),
@@ -30,6 +32,7 @@ pub enum TxMsg {
     Dialog(JsonValue),
 }
 
+/// Serializable message type to be sent from the frontend to the backend
 #[derive(Debug, Serialize, Deserialize)]
 pub enum RxMsg {
     Event(DomEvent),
@@ -38,17 +41,23 @@ pub enum RxMsg {
     Dialog(JsonValue),
 }
 
+/// Receiver trait for receiving `RxMsg` objects
 pub trait Receiver: Stream<Item = RxMsg> + Unpin + Send + 'static {}
 impl<T> Receiver for T where T: Stream<Item = RxMsg> + Unpin + Send + 'static {}
 
+/// Sender trait for sending `TxMsg` objects
 pub trait Sender: Sink<TxMsg, Error=Box<dyn Error>> + Unpin + Send + Clone + 'static {}
 impl<T> Sender for T where T: Sink<TxMsg, Error=Box<dyn Error>> + Unpin + Send + Clone + 'static {}
 
-
+/// This trait defines the interface for sending and receiving messages
+/// from the [Runtime](../runtime/struct.Runtime.html).
 pub trait Pipe {
     type Sender: Sender;
     type Receiver: Receiver;
 
+    /// Consumes this object and split into into a sender and receiver part.
+    ///
+    /// Either of them may be sent to different threads and used independently.
     fn split(self) -> (Self::Sender, Self::Receiver);
 }
 
