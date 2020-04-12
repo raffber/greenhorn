@@ -4,12 +4,12 @@ use crate::dom::DomEvent;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hasher, Hash};
 
-pub struct Listener<T> {
-    pub event_name: String,
-    pub node_id: Id,
-    pub fun: Arc<Mutex<dyn Fn(DomEvent) -> T + Send>>,
-    pub no_propagate: bool,
-    pub prevent_default: bool,
+pub(crate) struct Listener<T> {
+    pub(crate) event_name: String,
+    pub(crate) node_id: Id,
+    pub(crate) fun: Arc<Mutex<dyn Fn(DomEvent) -> T + Send>>,
+    pub(crate) no_propagate: bool,
+    pub(crate) prevent_default: bool,
 }
 
 impl<T> Clone for Listener<T> {

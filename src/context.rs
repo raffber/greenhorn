@@ -76,35 +76,6 @@ impl<T: 'static, U: 'static, Mapper: 'static + Fn(U) -> T> MappedSender<U>
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct EventPropagate {
-    event: DomEvent,
-    propagate: bool,
-    default_action: bool,
-}
-
-pub struct Context<T: 'static + Send> {
-    tx: MapSender<ContextMsg<T>>,
-}
-
-impl<T: 'static + Send> Clone for Context<T> {
-    fn clone(&self) -> Self {
-        Self {
-            tx: self.tx.clone(),
-        }
-    }
-}
-
-pub(crate) struct ContextReceiver<T: 'static + Send> {
-    pub(crate) rx: Receiver<ContextMsg<T>>,
-}
-
-impl<T: 'static + Send> ContextReceiver<T> {
-    fn recv(&self) -> Result<ContextMsg<T>, RecvError> {
-        self.rx.recv()
-    }
-}
-
 pub(crate) enum ContextMsg<T: 'static + Send> {
     Emission(Emission),
     LoadCss(String),
@@ -141,6 +112,38 @@ impl<T: Send + 'static> ContextMsg<T> {
     }
 }
 
+pub(crate) struct ContextReceiver<T: 'static + Send> {
+    pub(crate) rx: Receiver<ContextMsg<T>>,
+}
+
+impl<T: 'static + Send> ContextReceiver<T> {
+    fn recv(&self) -> Result<ContextMsg<T>, RecvError> {
+        self.rx.recv()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EventPropagate {
+    event: DomEvent,
+    propagate: bool,
+    default_action: bool,
+}
+
+/// `Context` objects are passed into the `update()` function of the application
+/// and allow interacting with the component hierarchy, controlling the application lifecycle
+/// and provide access to system services.
+pub struct Context<T: 'static + Send> {
+    tx: MapSender<ContextMsg<T>>,
+}
+
+impl<T: 'static + Send> Clone for Context<T> {
+    fn clone(&self) -> Self {
+        Self {
+            tx: self.tx.clone(),
+        }
+    }
+}
+
 impl<T: Send + 'static> Context<T> {
     pub(crate) fn new() -> (Self, ContextReceiver<T>) {
         let (tx, rx) = channel();
@@ -154,15 +157,20 @@ impl<T: Send + 'static> Context<T> {
         )
     }
 
+    /// Emits an event from the current component.
+    ///
+    /// This will result in an `update()` call for all components subscribed to this event.
     pub fn emit<D: Any>(&self, event: &Event<D>, data: D) {
         let emission = event.emit(data);
         self.tx.send(ContextMsg::Emission(emission));
     }
 
+    /// Loads a CSS string on the frontend
     pub fn load_css<Css: Into<String>>(&self, css: Css) {
         self.tx.send(ContextMsg::LoadCss(css.into()));
     }
 
+    /// Runs a piece of js code on the frontend
     pub fn run_js<Js: Into<String>>(&self, js: Js) {
         self.tx.send(ContextMsg::RunJs(js.into()));
     }
@@ -177,18 +185,22 @@ impl<T: Send + 'static> Context<T> {
         self.tx.send(ContextMsg::Subscription(subs));
     }
 
+    /// Spawns a future. The result of the future will be used to `update()` the application.
     pub fn spawn<Fut: 'static + Send + Future<Output=T>>(&self, fut: Fut) {
         self.tx.send(ContextMsg::Future(Box::pin(fut), false));
     }
 
+    /// Spawns a future which is blocking
     pub fn spawn_blocking<Fut: 'static + Send + Future<Output=T>>(&self, fut: Fut) {
         self.tx.send(ContextMsg::Future(Box::pin(fut), true));
     }
 
+    /// Subscribe to a stream. Each item the screen issues will be used to `udpate()` the application.
     pub fn subscribe<S: 'static + Send + Stream<Item=T>>(&self, stream: S) {
         self.tx.send(ContextMsg::Stream(Box::pin(stream)));
     }
 
+    /// Maps this context object to a new a new message type
     pub fn map<U: Send + 'static, F: 'static + Send + Sync + Fn(U) -> T>(
         &self,
         fun: F,
@@ -201,6 +213,7 @@ impl<T: Send + 'static> Context<T> {
         }
     }
 
+    /// Propagates a previously intercepted js event to the frontend
     pub fn propagate(&self, e: DomEvent) {
         self.tx
             .send(ContextMsg::Propagate(EventPropagate {
@@ -210,6 +223,7 @@ impl<T: Send + 'static> Context<T> {
             }));
     }
 
+    /// Propagates a js event to the frontend executing the default action
     pub fn default_action(&self, e: DomEvent) {
         self.tx
             .send(ContextMsg::Propagate(EventPropagate {
@@ -219,6 +233,8 @@ impl<T: Send + 'static> Context<T> {
             }));
     }
 
+    /// Propagates a previously intercepted js event to the frontend and execute the default
+    /// action
     pub fn propagate_and_default(&self, e: DomEvent) {
         self.tx
             .send(ContextMsg::Propagate(EventPropagate {
@@ -228,11 +244,16 @@ impl<T: Send + 'static> Context<T> {
             }));
     }
 
+    /// Opens a dialog on the frontend.
+    ///
+    /// Once the dialog resolves, the `fun` function maps the dialog message type to the
+    /// message type of the application.
     pub fn dialog<D: 'static + Dialog, F: 'static + Fn(D::Msg) -> T>(&self, dialog: D, fun: F) {
         let binding = DialogBinding::new(dialog, fun);
         self.tx.send(ContextMsg::Dialog(binding));
     }
 
+    /// Quits the currently running application
     pub fn quit(&self) {
         self.tx.send(ContextMsg::Quit);
     }

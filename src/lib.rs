@@ -120,7 +120,7 @@ pub mod websockets;
 pub mod node;
 
 /// Implements listeners of DOM events on DOM elements
-pub mod listener;
+mod listener;
 
 /// Supports syncing binary data from backend to frontend. Useful for images, media files, ...
 pub mod blob;
