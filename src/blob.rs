@@ -16,9 +16,9 @@ pub(crate) struct BlobData {
 }
 
 ///
-/// A `Blob` corresponds to some binary data,
+/// `Blob`s allow transferring binary data from backend to frontend.
 ///
-/// `Blob` objects have an assoociated `id` and `hash` to make them comparable.
+/// `Blob` objects have an assoociated `id` and `hash` fields to make them comparable and identifiable.
 /// The user of this type is responsible for providing unique `id` and `hash` value combinations.
 ///
 /// The `id` field is supposed to identify the purpose of the `Blob` within the application.
@@ -29,6 +29,10 @@ pub(crate) struct BlobData {
 ///
 /// Associated to the `Blob` a MIME-type can be provided. This is useful meta information for
 /// media files or similar.
+///
+/// Blobs require manual javascript interaction on the frontend side. Two hooks are provided:
+///  * `on_change()`: Called whenever the `hash` of a Blob changes, but the `id` remains the same
+///  * `on_add()`: Called when at least the `id` changes
 ///
 /// ## Example
 ///

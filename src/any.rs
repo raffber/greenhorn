@@ -60,6 +60,11 @@ use crate::context::Context;
 
 /// Wraps an type implementing [App](../trait.App.html), and as a consequence also [Render](../trait.Render.html)),
 /// and exposes a new `App`/`Render` implementation with the dynamic [AnyMsg](type.AnyMsg.htm) type.
+///
+/// ## Panics
+///
+/// In case update() is called with an invalid type, which is not convertible to the actual
+/// message type of the underlying component.
 pub struct AnyApp {
     inner: Box<dyn App<Message=AnyMsg> + Send>,
 }
