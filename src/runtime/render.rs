@@ -4,7 +4,7 @@ use crate::component::{ComponentContainer, ComponentMap};
 use crate::element::ElementMap;
 use crate::blob::Blob;
 use crate::{App, Id};
-use crate::listener::{Listener, ListenerKey};
+use crate::listener::{Listener, ListenerKey, Rpc};
 use crate::event::Subscription;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -79,7 +79,8 @@ pub(crate) enum ResultItem<A: App> {
     Listener( Listener<A::Message> ),
     Subscription( Id, Subscription<A::Message> ),
     Component( ComponentContainer<A::Message>, Path ),
-    Blob( Blob )
+    Blob( Blob ),
+    Rpc(Rpc<A::Message>),
 }
 
 
@@ -87,6 +88,7 @@ pub(crate) struct RenderResult<A: App> {
     pub(crate) listeners: HashMap<ListenerKey, Listener<A::Message>>,
     pub(crate) subscriptions: HashMap<Id, Subscription<A::Message>>,
     pub(crate) blobs: HashMap<Id, Blob>,
+    pub(crate) rpcs: HashMap<Id, Rpc<A::Message>>,
     components: HashMap<Id, Arc<RenderedComponent<A>>>,
     pub(crate) root_components: Vec<(Id, Path)>,
     pub(crate) root: Arc<VNode>,
@@ -129,6 +131,7 @@ impl<A: App> RenderResult<A> {
             listeners: Default::default(),
             subscriptions: Default::default(),
             blobs: Default::default(),
+            rpcs: Default::default(),
             components: HashMap::default(),
             root_components: Default::default(),
             root: Arc::new(vdom),
@@ -145,9 +148,12 @@ impl<A: App> RenderResult<A> {
                 ResultItem::Component(comp, path) => {
                     ret.root_components.push((comp.id(), path));
                     ret.render_component(None, comp, None, metrics);
-                }
+                },
                 ResultItem::Blob(blob) => {
                     ret.blobs.insert(blob.id(), blob);
+                },
+                ResultItem::Rpc(rpc) => {
+                    ret.rpcs.insert(rpc.node_id, rpc);
                 }
             }
         }
@@ -164,6 +170,7 @@ impl<A: App> RenderResult<A> {
             listeners: Default::default(),
             subscriptions: Default::default(),
             blobs: Default::default(),
+            rpcs: Default::default(),
             components: HashMap::with_capacity(old.components.len() * 2 ),
             root_components: Default::default(),
             root: old.root.clone(),
@@ -207,6 +214,9 @@ impl<A: App> RenderResult<A> {
                 ResultItem::Blob(blob) => {
                     self.blobs.insert(blob.id(), blob);
                 }
+                ResultItem::Rpc(rpc) => {
+                    self.rpcs.insert(rpc.node_id, rpc);
+                }
             }
         }
     }
@@ -227,6 +237,10 @@ impl<A: App> RenderResult<A> {
         for key in old_render.listeners() {
             let listener = old.listeners.get(key).unwrap();
             self.listeners.insert(key.clone(), listener.clone());
+        }
+        for rpc_id in old_render.rpcs() {
+            let rpc = old.rpcs.get(rpc_id).unwrap();
+            self.rpcs.insert(*rpc_id, rpc.clone());
         }
         for event_id in old_render.subscriptions() {
             let subs = old.subscriptions.get(&event_id).unwrap();

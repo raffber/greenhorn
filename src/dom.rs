@@ -18,6 +18,7 @@ pub struct KeyboardEvent {
     pub key: String,
     pub location: i32,
     pub repeat: bool,
+    pub target_value: InputValue,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,6 +36,7 @@ pub struct WheelEvent {
     pub offset: Point,
     pub page: Point,
     pub screen: Point,
+    pub target_value: InputValue,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -54,6 +56,7 @@ pub struct MouseEvent {
     pub offset: Point,
     pub page: Point,
     pub screen: Point,
+    pub target_value: InputValue,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -64,19 +67,44 @@ pub enum InputValue {
     NoValue,
 }
 
+impl InputValue {
+    pub fn get_bool(&self) -> Option<bool> {
+        if let InputValue::Bool(ret) = self {
+            Some(*ret)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_text(&self) -> Option<String> {
+        if let InputValue::Text(ret) = self {
+            Some(ret.clone())
+        } else {
+            None
+        }
+    }
+
+    pub fn get_number(&self) -> Option<f64> {
+        if let InputValue::Number(ret) = self {
+            Some(*ret)
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ChangeEvent {
+pub struct BaseEvent {
     pub target: Id,
     pub event_name: String,
-    pub value: InputValue,
+    pub target_value: InputValue,
 }
 
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum DomEvent {
-    Base(Id, String),
-    Change(ChangeEvent),
-    Focus(Id, String),
+    Base(BaseEvent),
+    Focus(BaseEvent),
     Keyboard(KeyboardEvent),
     Mouse(MouseEvent),
     Wheel(WheelEvent),
@@ -85,41 +113,49 @@ pub enum DomEvent {
 impl DomEvent {
     pub fn target(&self) -> Id {
         match self {
-            DomEvent::Base(id, _) => *id,
-            DomEvent::Focus(id, _) => *id,
+            DomEvent::Base(evt) => evt.target,
+            DomEvent::Focus(evt) => evt.target,
             DomEvent::Keyboard(evt) => evt.target,
             DomEvent::Mouse(evt) => evt.target,
             DomEvent::Wheel(evt) => evt.target,
-            DomEvent::Change(evt) => evt.target,
         }
     }
 
     pub fn name(&self) -> &str {
         match self {
-            DomEvent::Base(_, name) => name,
-            DomEvent::Focus(_, name) => name,
+            DomEvent::Base(evt) => &evt.event_name,
+            DomEvent::Focus(evt) => &evt.event_name,
             DomEvent::Keyboard(evt) => &evt.event_name,
             DomEvent::Mouse(evt) => &evt.event_name,
             DomEvent::Wheel(evt) => &evt.event_name,
-            DomEvent::Change(evt) => &evt.event_name,
         }
+    }
+
+    pub fn target_value(&self) -> &InputValue {
+        match self {
+            DomEvent::Base(e) => {&e.target_value},
+            DomEvent::Focus(e) => {&e.target_value},
+            DomEvent::Keyboard(e) => {&e.target_value},
+            DomEvent::Mouse(e) => {&e.target_value},
+            DomEvent::Wheel(e) => {&e.target_value},
+        }
+
     }
 
     pub fn into_keyboard(self) -> Option<KeyboardEvent> {
         match self {
-            DomEvent::Base(_, _) => None,
-            DomEvent::Focus(_, _) => None,
+            DomEvent::Base(_) => None,
+            DomEvent::Focus(_) => None,
             DomEvent::Keyboard(evt) => Some(evt),
             DomEvent::Mouse(_) => None,
             DomEvent::Wheel(_) => None,
-            DomEvent::Change(_) => None,
         }
     }
 
     pub fn into_mouse(self) -> Option<MouseEvent> {
         match self {
-            DomEvent::Base(_, _) => None,
-            DomEvent::Focus(_, _) => None,
+            DomEvent::Base(_) => None,
+            DomEvent::Focus(_) => None,
             DomEvent::Keyboard(_) => None,
             DomEvent::Mouse(evt) => Some(evt),
             DomEvent::Wheel(evt) => {
@@ -132,35 +168,22 @@ impl DomEvent {
                     client: evt.client,
                     offset: evt.offset,
                     page: evt.page,
-                    screen: evt.screen
+                    screen: evt.screen,
+                    target_value: evt.target_value
                 })
             },
-            DomEvent::Change(_) => None,
         }
     }
 
     pub fn into_wheel(self) -> Option<WheelEvent> {
         match self {
-            DomEvent::Base(_, _) => None,
-            DomEvent::Focus(_, _) => None,
+            DomEvent::Base(_) => None,
+            DomEvent::Focus(_) => None,
             DomEvent::Keyboard(_) => None,
             DomEvent::Mouse(_) => None,
             DomEvent::Wheel(evt) => Some(evt),
-            DomEvent::Change(_) => None,
         }
     }
-
-    pub fn into_change(self) -> Option<ChangeEvent> {
-        match self {
-            DomEvent::Base(_, _) => None,
-            DomEvent::Focus(_, _) => None,
-            DomEvent::Keyboard(_) => None,
-            DomEvent::Mouse(_) => None,
-            DomEvent::Wheel(_) => None,
-            DomEvent::Change(evt) => Some(evt)
-        }
-    }
-
 }
 
 impl From<KeyboardEvent> for DomEvent {

@@ -281,6 +281,15 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                     self.sender.send(TxMsg::Dialog(data)).await.unwrap();
                 }
             }
+            RxMsg::ElementRpc(id,  value) => {
+                let id = Id::new_from_data(id);
+                let msg = self.rendered.get_rpc(id)
+                    .map(|rpc| rpc.call(value));
+                if let Some(msg) = msg {
+                    self.update(msg).await;
+                    self.process_events().await;
+                }
+            }
         };
         true
     }

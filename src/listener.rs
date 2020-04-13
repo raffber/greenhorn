@@ -3,6 +3,43 @@ use crate::Id;
 use crate::dom::DomEvent;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hasher, Hash};
+use serde_json::Value as JsonValue;
+
+pub(crate) struct Rpc<T> {
+    pub(crate) node_id: Id,
+    pub(crate) fun: Arc<Mutex<dyn Fn(JsonValue) -> T + Send>>,
+}
+
+impl<T> Clone for Rpc<T> {
+    fn clone(&self) -> Self {
+        Self {
+            node_id: self.node_id,
+            fun: self.fun.clone()
+        }
+    }
+}
+
+impl<T: 'static> Rpc<T> {
+    pub(crate) fn map<U: 'static>(self, fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>) -> Rpc<U> {
+        let self_fun = self.fun;
+        let new_fun = move |e: JsonValue| {
+            let unlocked_fun = self_fun.lock().unwrap();
+            let inner_result: T = (unlocked_fun)(e);
+            let ret: U = (fun.lock().unwrap())(inner_result);
+            ret
+        };
+        let new_fun: Arc<Mutex<dyn Fn(JsonValue) -> U + Send>> = Arc::new(Mutex::new(Box::new(new_fun)));
+        Rpc {
+            node_id: self.node_id,
+            fun: new_fun,
+        }
+    }
+
+    pub fn call(&self, e: JsonValue) -> T {
+        (self.fun.lock().unwrap())(e)
+    }
+}
+
 
 pub(crate) struct Listener<T> {
     pub(crate) event_name: String,

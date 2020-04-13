@@ -5,12 +5,13 @@ use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 use crate::node::{Node, NodeItems};
 use crate::element::Element;
-use crate::listener::Listener;
+use crate::listener::{Listener, Rpc};
 use crate::blob::Blob;
 use std::iter::{Once, once};
 use crate::event::Subscription;
 use std::option;
 use std::vec;
+use serde_json::Value as JsonValue;
 
 
 pub struct NodeBuilder<T> {
@@ -112,6 +113,7 @@ pub struct ElementBuilder<T: 'static + Send> {
     namespace: Option<String>,
     classes: Vec<String>,
     html_id: Option<String>,
+    rpc: Option<Rpc<T>>,
 }
 
 impl<T: 'static + Send> ElementBuilder<T> {
@@ -125,7 +127,8 @@ impl<T: 'static + Send> ElementBuilder<T> {
             children: Vec::new(),
             namespace,
             classes: vec![],
-            html_id: None
+            html_id: None,
+            rpc: None
         }
     }
 
@@ -155,6 +158,21 @@ impl<T: 'static + Send> ElementBuilder<T> {
             prevent_default: false,
             no_propagate: false,
         }
+    }
+
+    pub fn rpc< F>(mut self, fun: F) -> Self
+        where
+            F: 'static + Send + Fn(JsonValue) -> T
+    {
+        if self.id.is_empty() {
+            self.id = Id::new();
+        }
+        let rpc = Rpc {
+            node_id: self.id,
+            fun: Arc::new(Mutex::new(fun))
+        };
+        self.rpc = Some(rpc);
+        self
     }
 
     pub fn attr<R: ToString, S: ToString>(mut self, key: R, value: S) -> Self {
@@ -216,6 +234,7 @@ impl<T: 'static + Send> ElementBuilder<T> {
             listeners: Some(self.listeners),
             children: Some(self.children),
             namespace: self.namespace,
+            rpc: self.rpc
         }))
     }
 }

@@ -150,13 +150,14 @@ pub mod prelude {
     pub use crate::component::{Component, Updated};
     pub use crate::{App, Render};
     pub use crate::node::Node;
-    pub use crate::dom::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent, ChangeEvent, InputValue};
+    pub use crate::dom::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent, InputValue};
     pub use crate::event::Event;
     pub use crate::context::Context;
     pub use crate::websockets::WebsocketPipe;
     pub use crate::node_builder::{NodeBuilder, ElementBuilder};
     pub use crate::blob::Blob;
     pub use crate::runtime::{Runtime, RuntimeControl};
+    pub use serde_json::Value as JsonValue;
 }
 
 pub use crate::component::{Component, Updated};

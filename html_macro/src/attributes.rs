@@ -124,11 +124,19 @@ impl Matches for IdAttribute {
     }
 }
 
-pub(crate) struct ListenerAttribute {
-    name: String,
+pub(crate) enum ListenerAttribute {
+    Event(EventListenerAttribute),
+    Rpc(RpcAttribute),
+}
+
+pub(crate) struct RpcAttribute {
     value: TokenStream,
 }
 
+pub(crate) struct EventListenerAttribute {
+    name: String,
+    value: TokenStream,
+}
 
 impl Matches for ListenerAttribute  {
     type Output = ListenerAttribute ;
@@ -138,10 +146,16 @@ impl Matches for ListenerAttribute  {
         let (name, cursor) = HtmlName::matches(cursor)?;
         let (_, cursor) = Equal::matches(cursor)?;
         if let Some((grp_cursor, _grp, cursor)) = cursor.group(Delimiter::Brace) {
-            Ok((ListenerAttribute  {
-                name,
-                value: grp_cursor.token_stream(),
-            }, cursor))
+            if name.to_lowercase() == "rpc" {
+                Ok((ListenerAttribute::Rpc(RpcAttribute  {
+                    value: grp_cursor.token_stream(),
+                }), cursor))
+            } else {
+                Ok((ListenerAttribute::Event(EventListenerAttribute  {
+                    name,
+                    value: grp_cursor.token_stream(),
+                }), cursor))
+            }
         } else {
             Err(Error::new(cursor.span(), "Cannot match a { } delimited group."))
         }
@@ -149,6 +163,25 @@ impl Matches for ListenerAttribute  {
 }
 
 impl ToTokens for ListenerAttribute {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+       match self {
+           ListenerAttribute::Event(x) => x.to_tokens(tokens),
+           ListenerAttribute::Rpc(x) => x.to_tokens(tokens),
+       }
+    }
+}
+
+impl ToTokens for RpcAttribute {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let ts = &self.value;
+        let ret = quote! {
+            .rpc(#ts)
+        };
+        tokens.extend(ret);
+    }
+}
+
+impl ToTokens for EventListenerAttribute {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let name: &str = &self.name;
         let ts = &self.value;

@@ -34,7 +34,8 @@ function serializeMouseEvent(id, name, evt) {
         "client": serializePoint(evt.clientX, evt.clientY),
         "offset": serializePoint(evt.offsetX, evt.offsetY),
         "page": serializePoint(evt.pageX, evt.pageY),
-        "screen": serializePoint(evt.screenX, evt.screenY)
+        "screen": serializePoint(evt.screenX, evt.screenY),
+        "target_value": serializeTargetValue(evt.target)
     };
 }
 
@@ -68,33 +69,33 @@ function serializeEvent(id, name, evt) {
         }
     } else if (evt instanceof KeyboardEvent) {
         return {
-            "Keyboard":
-                {
-                    "target": {"id": id},
-                    "event_name": name,            
-                    "modifier_state": serializeModifierState(evt),
-                    "code": evt.code,
-                    "key": evt.key,
-                    "location": evt.location,
-                    "repeat": evt.repeat,
-                    "bubble": true,
-                }
+            "Keyboard": {
+                "target": {"id": id},
+                "event_name": name,            
+                "modifier_state": serializeModifierState(evt),
+                "code": evt.code,
+                "key": evt.key,
+                "location": evt.location,
+                "repeat": evt.repeat,
+                "bubble": true,
+                "target_value": serializeTargetValue(evt.target)
+            }
         }
     } else if (evt instanceof FocusEvent) {
         return {
-            "Focus": [{"id": id}, name]
-        }
-    } else if (evt instanceof ChangeEvent) {
-        return {
-            "Change": {
+            "Focus": {
                 "target": {"id": id},
-                event_name: name,
-                value: serializeTargetValue(evt)
+                "event_name": name,            
+                "target_value": serializeTargetValue(evt.target)
             }
         }
     } else {
         return {
-            "Base": [{"id": id}, name]
+            "Base": {
+                "target": {"id": id},
+                "event_name": name,            
+                "target_value": serializeTargetValue(evt.target)
+            }
         }
     }
 }
@@ -303,6 +304,14 @@ export class Pipe {
         this.socket = null;
         this.connected = false;
     }
+
+    sendRpc(id, data) {
+        let msg = {
+            "ElementRpc": [id, data]  
+        };
+        let serialized = JSON.stringify(msg);
+        this.socket.send(serialized);
+    }
 }
 
 export class Application {
@@ -361,6 +370,11 @@ export class Application {
 
     sendEvent(id, name, evt) {
         this.pipe.sendEvent(id, name, evt)
+    }
+
+    send(elem, data) {
+        let id = elem['__id__'];
+        this.pipe.sendRpc(id, data)
     }
 }
 

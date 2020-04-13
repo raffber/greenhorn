@@ -189,6 +189,9 @@ impl<T: 'static + Send> Node<T> {
                 if !elem.listeners.unwrap().is_empty() {
                     panic!();
                 }
+                if elem.rpc.is_some() {
+                    panic!();
+                }
                 let children = elem.children.map(
                     |mut x| x.drain(..).map(|x| x.empty_map()).collect()
                 );
@@ -199,7 +202,8 @@ impl<T: 'static + Send> Node<T> {
                     js_events: elem.js_events,
                     listeners: Some(vec![]),
                     children,
-                    namespace: elem.namespace
+                    namespace: elem.namespace,
+                    rpc: None,
                 }))
             },
             NodeItems::EventSubscription(_, _) => panic!(),

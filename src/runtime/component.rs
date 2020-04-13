@@ -12,6 +12,7 @@ pub(crate) struct RenderedComponent<A: App> {
     subscriptions: Vec<Id>,
     children: Vec<(Id, Path)>,
     blobs: Vec<Id>,
+    rpcs: Vec<Id>,
 }
 
 impl<A: App> RenderedComponent<A> {
@@ -25,6 +26,7 @@ impl<A: App> RenderedComponent<A> {
         let mut listeners = Vec::with_capacity(result.len());
         let mut children = Vec::with_capacity(result.len());
         let mut blobs = Vec::with_capacity(result.len());
+        let mut rpcs = Vec::with_capacity(result.len());
 
         for item in &result {
             match item {
@@ -41,12 +43,14 @@ impl<A: App> RenderedComponent<A> {
                 ResultItem::Blob(blob) => {
                     blobs.push(blob.id());
                 }
+                ResultItem::Rpc(rpc) => {rpcs.push(rpc.node_id)}
             }
         }
 
         (Self {
             component: comp, vdom, listeners,
             subscriptions: subs, children, blobs,
+            rpcs
         }, result)
     }
 
@@ -60,6 +64,10 @@ impl<A: App> RenderedComponent<A> {
 
     pub(crate) fn listeners(&self) -> &Vec<ListenerKey> {
         &self.listeners
+    }
+
+    pub(crate) fn rpcs(&self) -> &Vec<Id> {
+        &self.rpcs
     }
 
     pub(crate) fn subscriptions(&self) -> &Vec<Id> {

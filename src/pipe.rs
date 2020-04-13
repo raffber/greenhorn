@@ -39,6 +39,7 @@ pub enum RxMsg {
     FrameApplied(),
     Service(u64, RxServiceMessage),
     Dialog(JsonValue),
+    ElementRpc(u64, JsonValue),
 }
 
 /// Receiver trait for receiving `RxMsg` objects

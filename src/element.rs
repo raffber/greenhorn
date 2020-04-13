@@ -1,6 +1,6 @@
 use crate::Id;
 use crate::vdom::Attr;
-use crate::listener::Listener;
+use crate::listener::{Listener, Rpc};
 use crate::node::Node;
 use std::fmt::{Debug, Formatter, Error};
 use std::fmt;
@@ -14,6 +14,7 @@ pub(crate) struct Element<T: 'static + Send> {
     pub(crate) listeners: Option<Vec<Listener<T>>>,
     pub(crate) children: Option<Vec<Node<T>>>,
     pub(crate) namespace: Option<String>,
+    pub(crate) rpc: Option<Rpc<T>>,
 }
 
 impl<T: 'static + Send> Element<T> {
@@ -38,7 +39,8 @@ impl<T: 'static + Send> Element<T> {
             js_events: self.js_events.clone(),
             listeners: self.listeners.clone(),
             children,
-            namespace: self.namespace.clone()
+            namespace: self.namespace.clone(),
+            rpc: self.rpc.clone()
         })
     }
 }
@@ -91,6 +93,7 @@ impl<T: 'static + Send> ElementMap<T> for MappedElement<T> {
     fn take_tag(&mut self) -> String { self.inner.take_tag() }
     fn take_namespace(&mut self) -> Option<String> { self.inner.take_namespace() }
     fn take_js_events(&mut self) -> Vec<Attr> { self.inner.take_js_events() }
+    fn take_rpc(&mut self) -> Option<Rpc<T>> { self.inner.take_rpc() }
 }
 
 pub(crate) trait ElementMap<T: 'static + Send> : Debug {
@@ -101,6 +104,7 @@ pub(crate) trait ElementMap<T: 'static + Send> : Debug {
     fn take_tag(&mut self) -> String;
     fn take_namespace(&mut self) -> Option<String>;
     fn take_js_events(&mut self) -> Vec<Attr>;
+    fn take_rpc(&mut self) -> Option<Rpc<T>>;
 }
 
 impl<T: 'static + Send> ElementMap<T> for Element<T> {
@@ -111,6 +115,7 @@ impl<T: 'static + Send> ElementMap<T> for Element<T> {
     fn take_tag(&mut self) -> String { self.tag.take().unwrap() }
     fn take_namespace(&mut self) -> Option<String> { self.namespace.take() }
     fn take_js_events(&mut self) -> Vec<Attr> { self.js_events.take().unwrap() }
+    fn take_rpc(&mut self) -> Option<Rpc<T>> { self.rpc.take() }
 }
 
 pub(crate) struct ElementMapDirect<T: 'static + Send, U: 'static + Send> {
@@ -173,6 +178,10 @@ impl<T: 'static + Send, U: 'static + Send> ElementMap<U> for ElementMapDirect<T,
     fn take_js_events(&mut self) -> Vec<Attr> {
         self.inner.js_events.take().expect("js_events cannot be taken multiple times")
     }
+
+    fn take_rpc(&mut self) -> Option<Rpc<U>> {
+        self.inner.rpc.take().map(|x| x.map(self.fun.clone()))
+    }
 }
 
 pub(crate) struct ElementRemap<T, U> {
@@ -214,4 +223,8 @@ impl<T: 'static + Send, U: 'static + Send> ElementMap<U> for ElementRemap<T, U> 
     fn take_tag(&mut self) -> String { self.inner.take_tag() }
     fn take_namespace(&mut self) -> Option<String> { self.inner.take_namespace() }
     fn take_js_events(&mut self) -> Vec<Attr> { self.inner.take_js_events() }
+
+    fn take_rpc(&mut self) -> Option<Rpc<U>> {
+        self.inner.take_rpc().map(|x| x.map(self.fun.clone()))
+    }
 }
