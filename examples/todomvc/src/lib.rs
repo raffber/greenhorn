@@ -27,10 +27,7 @@ impl Todo {
                 <div .view>
                     <input .toggle type="checkbox"
                         @rpc={move |data| MainMsg::CheckboxRpc(id, data)}
-                        $change="{
-                            console.log('hia!!!!!');
-                            app.send(event.target, {'checked': event.checked});
-                        }"/>
+                        $change="{ app.send(event.target, {'checked': event.target.checked}); }"/>
                     <label @dblclick={move |_| MainMsg::TodoDblClick(id)}>{&self.title}</>
                     <button .destroy @click={move |_| MainMsg::RemoveTodo(id)} />
                 </>

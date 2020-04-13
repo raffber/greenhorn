@@ -46,6 +46,7 @@ impl<A: App> RenderedState<A> {
     }
 
     pub(crate) fn get_rpc(&self, target: Id) -> Option<&Rpc<A::Message>> {
+        let target = self.translations.get(&target).unwrap_or(&target);
         self.rpcs.get(&target)
     }
 

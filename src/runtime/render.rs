@@ -64,6 +64,9 @@ fn render_element<A: App>(elem: &mut dyn ElementMap<A::Message>, result: &mut Ve
         events.push(EventHandler::from_listener(&listener));
         result.push( ResultItem::Listener(listener) );
     }
+    if let Some(rpc) = elem.take_rpc() {
+        result.push(ResultItem::Rpc(rpc));
+    }
     Some(VNode::element(VElement {
         id: elem.id(),
         tag: elem.take_tag(),

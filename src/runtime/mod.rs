@@ -244,7 +244,6 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     async fn handle_frontend_msg(&mut self, msg: RxMsg) -> bool {
         match msg {
             RxMsg::Event(evt) => {
-
                 // search in listeners and get a message
                 let msg = self.rendered
                     .get_listener(evt.target(), evt.name())

@@ -369,12 +369,12 @@ export class Application {
     }
 
     sendEvent(id, name, evt) {
-        this.pipe.sendEvent(id, name, evt)
+        this.pipe.sendEvent(id, name, evt);
     }
 
     send(elem, data) {
-        let id = elem['__id__'];
-        this.pipe.sendRpc(id, data)
+        let id = parseInt(elem.getAttribute('__id__'));
+        this.pipe.sendRpc(id, data);
     }
 }
 
