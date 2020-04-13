@@ -3,6 +3,12 @@
 use greenhorn::prelude::*;
 use greenhorn::{html, Id};
 
+
+pub struct MainApp {
+    todos: Vec<Todo>,
+    filter: Filter,
+}
+
 #[derive(Debug)]
 struct Todo {
     id: Id,
@@ -11,60 +17,73 @@ struct Todo {
     editing: bool,
 }
 
-impl Todo {
-    fn check_filter(&self, filter: &Visibility) -> bool {
-        match filter {
-            Visibility::All => true,
-            Visibility::Active => !self.completed,
-            Visibility::Completed => self.completed,
-        }
-    }
-
-
-    fn render(&self) -> Node<MainMsg> {
-        let id = self.id;
-        html!(
-            <li .todo>
-                <div .view>
-                    <input .toggle type="checkbox" @click={move |_| MainMsg::Toggle(id)} checked={self.completed}/>
-                    <label @dblclick={move |_| MainMsg::TodoDblClick(id)}>{&self.title}</>
-                    <button .destroy @click={move |_| MainMsg::RemoveTodo(id)} />
-                </>
-                <input .edit type="text"
-                    @focus={move |_| MainMsg::TodoInputFocus(id)}
-                    @blur={move |_| MainMsg::DoneEdit(id)}
-                    @keyup={move |evt| MainMsg::TodoInputKeyUp(id, evt)}
-                    @change={move |evt| MainMsg::TodoChanged(id, evt)}
-                    />
-            </>
-        ).into()
-    }
-}
-
-pub struct MainApp {
-    todos: Vec<Todo>,
-    visibility: Visibility,
-}
-
 pub enum MainMsg {
+    // add todo field
     NewTodoKeyUp(DomEvent),
-    TodoDblClick(Id),
+
+    // messages from the item editor
+    TodoStartEdit(Id),
     RemoveTodo(Id),
-    DoneEdit(Id),
+    TodoEditDone(Id),
     TodoInputKeyUp(Id, DomEvent),
     TodoChanged(Id, DomEvent),
-    TodoInputFocus(Id),
-    Toggle(Id),
+    TodoToggle(Id),
+
+    // footer buttons
     FilterAll,
     FilterActive,
     FilterCompleted,
     RemoveCompleted,
 }
 
-enum Visibility {
+enum Filter {
     All,
     Active,
     Completed,
+}
+
+impl Todo {
+    fn new(title: String) -> Self {
+        Self {
+            id: Default::default(),
+            title,
+            completed: false,
+            editing: false
+        }
+    }
+
+    fn check_filter(&self, filter: &Filter) -> bool {
+        match filter {
+            Filter::All => true,
+            Filter::Active => !self.completed,
+            Filter::Completed => self.completed,
+        }
+    }
+
+    fn render(&self) -> Node<MainMsg> {
+        let id = self.id;
+        let text_input: Node<_> = if self.editing {
+            html!(<input .edit type="text"
+                    value={&self.title}
+                    @blur={move |_| MainMsg::TodoEditDone(id)}
+                    @keyup={move |evt| MainMsg::TodoInputKeyUp(id, evt)}
+                    @change={move |evt| MainMsg::TodoChanged(id, evt)}
+                    $render="event.target.focus()"
+                />).into()
+        } else {
+            html!(<input .edit type="hidden" />).into()
+        };
+        html!(
+            <li class={if self.editing { "todo editing" } else { "todo" }}>
+                <div .view>
+                    <input .toggle type="checkbox" @click={move |_| MainMsg::TodoToggle(id)} checked={self.completed}/>
+                    <label @dblclick={move |_| MainMsg::TodoStartEdit(id)}>{&self.title}</>
+                    <button .destroy @click={move |_| MainMsg::RemoveTodo(id)} />
+                </>
+                {text_input}
+            </>
+        ).into()
+    }
 }
 
 impl App for MainApp {
@@ -74,46 +93,44 @@ impl App for MainApp {
                 let value = evt.target_value().get_text().unwrap();
                 let evt = evt.into_keyboard().unwrap();
                 if evt.key == "Enter" && !value.is_empty() {
-                    self.add_todo(value, ctx)
+                    let todo = Todo::new(value);
+                    ctx.run_js("document.getElementById('new-todo').value = ''");
+                    self.todos.push(todo);
                 }
             },
-            MainMsg::TodoDblClick(id) => {
-                self.get_todo_mut(id).unwrap().editing = true;
+
+            MainMsg::TodoStartEdit(id) => { self.todo_mut(id).editing = true; },
+
+            MainMsg::RemoveTodo(id) => { self.remove_todo(id); },
+
+            MainMsg::TodoEditDone(id) => { self.todo_mut(id).editing = false; },
+
+            MainMsg::TodoInputKeyUp(id, evt) => {
+                if evt.into_keyboard().unwrap().key == "Enter" {
+                    self.todo_mut(id).editing = false;
+                }
             },
-            MainMsg::RemoveTodo(id) => {
-                self.remove_todo(id);
-            },
-            MainMsg::DoneEdit(id) => {
-                self.get_todo_mut(id).unwrap().editing = false;
-            },
-            MainMsg::TodoInputKeyUp(_, _) => {},
-            MainMsg::FilterAll => {
-                self.visibility = Visibility::All;
-            },
-            MainMsg::FilterActive => {
-                self.visibility = Visibility::Active;
-            },
-            MainMsg::FilterCompleted => {
-                self.visibility = Visibility::Completed;
-            },
+            MainMsg::FilterAll => { self.filter = Filter::All; },
+
+            MainMsg::FilterActive => { self.filter = Filter::Active; },
+
+            MainMsg::FilterCompleted => { self.filter = Filter::Completed; },
+
             MainMsg::RemoveCompleted => {
                 self.todos = self.todos.drain(..)
                     .filter(|x| !x.completed)
                     .collect::<Vec<_>>();
             },
-            MainMsg::TodoChanged(id, evt) => {
-                self.get_todo_mut(id).unwrap().title = evt.target_value().get_text().unwrap();
-            }
-            MainMsg::TodoInputFocus(_) => {
 
+            MainMsg::TodoChanged(id, evt) => {
+                self.todo_mut(id).title = evt.target_value().get_text().unwrap();
             }
-            MainMsg::Toggle(id) => {
-                let todo = self.get_todo_mut(id).unwrap();
-                println!("{}", todo.completed);
+
+           MainMsg::TodoToggle(id) => {
+                let todo = self.todo_mut(id);
                 todo.completed = !todo.completed;
             }
         }
-
         Updated::yes()
     }
 }
@@ -122,7 +139,7 @@ impl MainApp {
     pub fn new() -> Self {
         Self {
             todos: vec![],
-            visibility: Visibility::All,
+            filter: Filter::All,
         }
     }
 
@@ -136,77 +153,55 @@ impl MainApp {
         rm_idx.map(|x| self.todos.remove(x));
     }
 
-    fn add_todo(&mut self, value: String, ctx: Context<MainMsg>) {
-        let todo = Todo {
-            id: Default::default(),
-            title: value,
-            completed: false,
-            editing: false
-        };
-        ctx.run_js("document.getElementById('new-todo').value = ''");
-        self.todos.push(todo);
+    fn todo_mut(&mut self, id: Id) -> &mut Todo {
+        self.todos.iter_mut().filter(|x| x.id == id).next().unwrap()
     }
-
-    fn get_todo(&self, id: Id) -> Option<&Todo> {
-        self.todos.iter().filter(|x| x.id == id).next()
-    }
-
-    fn get_todo_mut(&mut self, id: Id) -> Option<&mut Todo> {
-        self.todos.iter_mut().filter(|x| x.id == id).next()
-    }
-
-    fn footer() -> Node<MainMsg> {
-        html!(
-            <footer class="info">
-                <p>{"Double-click to edit a todo"}</>
-                <p>{"Written by Raphael Bernhard"}</>
-            </>
-        ).into()
-    }
-
 }
 
 impl Render for MainApp {
     type Message = MainMsg;
 
     fn render(&self) -> Node<Self::Message> {
-        let cls_clear_completed = if self.todos.len() > 0 { "clear-completed" } else { "clear-completed hide" };
-
-        let todos = self.todos.iter()
-            .filter(|x| x.check_filter(&self.visibility))
+        let filtered_todos = self.todos.iter()
+            .filter(|x| x.check_filter(&self.filter))
             .map(|x| x.render())
             .collect::<Vec<_>>();
-        let todos_len = todos.len();
+
+        let active_count = self.todos.iter().filter(|x| !x.completed).count();
+        let completed_count = self.todos.iter().filter(|x| x.completed).count();
+
+        let cls_filter_all = if matches!(self.filter, Filter::All) { "selected" } else { "" };
+        let cls_filter_active = if matches!(self.filter, Filter::Active) { "selected" } else { "" };
+        let cls_filter_completed = if matches!(self.filter, Filter::Completed) { "selected" } else { "" };
 
         let app = html!(
             <section .todoapp>
                 <header .header>
                     <h1>{"todos"}</>
-                    <input #new-todo .new-todo autofocus="" autocomplete="off" placeholder="What needs to be done?"
-                        @keyup={MainMsg::NewTodoKeyUp}
-                         />
+                    <input #new-todo .new-todo autofocus="" autocomplete="off"
+                        placeholder="What needs to be done?" @keyup={MainMsg::NewTodoKeyUp} />
                 </>
-                <section class={if todos.len() > 0 { "main" } else { "main hide" } }>
+                <section class={if self.todos.len() > 0 { "main" } else { "main hide" } }>
                     <input #toggle-all .toggle-all type="checkbox" />
                     <label>{"Mark all as complete"}</>
                     <ul .todo-list>
-                        {todos}
+                        {filtered_todos}
                     </>
                 </>
-                <footer .footer>
+                <footer class={format!("footer {}", choose(self.todos.len() > 0, "", "hide"))}>
                     <span .todo-count>
-                        <strong>
-                            {format!("Remaining: {} ", todos_len)}
-                            {if todos_len > 1 { "items left" } else {"item left"} }
-                        </>
+                        <strong>{format!("{}", active_count)}</>
+                        {format!(" item{} left", choose(active_count != 1, "s", ""))}
                     </>
                     <ul .filters>
-                        <li><a href="#" @click={|_| MainMsg::FilterAll}>All</></>
-                        <li><a href="#" @click={|_| MainMsg::FilterActive}>Active</></>
-                        <li><a href="#" @click={|_| MainMsg::FilterCompleted}>Completed</></>
+                        <li><a class={cls_filter_all} href="#" @click={|_| MainMsg::FilterAll}>All</></>
+                        <li><a class={cls_filter_active} href="#" @click={|_| MainMsg::FilterActive}>Active</></>
+                        <li><a class={cls_filter_completed} href="#" @click={|_| MainMsg::FilterCompleted}>Completed</></>
                     </>
-                    <button class={cls_clear_completed}  @click={|_| MainMsg::RemoveCompleted}>
-                        {"Clear completed"}
+                    <button href="#"
+                        class={format!("clear-completed {}", choose(completed_count > 0, "", "hide"))}
+                        @click={|_| MainMsg::RemoveCompleted}>
+                            {format!("Clear completed ({})", completed_count)}
                     </>
                 </>
             </>
@@ -215,8 +210,15 @@ impl Render for MainApp {
         html!(
             <div>
                 {app}
-                {MainApp::footer()}
+                <footer class="info">
+                    <p>{"Double-click to edit a todo"}</>
+                    <p>{"Written by Raphael Bernhard"}</>
+                </>
             </>
         ).into()
     }
+}
+
+fn choose<T>(cond: bool, if_true: T, if_false: T) -> T {
+    if cond { if_true } else { if_false }
 }
