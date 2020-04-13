@@ -400,7 +400,7 @@ export class Patch {
             9: Patch.prototype.nextNode,
             10: Patch.prototype.removeAttribute,
             11: Patch.prototype.addAttribute,
-            12: Patch.prototype.replaceAttribute,
+            12: Patch.prototype.addAttribute,
             13: Patch.prototype.addBlob,
             14: Patch.prototype.removeBlob,
             15: Patch.prototype.removeJsEvent,
@@ -531,14 +531,7 @@ export class Patch {
     addAttribute() {
         let key = this.deserializeString();
         let value = this.deserializeString();
-        this.element.setAttribute(key, value);
-        this.current_elem_rendered = true;
-    }
-
-    replaceAttribute() {
-        let key = this.deserializeString();
-        let value = this.deserializeString();
-        this.element.setAttribute(key, value);
+        this.updateAttribute(this.element, key, value);
         this.current_elem_rendered = true;
     }
 
@@ -582,6 +575,14 @@ export class Patch {
         }
     }
 
+    updateAttribute(elem, key, value) {
+        if (key == "checked" && elem instanceof HTMLInputElement) {
+            elem.checked = (value == 'true');
+        } else {
+            elem.setAttribute(key, value);
+        }
+    }
+
     deserializeElement() {
         let tag = this.deserializeString();
         
@@ -603,7 +604,7 @@ export class Patch {
         for (var k = 0; k < attr_len; ++k) {
             let key = this.deserializeString();
             let value = this.deserializeString();
-            elem.setAttribute(key, value);
+            this.updateAttribute(elem, key, value);
         }
 
         // event listeners
