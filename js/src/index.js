@@ -539,7 +539,7 @@ export class Patch {
         let attr = this.deserializeString();
         let attr_key = '__' + attr;
         let attr_value = this.element[attr_key];
-        this.element.removeEventListener(attr_value);
+        this.element.removeEventListener(attr, attr_value);
         this.element[attr_key] = undefined;
         this.current_elem_rendered = true;
     }
@@ -560,7 +560,7 @@ export class Patch {
         let fun = this.deserializeEventFunction();
         let key_attr = '__' + key;
         let attr_value = this.element[key_attr];
-        this.element.removeEventListener(attr_value);
+        this.element.removeEventListener(key, attr_value);
         this.element[key_attr] = fun;
         this.element.addEventListener(key, fun);
         this.current_elem_rendered = true;
