@@ -1,0 +1,13 @@
+{
+  "name": "todomvc",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "parcel build scss/styles.scss"
+  },
+  "dependencies": {
+    "parcel-bundler": "^1.12.4",
+    "todomvc-app-css": "^2.3.0"
+  }
+}
