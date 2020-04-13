@@ -30,13 +30,11 @@ pub enum MainMsg {
     TodoToggle(Id),
 
     // footer buttons
-    FilterAll,
-    FilterActive,
-    FilterCompleted,
+    SetFilter(Filter),
     RemoveCompleted,
 }
 
-enum Filter {
+pub enum Filter {
     All,
     Active,
     Completed,
@@ -110,11 +108,8 @@ impl App for MainApp {
                     self.todo_mut(id).editing = false;
                 }
             },
-            MainMsg::FilterAll => { self.filter = Filter::All; },
 
-            MainMsg::FilterActive => { self.filter = Filter::Active; },
-
-            MainMsg::FilterCompleted => { self.filter = Filter::Completed; },
+            MainMsg::SetFilter(filter) => { self.filter = filter; },
 
             MainMsg::RemoveCompleted => {
                 self.todos = self.todos.drain(..)
@@ -170,46 +165,43 @@ impl Render for MainApp {
         let active_count = self.todos.iter().filter(|x| !x.completed).count();
         let completed_count = self.todos.iter().filter(|x| x.completed).count();
 
-        let cls_filter_all = if matches!(self.filter, Filter::All) { "selected" } else { "" };
-        let cls_filter_active = if matches!(self.filter, Filter::Active) { "selected" } else { "" };
-        let cls_filter_completed = if matches!(self.filter, Filter::Completed) { "selected" } else { "" };
-
         let app = html!(
-            <section .todoapp>
-                <header .header>
-                    <h1>{"todos"}</>
-                    <input #new-todo .new-todo autofocus="" autocomplete="off"
-                        placeholder="What needs to be done?" @keyup={MainMsg::NewTodoKeyUp} />
+            <header .header>
+                <h1>{"todos"}</>
+                <input #new-todo .new-todo autofocus="" autocomplete="off"
+                    placeholder="What needs to be done?" @keyup={MainMsg::NewTodoKeyUp} />
+            </>
+            <section class={if self.todos.len() > 0 { "main" } else { "main hide" } }>
+                <input #toggle-all .toggle-all type="checkbox" />
+                <label>{"Mark all as complete"}</>
+                <ul .todo-list>
+                    {filtered_todos}
                 </>
-                <section class={if self.todos.len() > 0 { "main" } else { "main hide" } }>
-                    <input #toggle-all .toggle-all type="checkbox" />
-                    <label>{"Mark all as complete"}</>
-                    <ul .todo-list>
-                        {filtered_todos}
-                    </>
+            </>
+            <footer class={format!("footer {}", choose(self.todos.len() > 0, "", "hide"))}>
+                <span .todo-count>
+                    <strong>{format!("{}", active_count)}</>
+                    {format!(" item{} left", choose(active_count != 1, "s", ""))}
                 </>
-                <footer class={format!("footer {}", choose(self.todos.len() > 0, "", "hide"))}>
-                    <span .todo-count>
-                        <strong>{format!("{}", active_count)}</>
-                        {format!(" item{} left", choose(active_count != 1, "s", ""))}
-                    </>
-                    <ul .filters>
-                        <li><a class={cls_filter_all} href="#" @click={|_| MainMsg::FilterAll}>All</></>
-                        <li><a class={cls_filter_active} href="#" @click={|_| MainMsg::FilterActive}>Active</></>
-                        <li><a class={cls_filter_completed} href="#" @click={|_| MainMsg::FilterCompleted}>Completed</></>
-                    </>
-                    <button href="#"
-                        class={format!("clear-completed {}", choose(completed_count > 0, "", "hide"))}
-                        @click={|_| MainMsg::RemoveCompleted}>
-                            {format!("Clear completed ({})", completed_count)}
-                    </>
+                <ul .filters>
+                    <li><a href="#" class={if matches!(self.filter, Filter::All) { "selected" } else { "" }}
+                        @click={|_| MainMsg::SetFilter(Filter::All)}>All</></>
+                    <li><a href="#" class={if matches!(self.filter, Filter::Active) { "selected" } else { "" }}
+                        @click={|_| MainMsg::SetFilter(Filter::Active)}>Active</></>
+                    <li><a href="#" class={if matches!(self.filter, Filter::Completed) { "selected" } else { "" }}
+                        @click={|_| MainMsg::SetFilter(Filter::Completed)}>Completed</></>
+                </>
+                <button href="#"
+                    class={format!("clear-completed {}", choose(completed_count > 0, "", "hide"))}
+                    @click={|_| MainMsg::RemoveCompleted}>
+                        {format!("Clear completed ({})", completed_count)}
                 </>
             </>
         );
 
         html!(
             <div>
-                {app}
+                <section .todoapp> {app} </>
                 <footer class="info">
                     <p>{"Double-click to edit a todo"}</>
                     <p>{"Written by Raphael Bernhard"}</>
