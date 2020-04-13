@@ -3,6 +3,7 @@
 use greenhorn::prelude::*;
 use greenhorn::{html, Id};
 
+#[derive(Debug)]
 struct Todo {
     id: Id,
     title: String,
@@ -27,7 +28,7 @@ impl Todo {
                 <div .view>
                     <input .toggle type="checkbox"
                         @rpc={move |data| MainMsg::CheckboxRpc(id, data)}
-                        $change="{ app.send(event.target, {'checked': event.target.checked}); }"/>
+                        $change="app.send(event.target, {'checked': event.target.checked});"/>
                     <label @dblclick={move |_| MainMsg::TodoDblClick(id)}>{&self.title}</>
                     <button .destroy @click={move |_| MainMsg::RemoveTodo(id)} />
                 </>
@@ -45,19 +46,16 @@ impl Todo {
 pub struct MainApp {
     todos: Vec<Todo>,
     visibility: Visibility,
-    new_todo: String,
 }
 
 pub enum MainMsg {
     NewTodoKeyUp(DomEvent),
-    NewTodoChanged(DomEvent),
     TodoDblClick(Id),
     RemoveTodo(Id),
     DoneEdit(Id),
     TodoInputKeyUp(Id, DomEvent),
     TodoChanged(Id, DomEvent),
     TodoInputFocus(Id),
-    ToggleCompleted(Id, DomEvent),
     CheckboxRpc(Id, JsonValue),
     FilterAll,
     FilterActive,
@@ -75,15 +73,11 @@ impl App for MainApp {
     fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated {
         match msg {
             MainMsg::NewTodoKeyUp(evt) => {
-                let evt = evt.into_keyboard().unwrap();
-                if evt.key == "Enter" && !self.new_todo.is_empty() {
-                    self.add_todo(ctx)
-                }
-            },
-            MainMsg::NewTodoChanged(evt) => {
                 let value = evt.target_value().get_text().unwrap();
-                self.new_todo = value;
-                println!("{}", self.new_todo);
+                let evt = evt.into_keyboard().unwrap();
+                if evt.key == "Enter" && !value.is_empty() {
+                    self.add_todo(value, ctx)
+                }
             },
             MainMsg::TodoDblClick(id) => {
                 self.get_todo_mut(id).unwrap().editing = true;
@@ -106,7 +100,7 @@ impl App for MainApp {
             },
             MainMsg::RemoveCompleted => {
                 self.todos = self.todos.drain(..)
-                    .filter(|x| x.completed)
+                    .filter(|x| !x.completed)
                     .collect::<Vec<_>>();
             },
             MainMsg::TodoChanged(id, evt) => {
@@ -115,14 +109,13 @@ impl App for MainApp {
             MainMsg::TodoInputFocus(_) => {
 
             }
-            MainMsg::ToggleCompleted(id, evt) => {
-                println!("{:?}", evt.target_value());
-                // self.todos[idx].completed = evt.target_value().get_bool().unwrap();
-            }
             MainMsg::CheckboxRpc(id, data) => {
-                println!("{:?}", data);
+                let checked = data.as_object().unwrap().get("checked").unwrap().as_bool().unwrap();
+                self.get_todo_mut(id).unwrap().completed = checked;
             }
         }
+
+        println!("{:?}", self.todos);
         Updated::yes()
     }
 }
@@ -132,7 +125,6 @@ impl MainApp {
         Self {
             todos: vec![],
             visibility: Visibility::All,
-            new_todo: "".to_string()
         }
     }
 
@@ -146,14 +138,13 @@ impl MainApp {
         rm_idx.map(|x| self.todos.remove(x));
     }
 
-    fn add_todo(&mut self, ctx: Context<MainMsg>) {
+    fn add_todo(&mut self, value: String, ctx: Context<MainMsg>) {
         let todo = Todo {
             id: Default::default(),
-            title: self.new_todo.clone(),
+            title: value,
             completed: false,
             editing: false
         };
-        self.new_todo = "".to_string();
         ctx.run_js("document.getElementById('new-todo').value = ''");
         self.todos.push(todo);
     }
@@ -195,11 +186,10 @@ impl Render for MainApp {
                     <h1>{"todos"}</>
                     <input #new-todo .new-todo autofocus="" autocomplete="off" placeholder="What needs to be done?"
                         @keyup={MainMsg::NewTodoKeyUp}
-                        @input={MainMsg::NewTodoChanged}
                          />
                 </>
                 <section class={if todos.len() > 0 { "main" } else { "main hide" } }>
-                    <input #toggle-all .toggle-all type="checkbox" /> // TODO: all done
+                    <input #toggle-all .toggle-all type="checkbox" />
                     <label>{"Mark all as complete"}</>
                     <ul .todo-list>
                         {todos}

@@ -484,7 +484,8 @@ export class Patch {
 
     changeText() {
         let text = this.deserializeText();
-        this.element.nodeValue = text.text;
+        this.element.parentNode.replaceChild(text, this.element);
+        this.element = text;
     }
 
     ascend() {
