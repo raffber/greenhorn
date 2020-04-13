@@ -26,9 +26,7 @@ impl Todo {
         html!(
             <li .todo>
                 <div .view>
-                    <input .toggle type="checkbox"
-                        @rpc={move |data| MainMsg::CheckboxRpc(id, data)}
-                        $change="app.send(event.target, {'checked': event.target.checked});"/>
+                    <input .toggle type="checkbox" @click={move |_| MainMsg::Toggle(id)} checked={self.completed}/>
                     <label @dblclick={move |_| MainMsg::TodoDblClick(id)}>{&self.title}</>
                     <button .destroy @click={move |_| MainMsg::RemoveTodo(id)} />
                 </>
@@ -56,7 +54,7 @@ pub enum MainMsg {
     TodoInputKeyUp(Id, DomEvent),
     TodoChanged(Id, DomEvent),
     TodoInputFocus(Id),
-    CheckboxRpc(Id, JsonValue),
+    Toggle(Id),
     FilterAll,
     FilterActive,
     FilterCompleted,
@@ -109,13 +107,13 @@ impl App for MainApp {
             MainMsg::TodoInputFocus(_) => {
 
             }
-            MainMsg::CheckboxRpc(id, data) => {
-                let checked = data.as_object().unwrap().get("checked").unwrap().as_bool().unwrap();
-                self.get_todo_mut(id).unwrap().completed = checked;
+            MainMsg::Toggle(id) => {
+                let todo = self.get_todo_mut(id).unwrap();
+                println!("{}", todo.completed);
+                todo.completed = !todo.completed;
             }
         }
 
-        println!("{:?}", self.todos);
         Updated::yes()
     }
 }
@@ -203,9 +201,9 @@ impl Render for MainApp {
                         </>
                     </>
                     <ul .filters>
-                        <li><a @click={|_| MainMsg::FilterAll}>All</></>
-                        <li><a @click={|_| MainMsg::FilterActive}>Active</></>
-                        <li><a @click={|_| MainMsg::FilterCompleted}>Completed</></>
+                        <li><a href="#" @click={|_| MainMsg::FilterAll}>All</></>
+                        <li><a href="#" @click={|_| MainMsg::FilterActive}>Active</></>
+                        <li><a href="#" @click={|_| MainMsg::FilterCompleted}>Completed</></>
                     </>
                     <button class={cls_clear_completed}  @click={|_| MainMsg::RemoveCompleted}>
                         {"Clear completed"}
