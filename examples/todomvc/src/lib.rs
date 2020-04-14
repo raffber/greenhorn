@@ -1,5 +1,8 @@
 #![recursion_limit="512"]
 
+
+// TODO: create a macro which expands classes!( <condition> => value, <condition> => value, ...)
+
 use greenhorn::prelude::*;
 use greenhorn::{html, Id};
 
@@ -165,7 +168,7 @@ impl Render for MainApp {
         let active_count = self.todos.iter().filter(|x| !x.completed).count();
         let completed_count = self.todos.iter().filter(|x| x.completed).count();
 
-        let app = html!(
+        let app = html!(<section .todoapp>
             <header .header>
                 <h1>{"todos"}</>
                 <input #new-todo .new-todo autofocus="" autocomplete="off"
@@ -197,17 +200,15 @@ impl Render for MainApp {
                         {format!("Clear completed ({})", completed_count)}
                 </>
             </>
-        );
+        </>);
 
-        html!(
-            <div>
-                <section .todoapp> {app} </>
-                <footer class="info">
-                    <p>{"Double-click to edit a todo"}</>
-                    <p>{"Written by Raphael Bernhard"}</>
-                </>
+        html!( <div>
+            {app}
+            <footer class="info">
+                <p>{"Double-click to edit a todo"}</>
+                <p>{"Written by Raphael Bernhard"}</>
             </>
-        ).into()
+        </> ).into()
     }
 }
 
