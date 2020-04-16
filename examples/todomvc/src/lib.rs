@@ -1,8 +1,5 @@
 #![recursion_limit="512"]
 
-
-// TODO: create a macro which expands classes!( <condition> => value, <condition> => value, ...)
-
 use greenhorn::prelude::*;
 use greenhorn::{html, Id};
 
@@ -23,6 +20,7 @@ struct Todo {
 pub enum MainMsg {
     // add todo field
     NewTodoKeyUp(DomEvent),
+    SelectAll,
 
     // messages from the item editor
     TodoStartEdit(Id),
@@ -37,6 +35,7 @@ pub enum MainMsg {
     RemoveCompleted,
 }
 
+#[derive(Clone)]
 pub enum Filter {
     All,
     Active,
@@ -74,8 +73,15 @@ impl Todo {
         } else {
             html!(<input .edit type="hidden" />).into()
         };
+        let mut class = "todo".to_string();
+        if self.editing {
+            class.push_str(" editing");
+        }
+        if self.completed {
+            class.push_str(" completed");
+        }
         html!(
-            <li class={if self.editing { "todo editing" } else { "todo" }}>
+            <li class={&class}>
                 <div .view>
                     <input .toggle type="checkbox" @click={move |_| MainMsg::TodoToggle(id)} checked={self.completed}/>
                     <label @dblclick={move |_| MainMsg::TodoStartEdit(id)}>{&self.title}</>
@@ -100,15 +106,17 @@ impl App for MainApp {
                 }
             },
 
-            MainMsg::TodoStartEdit(id) => { self.todo_mut(id).editing = true; },
+            MainMsg::TodoStartEdit(id) => {
+                self.todo_mut(id).editing = true;
+            },
 
             MainMsg::RemoveTodo(id) => { self.remove_todo(id); },
 
-            MainMsg::TodoEditDone(id) => { self.todo_mut(id).editing = false; },
+            MainMsg::TodoEditDone(id) => { self.todo_edit_done(id) },
 
             MainMsg::TodoInputKeyUp(id, evt) => {
                 if evt.into_keyboard().unwrap().key == "Enter" {
-                    self.todo_mut(id).editing = false;
+                    self.todo_edit_done(id);
                 }
             },
 
@@ -127,6 +135,17 @@ impl App for MainApp {
            MainMsg::TodoToggle(id) => {
                 let todo = self.todo_mut(id);
                 todo.completed = !todo.completed;
+            }
+            MainMsg::SelectAll => {
+                let cur_state = self.todos.iter()
+                    .filter(|x| x.check_filter(&self.filter))
+                    .all(|x| x.completed);
+                let new_state = !cur_state;
+                let filter = self.filter.clone();
+                for todo in self.todos.iter_mut()
+                        .filter(|x| x.check_filter(&filter)) {
+                    todo.completed = new_state;
+                }
             }
         }
         Updated::yes()
@@ -154,6 +173,12 @@ impl MainApp {
     fn todo_mut(&mut self, id: Id) -> &mut Todo {
         self.todos.iter_mut().filter(|x| x.id == id).next().unwrap()
     }
+
+    fn todo_edit_done(&mut self, id: Id) {
+        let todo = self.todo_mut(id);
+        todo.title = todo.title.trim().to_string();
+        todo.editing = false;
+    }
 }
 
 impl Render for MainApp {
@@ -168,6 +193,10 @@ impl Render for MainApp {
         let active_count = self.todos.iter().filter(|x| !x.completed).count();
         let completed_count = self.todos.iter().filter(|x| x.completed).count();
 
+        let all_filtered_done = self.todos.iter()
+            .filter(|x| x.check_filter(&self.filter))
+            .all(|x| x.completed);
+
         let app = html!(<section .todoapp>
             <header .header>
                 <h1>{"todos"}</>
@@ -175,8 +204,9 @@ impl Render for MainApp {
                     placeholder="What needs to be done?" @keyup={MainMsg::NewTodoKeyUp} />
             </>
             <section class={if self.todos.len() > 0 { "main" } else { "main hide" } }>
-                <input #toggle-all .toggle-all type="checkbox" />
-                <label>{"Mark all as complete"}</>
+                <input #toggle-all .toggle-all type="checkbox" @change={|_| MainMsg::SelectAll}
+                    checked={all_filtered_done} />
+                <label for="toggle-all">{"Mark all as complete"}</>
                 <ul .todo-list>
                     {filtered_todos}
                 </>
