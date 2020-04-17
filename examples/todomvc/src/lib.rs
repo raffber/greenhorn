@@ -80,10 +80,18 @@ impl Todo {
         if self.completed {
             class.push_str(" completed");
         }
+        let input = Node::html()
+            .elem("input")
+            .class("toggle")
+            .attr("type", "checkbox")
+            .attr("checked", self.completed.to_string())
+            .listener("click", move |_| MainMsg::TodoToggle(id)).prevent_default().build()
+            .build();
+
         html!(
             <li class={&class}>
                 <div .view>
-                    <input .toggle type="checkbox" @click={move |_| MainMsg::TodoToggle(id)} checked={self.completed}/>
+                    {input}
                     <label @dblclick={move |_| MainMsg::TodoStartEdit(id)}>{&self.title}</>
                     <button .destroy @click={move |_| MainMsg::RemoveTodo(id)} />
                 </>
