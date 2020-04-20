@@ -1,12 +1,12 @@
 use crate::node::Node;
 use crate::dom::DomEvent;
-use std::marker::PhantomData;
 use std::collections::HashMap;
 use crate::event::Event;
 use crate::context::Context;
 use std::sync::{Arc, Mutex};
 use crate::node_builder::{ElementBuilder, NodeIter};
 use std::iter::{Once, once};
+use crate::vdom::Attr;
 
 
 pub struct SubscribedEvent {
@@ -24,18 +24,16 @@ pub struct TextInputSubscription<T: 'static + Send> {
     mapper: Arc<Mutex<dyn 'static + Send + Fn(DomEvent) -> T>>,
 }
 
-pub struct TextInput<T: 'static + Send> {
+pub struct TextInput {
     text: String,
     version: u32,
-    marker: PhantomData<T>,
 }
 
-impl<T: 'static + Send> TextInput<T> {
+impl TextInput {
     pub fn new() -> Self {
         Self {
             text: "".to_string(),
             version: 0,
-            marker: PhantomData,
         }
     }
 
@@ -49,7 +47,7 @@ impl<T: 'static + Send> TextInput<T> {
         &self.text
     }
 
-    pub fn update(&mut self, msg: TextInputMsg, ctx: &Context<T>) {
+    pub fn update<T: 'static + Send>(&mut self, msg: TextInputMsg, ctx: &Context<T>) {
         match msg {
             TextInputMsg::ValueChange(evt) => {
                 self.text = evt.target_value().get_text().unwrap()
@@ -60,7 +58,7 @@ impl<T: 'static + Send> TextInput<T> {
         }
     }
 
-    pub fn render<F: 'static + Send + Fn(TextInputMsg) -> T>(&self, mapper: F) -> TextInputRender<T> {
+    pub fn render<T: 'static + Send, F: 'static + Send + Fn(TextInputMsg) -> T>(&self, mapper: F) -> TextInputRender<T> {
         // we use this very simple technique to move the actual DOM diffing to the frontend side:
         // if we set the new text value, we also bump the version.
         // the version is also recorded in a custom attribute. If the frontend sees that
@@ -104,6 +102,24 @@ impl<T: 'static + Send> TextInputRender<T> {
         self
     }
 
+    pub fn id<S: Into<String>>(mut self, id: S) -> Self {
+        self.input_node.html_id = Some(id.into());
+        self
+    }
+
+    pub fn class<S: Into<String>>(mut self, class: S) -> Self {
+        self.input_node.classes.push(class.into());
+        self
+    }
+
+    pub fn attr<R: ToString, S: ToString>(mut self, key: R, value: S) -> Self {
+        self.input_node.attrs.push(Attr {
+            key: key.to_string(),
+            value: value.to_string(),
+        });
+        self
+    }
+
     pub fn render(self) -> Node<T> {
         let mut parent = Node::html().elem("div");
         let mut input_node = self.input_node;
@@ -138,7 +154,7 @@ impl<T: 'static + Send> From<TextInputRender<T>> for NodeIter<T, Once<Node<T>>> 
     }
 }
 
-impl<T: 'static + Send> Default for TextInput<T> {
+impl Default for TextInput {
     fn default() -> Self {
         Self::new()
     }

@@ -2,12 +2,13 @@
 
 use greenhorn::prelude::*;
 use greenhorn::{html, Id};
-use greenhorn::components::checkbox;
+use greenhorn::components::{checkbox, TextInput, TextInputMsg};
 
 
 pub struct MainApp {
     todos: Vec<Todo>,
     filter: Filter,
+    new_todo: TextInput,
 }
 
 #[derive(Debug)]
@@ -19,7 +20,7 @@ struct Todo {
 }
 
 pub enum MainMsg {
-    // add todo field
+    NewTodoMsg(TextInputMsg),
     NewTodoKeyUp(DomEvent),
     SelectAll,
 
@@ -101,18 +102,15 @@ impl App for MainApp {
     fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated {
         match msg {
             MainMsg::NewTodoKeyUp(evt) => {
-                let value = evt.target_value().get_text().unwrap();
                 let evt = evt.into_keyboard().unwrap();
-                if evt.key == "Enter" && !value.is_empty() {
-                    let todo = Todo::new(value);
-                    ctx.run_js("document.getElementById('new-todo').value = ''");
+                if evt.key == "Enter" && !self.new_todo.get().is_empty() {
+                    let todo = Todo::new(self.new_todo.get().to_string());
+                    self.new_todo.set("");
                     self.todos.push(todo);
                 }
             },
 
-            MainMsg::TodoStartEdit(id) => {
-                self.todo_mut(id).editing = true;
-            },
+            MainMsg::TodoStartEdit(id) => { self.todo_mut(id).editing = true; },
 
             MainMsg::RemoveTodo(id) => { self.remove_todo(id); },
 
@@ -151,6 +149,7 @@ impl App for MainApp {
                     todo.completed = new_state;
                 }
             }
+            MainMsg::NewTodoMsg(msg) => {self.new_todo.update(msg, &ctx)}
         }
         Updated::yes()
     }
@@ -161,6 +160,7 @@ impl MainApp {
         Self {
             todos: vec![],
             filter: Filter::All,
+            new_todo: Default::default()
         }
     }
 
@@ -201,11 +201,14 @@ impl Render for MainApp {
             .filter(|x| x.check_filter(&self.filter))
             .all(|x| x.completed);
 
+        let new_todo = self.new_todo.render(MainMsg::NewTodoMsg)
+            .class("new-todo").attr("autofocus", "").attr("autocomplete", "off")
+            .attr("placeholder", "What needs to be done?").on("keyup", MainMsg::NewTodoKeyUp);
+
         let app = html!(<section .todoapp>
             <header .header>
                 <h1>{"todos"}</>
-                <input #new-todo .new-todo autofocus="" autocomplete="off"
-                    placeholder="What needs to be done?" @keyup={MainMsg::NewTodoKeyUp} />
+                {new_todo}
             </>
             <section class={if self.todos.len() > 0 { "main" } else { "main hide" } }>
                 {checkbox(all_filtered_done, || MainMsg::SelectAll).class("toggle-all").id("toggle-all")}
