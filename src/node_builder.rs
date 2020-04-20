@@ -104,16 +104,16 @@ impl BlobBuilder {
 }
 
 pub struct ElementBuilder<T: 'static + Send> {
-    id: Id,
-    tag: String,
-    attrs: Vec<Attr>,
-    js_events: Vec<Attr>,
-    listeners: Vec<Listener<T>>,
-    children: Vec<Node<T>>,
-    namespace: Option<String>,
-    classes: Vec<String>,
-    html_id: Option<String>,
-    rpc: Option<Rpc<T>>,
+    pub(crate) id: Id,
+    pub(crate) tag: String,
+    pub(crate) attrs: Vec<Attr>,
+    pub(crate) js_events: Vec<Attr>,
+    pub(crate) listeners: Vec<Listener<T>>,
+    pub(crate) children: Vec<Node<T>>,
+    pub(crate) namespace: Option<String>,
+    pub(crate) classes: Vec<String>,
+    pub(crate) html_id: Option<String>,
+    pub(crate) rpc: Option<Rpc<T>>,
 }
 
 impl<T: 'static + Send> ElementBuilder<T> {
