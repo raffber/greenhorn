@@ -2,6 +2,7 @@
 
 use greenhorn::prelude::*;
 use greenhorn::{html, Id};
+use greenhorn::components::checkbox;
 
 
 pub struct MainApp {
@@ -80,18 +81,13 @@ impl Todo {
         if self.completed {
             class.push_str(" completed");
         }
-        let input = Node::html()
-            .elem("input")
-            .class("toggle")
-            .attr("type", "checkbox")
-            .attr("checked", self.completed.to_string())
-            .listener("click", move |_| MainMsg::TodoToggle(id)).prevent_default().build()
-            .build();
+
+        let checkbox = checkbox(self.completed, move || MainMsg::TodoToggle(id)).class("toggle");
 
         html!(
             <li class={&class}>
                 <div .view>
-                    {input}
+                    {checkbox}
                     <label @dblclick={move |_| MainMsg::TodoStartEdit(id)}>{&self.title}</>
                     <button .destroy @click={move |_| MainMsg::RemoveTodo(id)} />
                 </>
@@ -120,7 +116,7 @@ impl App for MainApp {
 
             MainMsg::RemoveTodo(id) => { self.remove_todo(id); },
 
-            MainMsg::TodoEditDone(id) => { self.todo_edit_done(id) },
+            MainMsg::TodoEditDone(id) => { self.todo_edit_done(id); },
 
             MainMsg::TodoInputKeyUp(id, evt) => {
                 if evt.into_keyboard().unwrap().key == "Enter" {
@@ -141,8 +137,8 @@ impl App for MainApp {
             }
 
            MainMsg::TodoToggle(id) => {
-                let todo = self.todo_mut(id);
-                todo.completed = !todo.completed;
+               let todo = self.todo_mut(id);
+               todo.completed = !todo.completed;
             }
             MainMsg::SelectAll => {
                 let cur_state = self.todos.iter()
@@ -212,8 +208,7 @@ impl Render for MainApp {
                     placeholder="What needs to be done?" @keyup={MainMsg::NewTodoKeyUp} />
             </>
             <section class={if self.todos.len() > 0 { "main" } else { "main hide" } }>
-                <input #toggle-all .toggle-all type="checkbox" @change={|_| MainMsg::SelectAll}
-                    checked={all_filtered_done} />
+                {checkbox(all_filtered_done, || MainMsg::SelectAll).class("toggle-all").id("toggle-all")}
                 <label for="toggle-all">{"Mark all as complete"}</>
                 <ul .todo-list>
                     {filtered_todos}

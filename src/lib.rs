@@ -191,7 +191,7 @@ static COUNTER: AtomicU64 = AtomicU64::new(1);
 
 impl Id {
     pub fn new() -> Id {
-        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let id = COUNTER.fetch_add(1, Ordering::Relaxed);
         Id { id }
     }
 

@@ -299,7 +299,7 @@ impl<T: 'static + Send> From<Subscription<T>> for Node<T> {
 }
 
 pub struct NodeIter<T: 'static + Send, U: Iterator<Item=Node<T>>> {
-    inner: U,
+    pub(crate) inner: U,
 }
 
 impl<T: 'static + Send, U: Iterator<Item=Node<T>>> Iterator for NodeIter<T, U> {
