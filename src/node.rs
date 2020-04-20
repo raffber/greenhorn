@@ -150,7 +150,7 @@ impl<T: 'static + Send> Node<T> {
     }
 
     /// same as `Node::map()` but uses a shared reference of an already created mapping function
-    pub(crate) fn map_shared<U: 'static + Send>(self, fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>) -> Node<U> {
+    pub fn map_shared<U: 'static + Send>(self, fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>) -> Node<U> {
         let ret = match self.0 {
             NodeItems::ElementMap(inner) => {
                 let ret = ElementRemap::new_box(fun, inner.inner);

@@ -87,7 +87,6 @@ impl<T: 'static> Debug for Subscription<T> {
 }
 
 
-#[derive(Clone, Copy)]
 pub struct Event<T: Any> {
     id: Id,
     marker: PhantomData<T>,
@@ -122,6 +121,15 @@ impl<T: Any> Event<T> {
 impl<T: Any> Default for Event<T> {
     fn default() -> Self {
         Event::new()
+    }
+}
+
+impl<T: Any> Clone for Event<T> {
+    fn clone(&self) -> Self {
+        Event {
+            id: self.id,
+            marker: PhantomData
+        }
     }
 }
 

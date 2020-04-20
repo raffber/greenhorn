@@ -5,10 +5,18 @@ use std::collections::HashMap;
 use crate::event::Event;
 use crate::context::Context;
 use std::sync::{Arc, Mutex};
+use crate::node_builder::{ElementBuilder, NodeIter};
+use std::iter::{Once, once};
+
+
+pub struct SubscribedEvent {
+    component_event: Event<DomEvent>,
+    evt: DomEvent
+}
 
 pub enum TextInputMsg {
     ValueChange(DomEvent),
-    SubscribedEvent(String, DomEvent),
+    SubscribedEvent(SubscribedEvent),
 }
 
 pub struct TextInputSubscription<T: 'static + Send> {
@@ -20,7 +28,6 @@ pub struct TextInput<T: 'static + Send> {
     text: String,
     version: u32,
     marker: PhantomData<T>,
-    events: HashMap<String, TextInputSubscription<T>>,
 }
 
 impl<T: 'static + Send> TextInput<T> {
@@ -29,7 +36,6 @@ impl<T: 'static + Send> TextInput<T> {
             text: "".to_string(),
             version: 0,
             marker: PhantomData,
-            events: Default::default()
         }
     }
 
@@ -48,27 +54,13 @@ impl<T: 'static + Send> TextInput<T> {
             TextInputMsg::ValueChange(evt) => {
                 self.text = evt.target_value().get_text().unwrap()
             },
-            TextInputMsg::SubscribedEvent(evt_name, evt) => {
-                if let Some(comp_evt) = self.events.get(&evt_name) {
-                    ctx.emit(&comp_evt.event, evt);
-                }
+            TextInputMsg::SubscribedEvent(subs) => {
+                ctx.emit(&subs.component_event, subs.evt);
             }
         }
     }
 
-    pub fn subscribe<S: Into<String>, F: 'static + Send + Fn(DomEvent) -> T>(&mut self, evt_name: S, mapper: F) {
-        let subs = TextInputSubscription {
-            event: Default::default(),
-            mapper: Arc::new(Mutex::new(mapper))
-        };
-        self.events.insert(evt_name.into(), subs);
-    }
-
-    pub fn unsubscribe(&mut self, evt_name: &str) {
-        self.events.remove(evt_name);
-    }
-
-    pub fn render<F: 'static + Send + Fn(TextInputMsg) -> T>(&self, mapper: F) -> Node<T> {
+    pub fn render<F: 'static + Send + Fn(TextInputMsg) -> T>(&self, mapper: F) -> TextInputRender<T> {
         // we use this very simple technique to move the actual DOM diffing to the frontend side:
         // if we set the new text value, we also bump the version.
         // the version is also recorded in a custom attribute. If the frontend sees that
@@ -82,22 +74,67 @@ impl<T: 'static + Send> TextInput<T> {
                 event.target.setAttribute('__rendered_version', value_version);
             }
         }";
-        let mut input_node = Node::html().elem("input")
+        let input_node = Node::html().elem("input")
             .attr("type", "text")
             .attr("__value_version", self.version)
             .attr("value", &self.text)
             .on("change", TextInputMsg::ValueChange)
             .js_event("render", render_fun);
+        TextInputRender {
+            mapper: Arc::new(Mutex::new(mapper)),
+            input_node,
+            events: Default::default()
+        }
+    }
+}
+
+pub struct TextInputRender<T: 'static + Send> {
+    mapper: Arc<Mutex<dyn 'static + Send + Fn(TextInputMsg) -> T>>,
+    input_node: ElementBuilder<TextInputMsg>,
+    events: HashMap<String, TextInputSubscription<T>>,
+}
+
+impl<T: 'static + Send> TextInputRender<T> {
+    pub fn on<S: Into<String>, F: 'static + Send + Fn(DomEvent) -> T>(mut self, evt_name: S, mapper: F) -> Self {
+        let subs = TextInputSubscription {
+            event: Default::default(),
+            mapper: Arc::new(Mutex::new(mapper))
+        };
+        self.events.insert(evt_name.into(), subs);
+        self
+    }
+
+    pub fn render(self) -> Node<T> {
         let mut parent = Node::html().elem("div");
+        let mut input_node = self.input_node;
         for (evt_name, subs) in &self.events {
-            let evt_name_clone = evt_name.clone();
-            input_node = input_node.on(evt_name, move |evt| TextInputMsg::SubscribedEvent(evt_name_clone.clone(), evt));
+            let event_cloned = subs.event.clone();
+            let fun = move |evt| {
+                let data = SubscribedEvent {
+                    component_event: event_cloned.clone(),
+                    evt
+                };
+                TextInputMsg::SubscribedEvent(data)
+            };
+            input_node = input_node.on(evt_name, fun);
             let fun = subs.mapper.clone();
             let subscription = subs.event.subscribe(move |evt| (*fun.lock().unwrap())(evt));
             parent = parent.add(subscription);
         }
-        parent = parent.add(input_node.build().map(mapper));
+        parent = parent.add(input_node.build().map_shared(self.mapper));
         parent.build()
+    }
+}
+
+impl<T: 'static + Send> From<TextInputRender<T>> for Node<T> {
+    fn from(value: TextInputRender<T>) -> Self {
+        value.render()
+    }
+}
+
+impl<T: 'static + Send> From<TextInputRender<T>> for NodeIter<T, Once<Node<T>>> {
+    fn from(value: TextInputRender<T>) -> Self {
+        NodeIter { inner: once(value.render()) }
     }
 }
 
@@ -106,3 +143,4 @@ impl<T: 'static + Send> Default for TextInput<T> {
         Self::new()
     }
 }
+
