@@ -147,6 +147,7 @@ pub mod any;
 /// use greenhorn::prelude::*;
 /// ```
 pub mod prelude {
+    pub use crate::Id;
     pub use crate::component::{Component, Updated};
     pub use crate::{App, Render};
     pub use crate::node::Node;

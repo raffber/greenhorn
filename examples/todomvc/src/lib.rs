@@ -1,7 +1,6 @@
 #![recursion_limit="512"]
-
 use greenhorn::prelude::*;
-use greenhorn::{html, Id};
+use greenhorn::html;
 use greenhorn::components::{checkbox, TextInput, TextInputMsg};
 
 
@@ -23,18 +22,16 @@ pub enum MainMsg {
     NewTodoMsg(TextInputMsg),
     NewTodoKeyUp(DomEvent),
     SelectAll,
+    SetFilter(Filter),
+    RemoveCompleted,
 
-    // messages from the item editor
+    // item messages
     TodoStartEdit(Id),
-    RemoveTodo(Id),
+    TodoRemove(Id),
     TodoEditDone(Id),
     TodoInputKeyUp(Id, DomEvent),
     TodoChanged(Id, DomEvent),
     TodoToggle(Id),
-
-    // footer buttons
-    SetFilter(Filter),
-    RemoveCompleted,
 }
 
 #[derive(Clone)]
@@ -83,14 +80,12 @@ impl Todo {
             class.push_str(" completed");
         }
 
-        let checkbox = checkbox(self.completed, move || MainMsg::TodoToggle(id)).class("toggle");
-
         html!(
             <li class={&class}>
                 <div .view>
-                    {checkbox}
+                    {checkbox(self.completed, move || MainMsg::TodoToggle(id)).class("toggle")}
                     <label @dblclick={move |_| MainMsg::TodoStartEdit(id)}>{&self.title}</>
-                    <button .destroy @click={move |_| MainMsg::RemoveTodo(id)} />
+                    <button .destroy @click={move |_| MainMsg::TodoRemove(id)} />
                 </>
                 {text_input}
             </>
@@ -112,7 +107,7 @@ impl App for MainApp {
 
             MainMsg::TodoStartEdit(id) => { self.todo_mut(id).editing = true; },
 
-            MainMsg::RemoveTodo(id) => { self.remove_todo(id); },
+            MainMsg::TodoRemove(id) => { self.remove_todo(id); },
 
             MainMsg::TodoEditDone(id) => { self.todo_edit_done(id); },
 
@@ -165,12 +160,9 @@ impl MainApp {
     }
 
     fn remove_todo(&mut self, id: Id) {
-        let mut rm_idx = None;
-        for (k, v) in self.todos.iter().enumerate() {
-            if v.id == id {
-                rm_idx = Some(k);
-            }
-        }
+        let rm_idx = self.todos.iter().enumerate()
+            .find(|(_,v)| v.id == id)
+            .map(|(k,_)| k);
         rm_idx.map(|x| self.todos.remove(x));
     }
 
@@ -213,14 +205,12 @@ impl Render for MainApp {
             <section class={if self.todos.len() > 0 { "main" } else { "main hide" } }>
                 {checkbox(all_filtered_done, || MainMsg::SelectAll).class("toggle-all").id("toggle-all")}
                 <label for="toggle-all">{"Mark all as complete"}</>
-                <ul .todo-list>
-                    {filtered_todos}
-                </>
+                <ul .todo-list> {filtered_todos} </>
             </>
-            <footer class={format!("footer {}", choose(self.todos.len() > 0, "", "hide"))}>
+            <footer class={format!("footer {}", if self.todos.len() > 0 {""} else {"hide"})}>
                 <span .todo-count>
                     <strong>{format!("{}", active_count)}</>
-                    {format!(" item{} left", choose(active_count != 1, "s", ""))}
+                    {format!(" item{} left", if active_count != 1 {"s"} else {""})}
                 </>
                 <ul .filters>
                     <li><a href="#" class={if matches!(self.filter, Filter::All) { "selected" } else { "" }}
@@ -231,7 +221,7 @@ impl Render for MainApp {
                         @click={|_| MainMsg::SetFilter(Filter::Completed)}>Completed</></>
                 </>
                 <button href="#"
-                    class={format!("clear-completed {}", choose(completed_count > 0, "", "hide"))}
+                    class={format!("clear-completed {}", if completed_count > 0 {""} else {"hide"})}
                     @click={|_| MainMsg::RemoveCompleted}>
                         {format!("Clear completed ({})", completed_count)}
                 </>
@@ -246,8 +236,4 @@ impl Render for MainApp {
             </>
         </> ).into()
     }
-}
-
-fn choose<T>(cond: bool, if_true: T, if_false: T) -> T {
-    if cond { if_true } else { if_false }
 }
