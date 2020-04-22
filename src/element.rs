@@ -6,18 +6,24 @@ use std::fmt::{Debug, Formatter, Error};
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
+/// Element type to represent a DOM element
+///
+/// We use Option<...> to allow moving content out of an
+/// Element instance.
 pub(crate) struct Element<T: 'static + Send> {
     pub(crate) id: Id,
-    pub(crate) tag: Option<String>,
-    pub(crate) attrs: Option<Vec<Attr>>,
-    pub(crate) js_events: Option<Vec<Attr>>,
-    pub(crate) listeners: Option<Vec<Listener<T>>>,
-    pub(crate) children: Option<Vec<Node<T>>>,
-    pub(crate) namespace: Option<String>,
-    pub(crate) rpc: Option<Rpc<T>>,
+    pub(crate) tag: Option<String>,             // The tag name. Must be present.
+    pub(crate) attrs: Option<Vec<Attr>>,        // Generic HTML attributes
+    pub(crate) js_events: Option<Vec<Attr>>,    // JS event handlers
+    pub(crate) listeners: Option<Vec<Listener<T>>>, // Registered listeners
+    pub(crate) children: Option<Vec<Node<T>>>,  // child nodes
+    pub(crate) namespace: Option<String>,       // an optional namespace. If None the HTML namespace is assumed
+    pub(crate) rpc: Option<Rpc<T>>,             // An RPC message handler for this node
 }
 
 impl<T: 'static + Send> Element<T> {
+    /// Attempt to clone this element. Panics in case this element contains
+    /// non-clonable children.
     pub(crate) fn try_clone(&self) -> Option<Self> {
         let children = if let Some(children) = self.children.as_ref() {
             let mut new_children = Vec::with_capacity(children.len());
@@ -66,6 +72,8 @@ impl<T: 'static + Send> Debug for Element<T> {
     }
 }
 
+/// Container to simplify type erasure of [Elements](struct.Element.html) with different
+/// message type.
 pub(crate) struct MappedElement<T: 'static + Send> {
     pub(crate) inner: Box<dyn ElementMap<T>>,
 }
@@ -85,17 +93,10 @@ impl<T: 'static + Send> MappedElement<T> {
     }
 }
 
-impl<T: 'static + Send> ElementMap<T> for MappedElement<T> {
-    fn take_listeners(&mut self) -> Vec<Listener<T>> { self.inner.take_listeners() }
-    fn take_children(&mut self) -> Vec<Node<T>> { self.inner.take_children() }
-    fn id(&self) -> Id { self.inner.id() }
-    fn take_attrs(&mut self) -> Vec<Attr> { self.inner.take_attrs() }
-    fn take_tag(&mut self) -> String { self.inner.take_tag() }
-    fn take_namespace(&mut self) -> Option<String> { self.inner.take_namespace() }
-    fn take_js_events(&mut self) -> Vec<Attr> { self.inner.take_js_events() }
-    fn take_rpc(&mut self) -> Option<Rpc<T>> { self.inner.take_rpc() }
-}
-
+/// Trait interface for type erasure of [Elements](struct.Element.html)
+///
+/// All `.take_*()` functions are only callable once. Calling them more then once
+/// will cause a panic.
 pub(crate) trait ElementMap<T: 'static + Send> : Debug {
     fn take_listeners(&mut self) -> Vec<Listener<T>>;
     fn take_children(&mut self) -> Vec<Node<T>>;
@@ -105,6 +106,17 @@ pub(crate) trait ElementMap<T: 'static + Send> : Debug {
     fn take_namespace(&mut self) -> Option<String>;
     fn take_js_events(&mut self) -> Vec<Attr>;
     fn take_rpc(&mut self) -> Option<Rpc<T>>;
+}
+
+impl<T: 'static + Send> ElementMap<T> for MappedElement<T> {
+    fn take_listeners(&mut self) -> Vec<Listener<T>> { self.inner.take_listeners() }
+    fn take_children(&mut self) -> Vec<Node<T>> { self.inner.take_children() }
+    fn id(&self) -> Id { self.inner.id() }
+    fn take_attrs(&mut self) -> Vec<Attr> { self.inner.take_attrs() }
+    fn take_tag(&mut self) -> String { self.inner.take_tag() }
+    fn take_namespace(&mut self) -> Option<String> { self.inner.take_namespace() }
+    fn take_js_events(&mut self) -> Vec<Attr> { self.inner.take_js_events() }
+    fn take_rpc(&mut self) -> Option<Rpc<T>> { self.inner.take_rpc() }
 }
 
 impl<T: 'static + Send> ElementMap<T> for Element<T> {

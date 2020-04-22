@@ -1,3 +1,17 @@
+//! The context module exports the `Context` type, which allows the `update()` cycle of the application
+//! to interface with system services.
+//!
+//! [Context](struct.Context.html) objects support the following features
+//! * Emitting Events - Events trigger a new `update()` cycle
+//! * Loading CSS or JS on the frontend
+//! * spawning futures or streams - the results of either trigger a new `update()` cycle.
+//! * Propagating events to the frontend
+//! * Showing dialogs
+//! * Quitting the application
+//!
+//! For more details, refer to the [Context](struct.Context.html) type.
+//!
+
 use crate::dom::DomEvent;
 use crate::event::{Emission, Event};
 use crate::service::{Service, ServiceSubscription};
@@ -160,6 +174,8 @@ impl<T: Send + 'static> Context<T> {
     /// Emits an event from the current component.
     ///
     /// This will result in an `update()` call for all components subscribed to this event.
+    /// Emitting [Events](../struct.Event.html) triggers new `update()` cycles of the application
+    /// and allows interchanging messages between components.
     pub fn emit<D: Any>(&self, event: &Event<D>, data: D) {
         let emission = event.emit(data);
         self.tx.send(ContextMsg::Emission(emission));

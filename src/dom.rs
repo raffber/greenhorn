@@ -1,6 +1,21 @@
+//! This module exposes the [DomEvent](struct.DomEvent.html) data type which is used to communicate
+//! DOM events from the frontend to the backend.
+//!
+//! [DomEvents](struct.DomEvent.html) are the principal data type for frontend
+//! to backend communication. When subscribing to a event on the DOM a handler
+//! function is registered in the application runtime, which maps a
+//! [DomEvent](struct.DomEvent.html) to a
+//! the message type of the running [../trait.App.html].
+//!
+//! When the subscribed event is triggered on the frontend,
+//! a [DomEvent](struct.DomEvent.html) is created, mapped with the handler function
+//! and subsequently passed into the `update()` cycle of the application.
+//!
 use crate::Id;
 use serde::{Deserialize, Serialize};
 
+
+/// Defines whether a modifier is currently pressed
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ModifierState {
     pub alt_key: bool,
@@ -9,6 +24,7 @@ pub struct ModifierState {
     pub shift_key: bool,
 }
 
+/// Mapping of the [HTML KeyboardEvent](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent)
 #[derive(Debug, Serialize, Deserialize)]
 pub struct KeyboardEvent {
     pub target: Id,
@@ -21,6 +37,7 @@ pub struct KeyboardEvent {
     pub target_value: InputValue,
 }
 
+/// Mapping of the [HTML WheelEvent](https://developer.mozilla.org/en-US/docs/Web/API/WheelEvent)
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WheelEvent {
     pub target: Id,
@@ -39,12 +56,14 @@ pub struct WheelEvent {
     pub target_value: InputValue,
 }
 
+/// Maps to an (x,y) coordinate tuple for HTML MouseEvents
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Point {
     pub x: i32,
     pub y: i32,
 }
 
+/// Mapping of the [HTML MouseEvent](https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent)
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MouseEvent {
     pub target: Id,
@@ -59,6 +78,10 @@ pub struct MouseEvent {
     pub target_value: InputValue,
 }
 
+/// Maps to the `value` attribute of `HTMLElement`.
+///
+/// In case the element has no `value` attribute or it has an unsupported type,
+/// the `InputValue::NoValue` type is used.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum InputValue {
     Bool(bool),
@@ -68,6 +91,7 @@ pub enum InputValue {
 }
 
 impl InputValue {
+    /// Attempt to convert this value into a bool
     pub fn get_bool(&self) -> Option<bool> {
         if let InputValue::Bool(ret) = self {
             Some(*ret)
@@ -76,6 +100,7 @@ impl InputValue {
         }
     }
 
+    /// Attempt to convert this value into a string
     pub fn get_text(&self) -> Option<String> {
         if let InputValue::Text(ret) = self {
             Some(ret.clone())
@@ -84,6 +109,7 @@ impl InputValue {
         }
     }
 
+    /// Attempt to convert this value into a number
     pub fn get_number(&self) -> Option<f64> {
         if let InputValue::Number(ret) = self {
             Some(*ret)
@@ -93,6 +119,7 @@ impl InputValue {
     }
 }
 
+/// Minimal data type to represent unsupported [HTML Events](https://developer.mozilla.org/en-US/docs/Web/API/Event).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BaseEvent {
     pub target: Id,
@@ -100,7 +127,11 @@ pub struct BaseEvent {
     pub target_value: InputValue,
 }
 
-
+/// The `DomEvent` enum maps HTML Events into a rust datatype.
+///
+/// `DomEvent`s are the principal form of communication between the frontend and the backend.
+/// Whenever a HTML Event is triggered and the backend has subscribed to it, a message with a
+/// `DomEvent` is passed into the `update()` cycle of the `App`.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum DomEvent {
     Base(BaseEvent),
@@ -111,6 +142,7 @@ pub enum DomEvent {
 }
 
 impl DomEvent {
+    /// Returns the `Id` of the DOM node which triggered this event
     pub fn target(&self) -> Id {
         match self {
             DomEvent::Base(evt) => evt.target,
@@ -121,6 +153,9 @@ impl DomEvent {
         }
     }
 
+    /// Returns the event name that triggered this event.
+    ///
+    /// The names don't use "on". Event names are e.g. "change" or "click"
     pub fn name(&self) -> &str {
         match self {
             DomEvent::Base(evt) => &evt.event_name,
@@ -131,6 +166,9 @@ impl DomEvent {
         }
     }
 
+    /// Attempts to map the `event.target.value` attribute of a primitive rust type.
+    ///
+    /// This is useful for [HTMLInputElements](https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement).
     pub fn target_value(&self) -> &InputValue {
         match self {
             DomEvent::Base(e) => {&e.target_value},
@@ -142,6 +180,7 @@ impl DomEvent {
 
     }
 
+    /// Attempt to convert this type into a [KeyboardEvent](struct.KeyboardEvent.html)
     pub fn into_keyboard(self) -> Option<KeyboardEvent> {
         match self {
             DomEvent::Base(_) => None,
@@ -152,6 +191,7 @@ impl DomEvent {
         }
     }
 
+    /// Attempt to convert this type into a [MouseEvent](struct.MouseEvent.html)
     pub fn into_mouse(self) -> Option<MouseEvent> {
         match self {
             DomEvent::Base(_) => None,
@@ -175,6 +215,7 @@ impl DomEvent {
         }
     }
 
+    /// Attempt to convert this type into a [WheelEvent](struct.WheelEvent.html)
     pub fn into_wheel(self) -> Option<WheelEvent> {
         match self {
             DomEvent::Base(_) => None,

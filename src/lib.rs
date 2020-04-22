@@ -86,16 +86,12 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-/// Components allow code reuse and support modularization
 pub mod component;
 
-/// Maps javascript DOM types to rust types. In particular DOM events.
 pub mod dom;
 
-/// Defines events which allow components to interact with each other
 pub mod event;
 
-/// Supports interaction between the applications `update()` cycle and system services
 pub mod context;
 
 /// Rust API for building DOM nodes. Alternative to the `html!()` and `svg!()` macros

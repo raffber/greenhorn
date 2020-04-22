@@ -447,6 +447,8 @@ impl<T: 'static + Send> ComponentMap<T> for ComponentContainer<T> {
 }
 
 /// This trait defines the interface for the runtime to access the wrapped functionality.
+///
+/// Used to implement type erasure.
 pub(crate) trait ComponentMap<T: 'static + Send> : Debug + Send {
     fn render(&self) -> Node<T>;
     fn id(&self) -> Id;
