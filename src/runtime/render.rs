@@ -3,7 +3,7 @@ use crate::node::{Node, NodeItems};
 use crate::component::{ComponentContainer, ComponentMap};
 use crate::element::ElementMap;
 use crate::blob::Blob;
-use crate::{App, Id};
+use crate::{App, Id, Render};
 use crate::listener::{Listener, ListenerKey, Rpc};
 use crate::event::Subscription;
 use std::collections::{HashMap, HashSet};
@@ -18,7 +18,7 @@ use std::ops::Deref;
 // however, we should use a subscription list as value
 
 
-pub(crate) fn render_component<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>) -> Option<VNode> {
+pub(crate) fn render_component<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>) -> Vec<VNode> {
     let mut path = Path::new();
     render_recursive(dom, result, &mut path)
 }
@@ -26,23 +26,44 @@ pub(crate) fn render_component<A: App>(dom: Node<A::Message>, result: &mut Vec<R
 
 /// Recursively renders an arbitrary node.
 /// Non-tree elements will be pushed into `result`.
-fn render_recursive<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>, path: &mut Path) -> Option<VNode> {
+fn render_recursive<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>, path: &mut Path) -> Vec<VNode> {
     match dom.0 {
-        NodeItems::ElementMap(mut elem) => render_element(&mut *elem.inner, result, path),
+        NodeItems::ElementMap(mut elem) => {
+            let mut ret = Vec::new();
+            for x in render_element(&mut *elem.inner, result, path) {
+                ret.push(x);
+            }
+            ret
+        },
         NodeItems::Component(comp) => {
             let id = comp.id();
             result.push( ResultItem::Component(comp, path.clone()) );
-            Some(VNode::Placeholder(id, path.clone()))
+            vec![VNode::Placeholder(id, path.clone())]
         }
-        NodeItems::Text(text) => Some(VNode::text(text)),
-        NodeItems::Element(mut elem) => render_element(&mut elem, result, path),
+        NodeItems::Text(text) => vec![VNode::text(text)],
+        NodeItems::Element(mut elem) => {
+            let mut ret = Vec::new();
+            for x in render_element(&mut elem, result, path) {
+                ret.push(x);
+            }
+            ret
+        },
         NodeItems::EventSubscription(event_id, subs) => {
             result.push( ResultItem::Subscription(event_id, subs) );
-            None
+            vec![]
         }
         NodeItems::Blob(blob) => {
             result.push( ResultItem::Blob(blob) );
-            None
+            vec![]
+        }
+        NodeItems::NodeList(lst) => {
+            let mut ret = Vec::new();
+            for node in lst {
+                for result in render_recursive(node, result, path) {
+                    ret.push(result);
+                }
+            }
+            ret
         }
     }
 }
@@ -54,8 +75,7 @@ fn render_element<A: App>(elem: &mut dyn ElementMap<A::Message>, result: &mut Ve
     path.push(0);
     for (k, child) in elem.take_children().drain(..).enumerate() {
         path.pop(); path.push(k);
-        let child = render_component(child, result);
-        if let Some(child) = child {
+        for child in render_component(child, result){
             children.push(child);
         }
     }
@@ -94,7 +114,7 @@ pub(crate) struct RenderResult<A: App> {
     pub(crate) rpcs: HashMap<Id, Rpc<A::Message>>,
     components: HashMap<Id, Arc<RenderedComponent<A>>>,
     pub(crate) root_components: Vec<(Id, Path)>,
-    pub(crate) root: Arc<VNode>,
+    pub(crate) root: Vec<VNode>,
 }
 
 impl<A: App> RenderResult<A> {
@@ -107,7 +127,7 @@ impl<A: App> RenderResult<A> {
             rpcs: Default::default(),
             components: Default::default(),
             root_components: Default::default(),
-            root: Arc::new(root)
+            root: vec![root]
         }
     }
 
@@ -120,8 +140,7 @@ impl<A: App> RenderResult<A> {
             rpcs: Default::default(),
             components: Default::default(),
             root_components: vec![],
-            root: Arc::new(VNode::Text("".to_string())),
-
+            root: vec![],
         }
     }
 
@@ -129,8 +148,10 @@ impl<A: App> RenderResult<A> {
     /// Re-renders the whole component tree.
     pub(crate) fn new_from_root(root_rendered: Node<A::Message>, metrics: &mut Metrics) -> Self {
         let mut result = Vec::new();
-        let vdom = render_component::<A>(root_rendered, &mut result)
-            .expect("Root produced an empty DOM");
+        let vdom = render_component::<A>(root_rendered, &mut result);
+        if vdom.len() == 0 {
+            panic!("Root produced an empty DOM");
+        }
 
         let mut ret = Self {
             listeners: Default::default(),
@@ -139,7 +160,7 @@ impl<A: App> RenderResult<A> {
             rpcs: Default::default(),
             components: HashMap::default(),
             root_components: Default::default(),
-            root: Arc::new(vdom),
+            root: vdom,
         };
 
         for item in result.drain(..) {
@@ -277,7 +298,7 @@ impl<A: App> RenderResult<A> {
         }
     }
 
-    pub(crate) fn get_component_vdom(&self, component_id: Id) -> Option<&VNode> {
+    pub(crate) fn get_component_vdom(&self, component_id: Id) -> Option<&Vec<VNode>> {
         self.components.get(&component_id).map(|x| x.vdom())
     }
 

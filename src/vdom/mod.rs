@@ -99,6 +99,7 @@ pub(crate) enum VNode {
     Element(VElement),
     Text(String),
     Placeholder(Id, Path),
+    NodeList(Vec<VNode>),
 }
 
 impl VNode {

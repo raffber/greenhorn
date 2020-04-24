@@ -76,6 +76,7 @@ pub(crate) enum NodeItems<T: 'static + Send> {
     Element(Element<T>),
     Blob(Blob),
     EventSubscription(Id, Subscription<T>),
+    NodeList(Vec<Node<T>>),
 }
 
 impl<T: 'static + Send> Debug for Node<T> {

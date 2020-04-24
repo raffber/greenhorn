@@ -7,7 +7,7 @@ use crate::runtime::metrics::Metrics;
 
 pub(crate) struct RenderedComponent<A: App> {
     component: ComponentContainer<A::Message>,
-    vdom: VNode,
+    vdom: Vec<VNode>,
     listeners: Vec<ListenerKey>,
     subscriptions: Vec<Id>,
     children: Vec<(Id, Path)>,
@@ -19,8 +19,10 @@ impl<A: App> RenderedComponent<A> {
     pub(crate) fn new(comp: ComponentContainer<A::Message>, metrics: &mut Metrics) -> (Self, Vec<ResultItem<A>>) {
         let dom = metrics.run_comp(comp.id(), || comp.render() );
         let mut result = Vec::new();
-        let vdom = render_component(dom, &mut result)
-            .expect("Expected an actual DOM to render.");
+        let vdom = render_component(dom, &mut result);
+        if vdom.len() == 0 {
+            panic!("Expected an actual DOM to render.");
+        }
 
         let mut subs = Vec::with_capacity(result.len());
         let mut listeners = Vec::with_capacity(result.len());
@@ -70,7 +72,7 @@ impl<A: App> RenderedComponent<A> {
         &self.subscriptions
     }
 
-    pub(crate) fn vdom(&self) -> &VNode {
+    pub(crate) fn vdom(&self) -> &Vec<VNode> {
         &self.vdom
     }
 
