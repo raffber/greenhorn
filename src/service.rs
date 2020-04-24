@@ -131,7 +131,7 @@ pub enum TxServiceMessage {
     LoadCss(String),
 }
 
-/// TxServiceMessage objects a serivce receives from the frontend
+/// TxServiceMessage objects a service receives from the frontend
 #[derive(Serialize, Deserialize, Debug)]
 pub enum RxServiceMessage {
     Frontend(String),
