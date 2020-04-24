@@ -284,6 +284,8 @@ mod tests {
     use crate::context::ContextMsg::Subscription;
     use crate::context::tests::MsgA::ItemA;
     use crate::context::Context;
+    use async_std::task::block_on;
+    use futures::channel::mpsc::{unbounded, UnboundedReceiver};
 
     #[derive(Debug)]
     enum MsgA {
@@ -299,11 +301,12 @@ mod tests {
 
     impl Service for MyService {
         type Data = i32;
+        type DataStream = UnboundedReceiver<i32>;
 
-        fn start(&mut self, _mailbox: Mailbox) {
-        }
-
-        fn stop(self) {
+        fn start(self, _: Mailbox) -> Self::DataStream {
+            let (tx, rx) = unbounded();
+            let _ = tx.unbounded_send(1);
+            rx
         }
     }
 
@@ -321,8 +324,8 @@ mod tests {
         let mapped = mb.map(MsgA::ItemA);
         let service = MyService {};
         mapped.run_service(service, ItemB);
-        if let Ok(Subscription(mut subs)) = rx.recv() {
-            let result = async_std::task::block_on(subs.next());
+        if let Ok(Subscription(mut subs)) = rx.rx.try_recv() {
+            let result = block_on(subs.next());
             assert_matches!(result, Some(MsgA::ItemA(MsgB::ItemB(1))));
         } else {
             panic!();
@@ -338,8 +341,8 @@ mod tests {
         let (mb, rx) = Context::<MsgA>::new();
         let mapped = mb.map(MsgA::ItemA);
         mapped.spawn(fut);
-        if let Ok(ContextMsg::Future(fut, _blocking)) = rx.recv() {
-            let result = async_std::task::block_on(fut);
+        if let Ok(ContextMsg::Future(fut, _blocking)) = rx.rx.try_recv() {
+            let result = block_on(fut);
             assert_matches!(result, MsgA::ItemA(MsgB::ItemB(123)));
         } else {
             panic!();
@@ -359,8 +362,8 @@ mod tests {
         let (mb, rx) = Context::<MsgA>::new();
         let mapped = mb.map(MsgA::ItemA);
         mapped.subscribe(stream);
-        if let Ok(ContextMsg::Stream(stream)) = rx.recv() {
-            let data: Vec<MsgA> = async_std::task::block_on(stream.collect::<Vec<MsgA>>());
+        if let Ok(ContextMsg::Stream(stream)) = rx.rx.try_recv() {
+            let data: Vec<MsgA> = block_on(stream.collect::<Vec<MsgA>>());
             assert_eq!(data.len(), 3);
             assert_matches!(data[0], ItemA(ItemB(0)));
             assert_matches!(data[1], ItemA(ItemB(1)));

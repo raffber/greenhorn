@@ -4,7 +4,7 @@ use crate::pipe::{Pipe, RxMsg, TxMsg};
 use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
 use crate::vdom::{Differ, patch_serialize, Patch};
 use crate::{Id, App};
-use async_std::task;
+use crate::platform::{spawn, spawn_blocking};
 use async_timer::Interval;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::{select, FutureExt, StreamExt};
@@ -218,6 +218,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     /// Execute the application. This function blocks until the application exits.
     ///
     /// Returns: The performance metrics collected during exeuction of the application
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn run_blocking(self) -> Metrics {
         async_std::task::block_on(self.run())
     }
@@ -324,7 +325,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             return;
         }
         let render_tx = self.render_tx.clone();
-        task::spawn(async move {
+        spawn(async move {
             let mut timer = Interval::platform_new(core::time::Duration::from_millis(wait_time));
             timer.as_mut().await;
             timer.cancel();
@@ -373,16 +374,12 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 ContextMsg::Future(fut, blocking) => {
                     let tx = self.tx.clone();
                     if blocking {
-                        async_std::task::spawn_blocking(|| {
-                            task::block_on(
-                                async move {
-                                    let result = fut.await;
-                                    let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(result));
-                                }
-                            )
+                        spawn_blocking(async move {
+                            let result = fut.await;
+                            let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(result));
                         });
                     } else {
-                        async_std::task::spawn(async move {
+                        spawn(async move {
                             let result = fut.await;
                             let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(result));
                         });
@@ -390,7 +387,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 }
                 ContextMsg::Stream(mut stream) => {
                     let tx = self.tx.clone();
-                    async_std::task::spawn(async move {
+                    spawn(async move {
                         while let Some(value) = stream.next().await {
                             let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(value));
                         }
@@ -456,7 +453,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         let tx = self.tx.clone();
         let mut sender = self.sender.clone();
 
-        async_std::task::spawn_blocking(move || {
+        spawn_blocking(async move {
             // create a patch
             let before = Instant::now();
             let patch= if let Some(old_frame) = &old_frame {
@@ -477,7 +474,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 let frame = Frame::new(result, translations);
                 let _ = tx.unbounded_send(RuntimeMsg::NextFrameRendering(frame, delta));
                 // serialize the patch and send it to the client
-                task::block_on(sender.send(TxMsg::Patch(serialized))).unwrap();
+                sender.send(TxMsg::Patch(serialized)).await.unwrap();
             }
         });
     }
@@ -490,7 +487,7 @@ mod tests {
     use crate::{Render, Updated};
     use crate::node::Node;
     use crate::pipe::tests::DummyPipe;
-    use async_std::task;
+    use async_std::task::{block_on, spawn_blocking};
     use futures::stream::StreamExt;
     use crate::vdom::{VNode, VElement, PatchItem, Patch};
     use crate::vdom::Attr;
@@ -529,8 +526,8 @@ mod tests {
         let app = DummyComponent(1);
         let (pipe, mut frontend) = DummyPipe::new();
         let (rt, _control) = Runtime::new(app, pipe);
-        let handle = task::spawn_blocking(move || {
-            match task::block_on(frontend.sender_rx.next()) {
+        let handle = spawn_blocking(move || {
+            match block_on(frontend.sender_rx.next()) {
                 Some(TxMsg::Patch(msg)) => {
                     let elem = VNode::element(VElement {
                         id: Id::new_empty(),
@@ -548,7 +545,7 @@ mod tests {
             }
         });
         rt.run_blocking();
-        task::block_on(handle);
+        block_on(handle);
     }
 
     #[test]
@@ -556,11 +553,11 @@ mod tests {
         let app = DummyComponent(1);
         let (pipe, mut frontend) = DummyPipe::new();
         let (rt, control) = Runtime::new(app, pipe);
-        let handle = task::spawn_blocking(move || {
-            let _ = task::block_on(frontend.sender_rx.next()).unwrap();
+        let handle = spawn_blocking(move || {
+            let _ = block_on(frontend.sender_rx.next()).unwrap();
             control.update(());
-            task::block_on(frontend.receiver_tx.send(RxMsg::FrameApplied())).unwrap();
-            let msg2 = task::block_on(frontend.sender_rx.next());
+            block_on(frontend.receiver_tx.send(RxMsg::FrameApplied())).unwrap();
+            let msg2 = block_on(frontend.sender_rx.next());
             match msg2 {
                 Some(TxMsg::Patch(msg)) => {
                     let new_text = "2";
@@ -572,7 +569,7 @@ mod tests {
 
         });
         rt.run_blocking();
-        task::block_on(handle);
+        block_on(handle);
     }
 
     #[test]
@@ -580,12 +577,12 @@ mod tests {
         let app = DummyComponent(1);
         let (pipe, mut frontend) = DummyPipe::new();
         let (rt, control) = Runtime::new(app, pipe);
-        let handle = task::spawn_blocking(move || {
-            let _ = task::block_on(frontend.sender_rx.next()).unwrap();
+        let handle = spawn_blocking(move || {
+            let _ = block_on(frontend.sender_rx.next()).unwrap();
             control.update(());
             // don't do this now
             // task::block_on(frontend.receiver_tx.send(RxMsg::FrameApplied())).unwrap();
-            let msg2 = task::block_on(frontend.sender_rx.next());
+            let msg2 = block_on(frontend.sender_rx.next());
 
             let elem = VNode::element(VElement {
                 id: Id::new_empty(),
@@ -606,7 +603,7 @@ mod tests {
             }
         });
         rt.run_blocking();
-        task::block_on(handle);
+        block_on(handle);
     }
 
     #[test]

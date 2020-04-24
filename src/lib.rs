@@ -108,6 +108,7 @@ pub mod service;
 /// Virtual DOM implementation with diffing and patch generation
 mod vdom;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub mod websockets;
 
 /// Defines `Node<T>` type for building DOMs in pure rust
@@ -133,6 +134,8 @@ pub mod services;
 
 pub mod any;
 
+pub mod platform;
+
 /// Prelude, `use greehorn::prelude::*` imports the most important symbols for quick access
 ///
 /// This module allows importing the most common types for building a greenhorn powered application
@@ -148,7 +151,10 @@ pub mod prelude {
     pub use crate::dom::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent, InputValue};
     pub use crate::event::Event;
     pub use crate::context::Context;
+
+    #[cfg(not(target_arch = "wasm32"))]
     pub use crate::websockets::WebSocketPipe;
+
     pub use crate::node_builder::{NodeBuilder, ElementBuilder};
     pub use crate::blob::Blob;
     pub use crate::runtime::{Runtime, RuntimeControl};
@@ -157,6 +163,8 @@ pub mod prelude {
 
 pub use crate::component::{Component, Updated};
 pub use crate::runtime::{Runtime, RuntimeControl};
+
+#[cfg(not(target_arch = "wasm32"))]
 pub use crate::websockets::WebSocketPipe;
 
 /// Type to produce unique IDs within the process.

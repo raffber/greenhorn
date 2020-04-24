@@ -109,6 +109,14 @@ impl VNode {
     pub(crate) fn element(elem: VElement) -> VNode {
         VNode::Element(elem)
     }
+
+    pub(crate) fn id(&self) -> Id {
+        match self {
+            VNode::Element(e) => e.id,
+            VNode::Text(_) => Id::new_empty(),
+            VNode::Placeholder(x, _) => *x,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

@@ -1,7 +1,6 @@
 use crate::service::{Mailbox, RxServiceMessage, Service};
 use futures::StreamExt;
 use futures::channel::mpsc::{UnboundedReceiver, unbounded};
-use async_std::task;
 use serde::{Serialize,Deserialize};
 use handlebars::Handlebars;
 
@@ -61,7 +60,7 @@ impl Service for ElementSizeNotifier {
         let js = handlebars.render_template(JS, &data).unwrap();
         let (tx, rx) = unbounded();
         mailbox.run_js(js);
-        task::spawn(async move {
+        crate::platform::spawn(async move {
             loop {
                 let msg = mailbox.next().await;
                 if let Some(msg) = msg {
