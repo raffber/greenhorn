@@ -39,7 +39,6 @@ use futures::channel::mpsc::SendError;
 /// # use std::str::FromStr;
 /// # use futures::SinkExt;
 /// #
-/// # fn main() {
 /// let pipe = WebSocketPipe::listen_to_addr(SocketAddr::from_str("127.0.0.1:0").unwrap());
 /// let (sender, mut receiver) = pipe.split();
 /// task::spawn(async move {
@@ -49,7 +48,6 @@ use futures::channel::mpsc::SendError;
 ///         // sender.send(....).await;
 ///     }
 /// });
-/// # }
 /// ```
 ///
 pub struct WebSocketPipe {

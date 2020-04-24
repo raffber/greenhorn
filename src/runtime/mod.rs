@@ -109,14 +109,10 @@ enum RuntimeMsg<A: App> {
 ///     }
 /// }
 ///
-/// fn main() {
-///     let app = MyApp {
-///         my_app_state: 123,
-///     };
-///     let pipe =  WebSocketPipe::listen_to_addr(SocketAddr::from_str("127.0.0.1:1234").unwrap());
-///     let (runtime, control) = Runtime::new(app, pipe);
-///     runtime.run_blocking();
-/// }
+///let app = MyApp { my_app_state: 123 };
+///let pipe =  WebSocketPipe::listen_to_addr(SocketAddr::from_str("127.0.0.1:1234").unwrap());
+///let (runtime, control) = Runtime::new(app, pipe);
+///runtime.run_blocking();
 /// ```
 ///
 /// To execute the runtime, it features to methods, the async `run` function and the `run_blocking`

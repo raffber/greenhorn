@@ -143,9 +143,7 @@ impl<T: 'static, V: 'static, F: Send + Fn(V) -> T> SubscriptionMap<T>
         (self.handler.lock().unwrap())(*v)
     }
 
-    fn id(&self) -> Id {
-        self.id.clone()
-    }
+    fn id(&self) -> Id { self.id }
 }
 
 /// Represents the result of an `Event.subscribe()` call.
