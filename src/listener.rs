@@ -35,7 +35,7 @@ impl<T: 'static> Rpc<T> {
         }
     }
 
-    pub fn call(&self, e: JsonValue) -> T {
+    pub(crate) fn call(&self, e: JsonValue) -> T {
         (self.fun.lock().unwrap())(e)
     }
 }
@@ -125,6 +125,7 @@ impl PartialEq for ListenerKey {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dom::{BaseEvent, InputValue};
 
     #[derive(Debug)]
     enum MsgInner {
@@ -146,7 +147,12 @@ mod tests {
             prevent_default: false
         };
         let mapped = listener.map(Arc::new(Mutex::new(Box::new(MsgOuter::Inner))));
-        let evt = DomEvent::Base(Id::new(), "foo".into());
+        let evt = BaseEvent {
+            target: Default::default(),
+            event_name: "foo".to_string(),
+            target_value: InputValue::NoValue
+        };
+        let evt = DomEvent::Base(evt);
         let msg = mapped.call(evt);
         assert_matches::assert_matches!(msg, MsgOuter::Inner(MsgInner::Event(_)))
     }

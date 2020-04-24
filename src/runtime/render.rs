@@ -104,6 +104,7 @@ impl<A: App> RenderResult<A> {
             listeners: Default::default(),
             subscriptions: Default::default(),
             blobs: Default::default(),
+            rpcs: Default::default(),
             components: Default::default(),
             root_components: Default::default(),
             root: Arc::new(root)
@@ -116,6 +117,7 @@ impl<A: App> RenderResult<A> {
             listeners: Default::default(),
             subscriptions: Default::default(),
             blobs: Default::default(),
+            rpcs: Default::default(),
             components: Default::default(),
             root_components: vec![],
             root: Arc::new(VNode::Text("".to_string())),

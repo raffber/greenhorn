@@ -384,6 +384,7 @@ mod tests {
     use super::*;
     use assert_matches::assert_matches;
     use crate::Render;
+    use crate::dom::{BaseEvent, InputValue};
 
     #[derive(Debug)]
     enum Msg {
@@ -409,7 +410,12 @@ mod tests {
             let listeners = &e.listeners.unwrap();
             let listener = listeners.get(0).unwrap();
             assert_eq!(listener.event_name, "click");
-            let msg = (listener.fun.lock().unwrap())(DomEvent::Base(Id::new(), "".into()));
+            let evt = BaseEvent {
+                target: Default::default(),
+                event_name: "".to_string(),
+                target_value: InputValue::NoValue,
+            };
+            let msg = (listener.fun.lock().unwrap())(DomEvent::Base(evt));
             assert_matches!(msg, Msg::Clicked);
         } else {
             panic!()
