@@ -90,6 +90,7 @@ impl<T: 'static, U: 'static, Mapper: 'static + Fn(U) -> T> MappedSender<U>
     }
 }
 
+/// Messages sent from the `Context` to communicate with the `Runtime`
 pub(crate) enum ContextMsg<T: 'static + Send> {
     Emission(Emission),
     LoadCss(String),
@@ -103,7 +104,7 @@ pub(crate) enum ContextMsg<T: 'static + Send> {
 }
 
 impl<T: Send + 'static> ContextMsg<T> {
-    pub fn map<U, Mapper>(self, mapper: Arc<Mapper>) -> ContextMsg<U>
+    pub(crate) fn map<U, Mapper>(self, mapper: Arc<Mapper>) -> ContextMsg<U>
     where
         U: 'static + Send,
         Mapper: 'static + Fn(T) -> U + Send + Sync
@@ -185,11 +186,12 @@ impl<T: Send + 'static> Context<T> {
         self.tx.send(ContextMsg::RunJs(js.into()));
     }
 
+    /// Spawn a [Service](../service/trait.Service.html) using a mapping function to map
+    /// the services data items to the current message type
     pub fn run_service<S, F>(&self, service: S, fun: F)
     where
-        S: Service + Send + Unpin + 'static,
-        T: Send,
-        F: 'static + Fn(S::Data) -> T + Send,
+        S: 'static + Service,
+        F: 'static + Send + Fn(S::Data) -> T,
     {
         let subs = ServiceSubscription::new(service, fun);
         self.tx.send(ContextMsg::Subscription(subs));
@@ -278,7 +280,7 @@ mod tests {
     use futures::task::Context as TaskContext;
     use futures::{Stream, StreamExt};
     use std::pin::Pin;
-    use crate::service::ServiceMailbox;
+    use crate::service::Mailbox;
     use crate::context::ContextMsg::Subscription;
     use crate::context::tests::MsgA::ItemA;
     use crate::context::Context;
@@ -298,7 +300,7 @@ mod tests {
     impl Service for MyService {
         type Data = i32;
 
-        fn start(&mut self, _mailbox: ServiceMailbox) {
+        fn start(&mut self, _mailbox: Mailbox) {
         }
 
         fn stop(self) {

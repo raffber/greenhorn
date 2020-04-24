@@ -1,4 +1,4 @@
-use crate::service::{RxServiceMessage, ServiceMailbox, ServiceSubscription, TxServiceMessage};
+use crate::service::{RxServiceMessage, ServiceSubscription, TxServiceMessage};
 use crate::Id;
 use async_std::task;
 use async_std::task::JoinHandle;
@@ -9,17 +9,13 @@ use futures::{FutureExt, Stream, StreamExt};
 use std::collections::HashMap;
 use std::pin::Pin;
 
-enum ServiceControlMsg {
-    Stop,
-}
-
-pub enum ServiceMessage<Msg> {
+pub(crate) enum ServiceMessage<Msg> {
     Update(Msg),
     Tx(Id, TxServiceMessage),
     Stopped(),
 }
 
-pub struct ServiceCollection<Msg> {
+pub(crate) struct ServiceCollection<Msg> {
     services: HashMap<Id, ServiceControl>,
     msg_receiver: UnboundedReceiver<ServiceMessage<Msg>>,
     msg_sender: UnboundedSender<ServiceMessage<Msg>>,
@@ -48,27 +44,18 @@ impl<Msg: Send> ServiceCollection<Msg> {
     }
 
     pub(crate) fn spawn(&mut self, subs: ServiceSubscription<Msg>) {
-        let (tx, rx) = unbounded();
-        let (txmailbox_tx, txmailbox_rx) = unbounded::<TxServiceMessage>();
-        let (rxmailbox_tx, rxmailbox_rx) = unbounded::<RxServiceMessage>();
         let id = subs.id();
-        let mailbox = ServiceMailbox {
-            rx: rxmailbox_rx,
-            tx: txmailbox_tx,
-        };
+
+        let mailbox_tx = subs.rxmailbox_tx.clone();
 
         let runner = ServiceRunner {
             tx: self.msg_sender.clone(),
-            rx,
             service: subs,
-            mailbox_rx: txmailbox_rx,
-            mailbox: Some(mailbox),
         };
 
         let control = ServiceControl {
-            tx,
             handle: runner.run(),
-            mailbox_tx: rxmailbox_tx,
+            mailbox_tx,
         };
 
         self.services.insert(id, control);
@@ -88,71 +75,52 @@ impl<Msg: Send> ServiceCollection<Msg> {
     }
 }
 
-impl<Msg> Drop for ServiceCollection<Msg> {
-    fn drop(&mut self) {
-        self.services.drain().for_each(|x| x.1.stop());
-    }
-}
-
 struct ServiceControl {
-    tx: UnboundedSender<ServiceControlMsg>,
     handle: JoinHandle<()>,
     mailbox_tx: UnboundedSender<RxServiceMessage>,
 }
 
 impl ServiceControl {
-    #[inline]
-    fn stop(self) {
-        let _ = self.tx.unbounded_send(ServiceControlMsg::Stop);
+    fn stop(&self) {
+        let _ = self.mailbox_tx.unbounded_send(RxServiceMessage::Stop);
     }
 }
 
-pub struct ServiceRunner<Msg: 'static> {
+pub struct ServiceRunner<Msg: 'static + Send> {
     tx: UnboundedSender<ServiceMessage<Msg>>,
-    rx: UnboundedReceiver<ServiceControlMsg>,
     service: ServiceSubscription<Msg>,
-    mailbox_rx: UnboundedReceiver<TxServiceMessage>,
-    mailbox: Option<ServiceMailbox>,
 }
 
 impl<Msg: Send> ServiceRunner<Msg> {
     pub(crate) fn run(self) -> task::JoinHandle<()> {
-        let mut runner = self;
+        let runner = self;
         task::spawn(async {
-            runner.service.start(runner.mailbox.take().unwrap());
             let id = runner.service.id();
+            let mut service = runner.service;
+            let mut txmailbox_rx = service.txmailbox_rx.take().unwrap();
             loop {
                 select! {
-                    tx_msg = runner.mailbox_rx.next().fuse() => {
+                    tx_msg = txmailbox_rx.next().fuse() => {
                         if let Some(tx_msg) = tx_msg {
                             if runner.tx.unbounded_send(ServiceMessage::Tx(id, tx_msg)).is_err() {
-                                runner.stop();
-                                break
-                            }
-                        }
-                    },
-                    next_value = runner.service.next().fuse() => {
-                        if let Some(x) = next_value {
-                            if runner.tx.unbounded_send(ServiceMessage::Update(x)).is_err() {
-                                runner.stop();
                                 break
                             }
                         } else {
-                            runner.stop();
                             break
                         }
                     },
-                    _control = runner.rx.next().fuse() => {
-                        runner.stop();
-                        break
-                    }
+                    next_value = service.next().fuse() => {
+                        if let Some(x) = next_value {
+                            if runner.tx.unbounded_send(ServiceMessage::Update(x)).is_err() {
+                                break
+                            }
+                        } else {
+                            break
+                        }
+                    },
                 };
             }
         })
     }
-
-    fn stop(self) {
-        self.service.stop();
-        let _ = self.tx.unbounded_send(ServiceMessage::Stopped());
-    }
 }
+
