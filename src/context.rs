@@ -186,6 +186,8 @@ impl<T: Send + 'static> Context<T> {
         self.tx.send(ContextMsg::RunJs(js.into()));
     }
 
+    /// Spawn a [Service](../service/trait.Service.html) using a mapping function to map
+    /// the services data items to the current message type
     pub fn run_service<S, F>(&self, service: S, fun: F)
     where
         S: 'static + Service,
@@ -278,7 +280,7 @@ mod tests {
     use futures::task::Context as TaskContext;
     use futures::{Stream, StreamExt};
     use std::pin::Pin;
-    use crate::service::ServiceMailbox;
+    use crate::service::Mailbox;
     use crate::context::ContextMsg::Subscription;
     use crate::context::tests::MsgA::ItemA;
     use crate::context::Context;
@@ -298,7 +300,7 @@ mod tests {
     impl Service for MyService {
         type Data = i32;
 
-        fn start(&mut self, _mailbox: ServiceMailbox) {
+        fn start(&mut self, _mailbox: Mailbox) {
         }
 
         fn stop(self) {

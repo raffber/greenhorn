@@ -1,4 +1,4 @@
-use crate::service::{ServiceMailbox, RxServiceMessage, Service};
+use crate::service::{Mailbox, RxServiceMessage, Service};
 use futures::StreamExt;
 use futures::channel::mpsc::{UnboundedReceiver, unbounded};
 use async_std::task;
@@ -53,7 +53,7 @@ impl Service for ElementSizeNotifier {
     type Data = ElementSize;
     type DataStream = UnboundedReceiver<ElementSize>;
 
-    fn start(mut self, mut mailbox: ServiceMailbox) -> Self::DataStream {
+    fn start(mut self, mut mailbox: Mailbox) -> Self::DataStream {
         let handlebars = Handlebars::new();
         let data = TemplateData {
             element_id: self.html_id.clone(),

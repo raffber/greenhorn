@@ -1,3 +1,7 @@
+//! This module exposes the [Service](trait.Service.html) trait, which allows writing custom agents
+//! communicating with the frontend.
+//!
+
 use futures::task::{Context, Poll};
 use futures::{Stream, StreamExt};
 
@@ -7,12 +11,26 @@ use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 use std::sync::Arc;
 
-
+/// The `Service` trait allows a type to act as an agent, which communicates over custom messages
+/// with the frontend and injects messages back into the `update()` cycle of the application.
+///
+/// After calling the `start()` method, a services produces `Data` items which are injected back
+/// into the `update()` cycle of the application.
+/// The service itself can send and receive messages from the frontend
+/// with the [Mailbox](struct.Mailbox.html)
+/// object it has received with the `start()` call.
+///
+/// TODO: add an example
 pub trait Service {
+    /// The data item the service emits.
+    ///
+    /// These items are wrapped in messages and passed to the `update()` cycle of the application
     type Data: 'static + Send;
+
+    /// A stream which produces the services data items
     type DataStream: Stream<Item = <Self as Service>::Data> + Send;
 
-    fn start(self, mailbox: ServiceMailbox) -> Self::DataStream;
+    fn start(self, mailbox: Mailbox) -> Self::DataStream;
 }
 
 pub(crate) struct ServiceSubscription<T: 'static + Send>{
@@ -57,7 +75,7 @@ impl<T: 'static + Send> ServiceSubscription<T> {
     {
         let (txmailbox_tx, txmailbox_rx) = unbounded::<TxServiceMessage>();
         let (rxmailbox_tx, rxmailbox_rx) = unbounded::<RxServiceMessage>();
-        let mailbox = ServiceMailbox {
+        let mailbox = Mailbox {
             rx: rxmailbox_rx,
             tx: txmailbox_tx
         };
@@ -86,7 +104,7 @@ impl<T: 'static + Send> ServiceSubscription<T> {
         }
     }
 
-    pub fn id(&self) -> Id {
+    pub(crate) fn id(&self) -> Id {
         self.id
     }
 }
@@ -103,6 +121,9 @@ impl<T: 'static + Send> Stream for ServiceSubscription<T> {
     }
 }
 
+/// TxServiceMessage objects a service may send to the frontend
+///
+/// Messages can be sent using the [Mailbox](struct.Mailbox.html) type.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum TxServiceMessage {
     Frontend(Vec<u8>),
@@ -110,32 +131,44 @@ pub enum TxServiceMessage {
     LoadCss(String),
 }
 
+/// TxServiceMessage objects a serivce receives from the frontend
 #[derive(Serialize, Deserialize, Debug)]
 pub enum RxServiceMessage {
     Frontend(String),
     Stop,
 }
 
-pub struct ServiceMailbox {
+/// The mailbox type allows a [Service](trait.Service.html) to communicate with the frontend via
+/// custom messages.
+///
+/// Note that this type implements `Stream` with `Item=RxServiceMessage`.
+pub struct Mailbox {
     pub(crate) rx: UnboundedReceiver<RxServiceMessage>,
     pub(crate) tx: UnboundedSender<TxServiceMessage>,
 }
 
-impl ServiceMailbox {
+impl Mailbox {
+    /// Run a piece of js code on the frontend
+    ///
+    /// TODO: document ctx js object
+    /// TODO: add an example
+    /// TODO: on frontend improve the way js code is executed
     pub fn run_js<T: Into<String>>(&self, code: T) {
         let _ = self.tx.unbounded_send(TxServiceMessage::RunJs(code.into()));
     }
 
+    /// Send data to the service on the frontend
     pub fn send_data(&self, data: Vec<u8>) {
         let _ = self.tx.unbounded_send(TxServiceMessage::Frontend(data));
     }
 
+    /// Load CSS on the frontend
     pub fn load_css<T: Into<String>>(&self, css: T) {
         let _ = self.tx.unbounded_send(TxServiceMessage::LoadCss(css.into()));
     }
 }
 
-impl Stream for ServiceMailbox {
+impl Stream for Mailbox {
     type Item = RxServiceMessage;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
