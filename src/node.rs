@@ -4,8 +4,8 @@ use std::sync::{Arc, Mutex};
 use crate::event::Subscription;
 use crate::node_builder::NodeBuilder;
 use crate::blob::Blob;
-use crate::element::{Element, ElementMap, ElementRemap, ElementMapDirect, MappedElement};
-use crate::component::{MappedComponent, ComponentContainer, ComponentMap};
+use crate::element::{Element, ElementRemap, ElementMapDirect, MappedElement};
+use crate::component::{MappedComponent, ComponentContainer};
 
 /// Represents a DOM node which might emit a message of type `T`.
 ///
@@ -165,15 +165,6 @@ impl<T: 'static + Send> Node<T> {
         Node(ret)
     }
 
-    /// Move all children out of this node
-    pub(crate) fn take_children(self) -> Vec<Node<T>> {
-        match self.0 {
-            NodeItems::ElementMap(mut x) => x.take_children(),
-            NodeItems::Element(mut x) => x.take_children(),
-            _ => panic!()
-        }
-    }
-
     /// Maps Node() objects without providing a mapping-functions.
     ///
     /// Panics in case there are listeners installed on this node or
@@ -208,18 +199,6 @@ impl<T: 'static + Send> Node<T> {
             },
             NodeItems::EventSubscription(_, _) => panic!(),
             NodeItems::Blob(blob) => Node(NodeItems::Blob(blob)),
-        }
-    }
-
-    /// Returns the `Id` associated with the underlying object
-    pub(crate) fn id(&self) -> Id {
-        match &self.0 {
-            NodeItems::ElementMap(inner) => inner.id(),
-            NodeItems::Component(inner) => inner.id(),
-            NodeItems::Text(_) => Id::new_empty(),
-            NodeItems::Element(elem) => elem.id,
-            NodeItems::EventSubscription(id, _) => *id,
-            NodeItems::Blob(blob) => blob.id(),
         }
     }
 

@@ -17,7 +17,7 @@ use crate::event::{Emission, Event};
 use crate::service::{Service, ServiceSubscription};
 use std::any::Any;
 use std::marker::PhantomData;
-use std::sync::mpsc::{channel, Receiver, Sender, RecvError};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
@@ -128,12 +128,6 @@ impl<T: Send + 'static> ContextMsg<T> {
 
 pub(crate) struct ContextReceiver<T: 'static + Send> {
     pub(crate) rx: Receiver<ContextMsg<T>>,
-}
-
-impl<T: 'static + Send> ContextReceiver<T> {
-    fn recv(&self) -> Result<ContextMsg<T>, RecvError> {
-        self.rx.recv()
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

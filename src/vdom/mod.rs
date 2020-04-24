@@ -109,34 +109,6 @@ impl VNode {
     pub(crate) fn element(elem: VElement) -> VNode {
         VNode::Element(elem)
     }
-
-    pub(crate) fn replace(&mut self, path: &[usize], value: VNode) {
-        match self {
-            VNode::Element(elem) => {
-                let idx = path[0];
-                assert!(elem.children.len() <= idx as usize);
-                if path.len() == 1 {
-                    elem.children[idx] = value;
-                } else {
-                    elem.children[idx].replace(&path[1..], value);
-                }
-            },
-            VNode::Text(_) => {panic!()},
-            VNode::Placeholder(_, _) => {panic!()},
-        }
-    }
-
-    pub(crate) fn from_string<T: Into<String>>(s: T) -> VNode {
-        VNode::Text(s.into())
-    }
-
-    fn id(&self) -> Id {
-        match self {
-            VNode::Element(e) => e.id,
-            VNode::Text(_) => Id::new_empty(),
-            VNode::Placeholder(x, _) => *x,
-        }
-    }
 }
 
 #[derive(Clone, Debug)]

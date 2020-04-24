@@ -7,7 +7,6 @@ use std::iter::{Once, once};
 pub struct CheckBox<T: 'static + Send> {
     attrs: Vec<Attr>,
     classes: Vec<String>,
-    checked: bool,
     html_id: Option<String>,
     node: ElementBuilder<T>,
 }
@@ -55,7 +54,6 @@ pub fn checkbox<T: 'static + Send, Fun: 'static + Send + Fn() -> T>(checked: boo
     CheckBox {
         attrs: vec![],
         classes: vec![],
-        checked,
         html_id: None,
         node
     }

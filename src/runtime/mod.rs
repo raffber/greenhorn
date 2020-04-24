@@ -8,8 +8,7 @@ use async_std::task;
 use async_timer::Interval;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::{select, FutureExt, StreamExt};
-use std::collections::{HashMap, VecDeque, HashSet};
-use crate::component::ComponentContainer;
+use std::collections::{VecDeque, HashSet};
 use crate::runtime::state::RenderedState;
 pub(crate) use crate::runtime::render::RenderResult;
 pub(crate) use crate::runtime::state::Frame;
@@ -133,7 +132,6 @@ pub struct Runtime<A: 'static + App, P: 'static + Pipe> {
     render_tx: UnboundedSender<()>,
     render_rx: UnboundedReceiver<()>,
     invalidated_components: Option<HashSet<Id>>,
-    components: HashMap<Id, ComponentContainer<A::Message>>,
     invalidate_all: bool,
     not_applied_counter: i32,
     dirty: bool,
@@ -162,7 +160,6 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             render_tx,
             render_rx,
             invalidated_components: Some(HashSet::new()),
-            components: Default::default(),
             next_frame: None,
             dirty: false,
             invalidate_all: false,

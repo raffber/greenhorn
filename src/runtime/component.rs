@@ -54,10 +54,6 @@ impl<A: App> RenderedComponent<A> {
         }, result)
     }
 
-    pub(crate) fn id(&self) -> Id {
-        self.component.id()
-    }
-
     pub(crate) fn children(&self) -> &Vec<(Id, Path)> {
         &self.children
     }
