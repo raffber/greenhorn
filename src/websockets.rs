@@ -1,3 +1,6 @@
+//! This modules adds a [Pipe](../pipe/trait.Pipe.html) implementation based on WebSockets.
+//!
+
 use crate::pipe::{Pipe, RxMsg, TxMsg};
 use async_std::net::{TcpListener, TcpStream};
 use async_std::task;
@@ -15,34 +18,49 @@ use futures::Sink;
 use std::error::Error;
 use futures::channel::mpsc::SendError;
 
-struct PipeChannels {
-    req_tx: UnboundedSender<Message>,
-    req_rx: UnboundedReceiver<Message>,
-    resp_tx: UnboundedSender<Message>,
-    resp_rx: UnboundedReceiver<Message>,
-}
 
-impl PipeChannels {
-    fn new() -> Self {
-        let (req_tx, req_rx) = unbounded();
-        let (resp_tx, resp_rx) = unbounded();
-        PipeChannels {
-            req_tx,
-            resp_tx,
-            req_rx,
-            resp_rx,
-        }
-    }
-}
-
-pub struct WebsocketPipe {
+/// The `WebSocketPipe` type implements a [Pipe](../pipe/trait.Pipe.html) on top of WebSockets.
+///
+/// The `WebSocketPipe` acts as a async server only accepting a single connection.
+/// Once created, the `WebSocketPipe` can be `.split()` using the method on the [Pipe](../pipe/trait.Pipe.html)
+/// trait. The resulting [WebSocketSender](struct.WebSocketSender.html) and
+/// [WebSocketReceiver](struct.WebSocketReceiver.html) structs may be used to send and receive
+/// messages over the resulting websocket connection. The respective `Stream` and `Sink` implementations
+/// are closed once the connection has been closed.
+///
+/// # Example
+///
+/// ```
+/// # use greenhorn::websockets::WebSocketPipe;
+/// # use std::net::SocketAddr;
+/// # use greenhorn::pipe::Pipe;
+/// # use futures::StreamExt;
+/// # use async_std::task;
+/// # use std::str::FromStr;
+/// # use futures::SinkExt;
+/// #
+/// # fn main() {
+/// let pipe = WebSocketPipe::listen_to_addr(SocketAddr::from_str("127.0.0.1:0").unwrap());
+/// let (sender, mut receiver) = pipe.split();
+/// task::spawn(async move {
+///     while let Some(_msg) = receiver.next().await {
+///         // do something with msg...
+///         // and send something
+///         // sender.send(....).await;
+///     }
+/// });
+/// # }
+/// ```
+///
+pub struct WebSocketPipe {
     resp_rx: UnboundedReceiver<Message>,
     req_tx: UnboundedSender<Message>,
     addr: SocketAddr,
 }
 
-impl WebsocketPipe {
-    pub fn listen_to_addr(addr: SocketAddr) -> WebsocketPipe {
+impl WebSocketPipe {
+    /// Starts listening to a given `SocketAddr`
+    pub fn listen_to_addr(addr: SocketAddr) -> WebSocketPipe {
         let try_socket = task::block_on(async {
             TcpListener::bind(&addr).await
         });
@@ -50,10 +68,10 @@ impl WebsocketPipe {
         Self::listen_to_socket(listener)
     }
 
-    pub fn listen_to_socket(listener: TcpListener) -> WebsocketPipe {
-        let channels = PipeChannels::new();
-        let resp_tx = channels.resp_tx;
-        let req_rx = channels.req_rx;
+    /// Start listening to `TcpListener`.
+    pub fn listen_to_socket(listener: TcpListener) -> WebSocketPipe {
+        let (req_tx, req_rx) = unbounded();
+        let (resp_tx, resp_rx) = unbounded();
         let local_addr = listener.local_addr().unwrap();
         let local_addr_cloned = local_addr;
         task::spawn(async move {
@@ -69,22 +87,29 @@ impl WebsocketPipe {
                 error!("Could not accept connection on: {}", local_addr_cloned);
             }
         });
-        WebsocketPipe {
-            resp_rx: channels.resp_rx,
-            req_tx: channels.req_tx,
+        WebSocketPipe {
+            resp_rx,
+            req_tx,
             addr: local_addr,
         }
     }
 
+    /// Returns the local address the WebSocket server is listening on.
     pub fn local_addr(&self) -> SocketAddr {
         self.addr
     }
 
+    /// Returns the port the WebSocket server is listening on
+    ///
+    /// This is especially useful when using the OS to automatically assign a port
+    /// to your connection (by listening to port ":0")
     pub fn port(&self) -> u16 {
         self.addr.port()
     }
 }
 
+/// Relays incoming WebSocket messages to the `WebSocketReceiver` and
+/// receives messages from the `WebSocketSender` and sends them to the WebSocket connection.
 struct ConnectionHandler {
     ws: WebSocketStream<TcpStream>,
     resp_tx: UnboundedSender<Message>,
@@ -92,6 +117,7 @@ struct ConnectionHandler {
 }
 
 impl ConnectionHandler {
+    /// Task which only returns once the connection of either socket or receiver has been closed.
     async fn run(&mut self) {
         loop {
             select! {
@@ -109,6 +135,7 @@ impl ConnectionHandler {
         }
     }
 
+    /// Handles a message from the `WebSocketSender`.
     async fn tx_msg(&mut self, msg: Option<Message>) -> bool {
         match msg {
             None => {
@@ -127,6 +154,7 @@ impl ConnectionHandler {
         }
     }
 
+    /// Handles a message from the websocket connection.
     async fn rx_msg(&mut self, msg: Option<Result<Message, tungstenite::Error>>) -> bool {
         if let Some(msg) = msg {
             match msg {
@@ -147,12 +175,15 @@ impl ConnectionHandler {
     }
 }
 
-
-pub struct WebsocketSender {
+/// The `WebSocketSender` type is a `Sink` which allows sending `TxMsg` messages from
+/// backend to frontend.
+///
+/// It is created by `.split()`-ing a [WebSocketPipe](struct.WebSocketPipe.html).
+pub struct WebSocketSender {
     req_tx: UnboundedSender<Message>,
 }
 
-impl Sink<TxMsg> for WebsocketSender {
+impl Sink<TxMsg> for WebSocketSender {
     type Error = Box<dyn Error>;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -191,7 +222,7 @@ impl Sink<TxMsg> for WebsocketSender {
     }
 }
 
-impl Clone for WebsocketSender {
+impl Clone for WebSocketSender {
     fn clone(&self) -> Self {
         Self {
             req_tx: self.req_tx.clone(),
@@ -199,27 +230,31 @@ impl Clone for WebsocketSender {
     }
 }
 
-pub struct WebsocketReceiver {
+/// The `WebSocketReceiver` type is a `Stream` which allows receiving `RxMsg` messages from
+/// the frontend.
+///
+/// It is created by `.split()`-ing a [WebSocketPipe](struct.WebSocketPipe.html).
+pub struct WebSocketReceiver {
     resp_rx: UnboundedReceiver<Message>,
 }
 
-impl Pipe for WebsocketPipe {
-    type Sender = WebsocketSender;
-    type Receiver = WebsocketReceiver;
+impl Pipe for WebSocketPipe {
+    type Sender = WebSocketSender;
+    type Receiver = WebSocketReceiver;
 
     fn split(self) -> (Self::Sender, Self::Receiver) {
         (
-            WebsocketSender {
+            WebSocketSender {
                 req_tx: self.req_tx,
             },
-            WebsocketReceiver {
+            WebSocketReceiver {
                 resp_rx: self.resp_rx,
             },
         )
     }
 }
 
-impl Stream for WebsocketReceiver {
+impl Stream for WebSocketReceiver {
     type Item = RxMsg;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -253,7 +288,7 @@ mod tests {
     #[test]
     fn test_accept() {
         let addr = SocketAddr::from_str("127.0.0.1:5903").unwrap();
-        let mut pipe = WebsocketPipe::listen_to_addr(addr);
+        let mut pipe = WebSocketPipe::listen_to_addr(addr);
         let handle = task::spawn(async move {
             let url = Url::parse("ws://127.0.0.1:5903").unwrap();
             let (mut stream, _) = connect_async(url).await.expect("Failed to connect!");
@@ -282,7 +317,7 @@ mod tests {
     #[test]
     fn test_close_client() {
         let addr = SocketAddr::from_str("127.0.0.1:5904").unwrap();
-        let pipe = WebsocketPipe::listen_to_addr(addr);
+        let pipe = WebSocketPipe::listen_to_addr(addr);
         let client = task::spawn(async move {
             let url = Url::parse("ws://127.0.0.1:5904").unwrap();
             let (mut stream, _) = connect_async(url).await.expect("Failed to connect!");
@@ -314,7 +349,7 @@ mod tests {
     #[test]
     fn test_close_server() {
         let addr = SocketAddr::from_str("127.0.0.1:5905").unwrap();
-        let pipe = WebsocketPipe::listen_to_addr(addr);
+        let pipe = WebSocketPipe::listen_to_addr(addr);
         let client = task::spawn(async move {
             let url = Url::parse("ws://127.0.0.1:5905").unwrap();
             let (mut stream, _) = connect_async(url).await.expect("Failed to connect!");

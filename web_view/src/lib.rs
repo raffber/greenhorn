@@ -92,7 +92,7 @@ impl<'a> ViewBuilder {
         html_content
     }
 
-    pub fn run<T: FnOnce(WebsocketPipe) -> () + Send + 'static>(self, fun: T) {
+    pub fn run<T: FnOnce(WebSocketPipe) -> () + Send + 'static>(self, fun: T) {
         let addr = SocketAddr::from_str("127.0.0.1:0").unwrap();
 
         let socket = task::block_on(async {
@@ -116,7 +116,7 @@ impl<'a> ViewBuilder {
             .unwrap();
 
 
-        let pipe = WebsocketPipe::listen_to_socket(socket);
+        let pipe = WebSocketPipe::listen_to_socket(socket);
 
         let thread = thread::spawn(move || fun(pipe) );
 

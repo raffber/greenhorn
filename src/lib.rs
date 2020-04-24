@@ -97,7 +97,6 @@ pub mod context;
 /// Rust API for building DOM nodes. Alternative to the `html!()` and `svg!()` macros
 pub mod node_builder;
 
-/// Defines the interface for interacting between frontend and backend
 pub mod pipe;
 
 /// Implments the `Runtime` type, which executes the render/update cycle of the application
@@ -109,7 +108,6 @@ pub mod service;
 /// Virtual DOM implementation with diffing and patch generation
 mod vdom;
 
-/// Implements a `Pipe` using websockets
 pub mod websockets;
 
 /// Defines `Node<T>` type for building DOMs in pure rust
@@ -150,7 +148,7 @@ pub mod prelude {
     pub use crate::dom::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent, InputValue};
     pub use crate::event::Event;
     pub use crate::context::Context;
-    pub use crate::websockets::WebsocketPipe;
+    pub use crate::websockets::WebSocketPipe;
     pub use crate::node_builder::{NodeBuilder, ElementBuilder};
     pub use crate::blob::Blob;
     pub use crate::runtime::{Runtime, RuntimeControl};
@@ -159,7 +157,7 @@ pub mod prelude {
 
 pub use crate::component::{Component, Updated};
 pub use crate::runtime::{Runtime, RuntimeControl};
-pub use crate::websockets::WebsocketPipe;
+pub use crate::websockets::WebSocketPipe;
 
 /// Type to produce unique IDs within the process.
 ///
@@ -374,7 +372,7 @@ use proc_macro_hack::proc_macro_hack;
 /// # use greenhorn::html;
 /// # use greenhorn::prelude::{Render, Node};
 /// # struct MyComponent {}
-///
+/// #
 /// impl Render for MyComponent {
 ///     type Message = ();
 ///
@@ -397,7 +395,7 @@ pub use html_macro::html;
 /// # use greenhorn::svg;
 /// # use greenhorn::prelude::{Render, Node};
 /// # struct MyComponent {}
-///
+/// #
 /// impl Render for MyComponent {
 ///     type Message = ();
 ///

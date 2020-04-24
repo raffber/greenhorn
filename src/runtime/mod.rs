@@ -113,7 +113,7 @@ enum RuntimeMsg<A: App> {
 ///     let app = MyApp {
 ///         my_app_state: 123,
 ///     };
-///     let pipe =  WebsocketPipe::listen_to_addr(SocketAddr::from_str("127.0.0.1:1234").unwrap());
+///     let pipe =  WebSocketPipe::listen_to_addr(SocketAddr::from_str("127.0.0.1:1234").unwrap());
 ///     let (runtime, control) = Runtime::new(app, pipe);
 ///     runtime.run_blocking();
 /// }

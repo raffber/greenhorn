@@ -337,6 +337,7 @@ impl<T: 'static + Render + Send> Component<T> {
     /// ```
     /// # use greenhorn::{Component, Render};
     /// # use greenhorn::node::Node;
+    /// # use greenhorn::html;
     /// #
     /// # struct Button {
     /// #     text: String
@@ -366,12 +367,12 @@ impl<T: 'static + Render + Send> Component<T> {
     /// impl Render for MyApp {
     ///     type Message = MyMsg;
     ///
-    ///     fn render(&self) -> Node<T> {
+    ///     fn render(&self) -> Node<MyMsg> {
     ///         html!(
     ///             <div>
-    ///                 {ok_button.mount().map(MyMsg::OkButton)}
+    ///                 {self.ok_button.mount().map(MyMsg::OkButton)}
     ///             </>
-    ///         )
+    ///         ).into()
     ///     }
     /// }
     /// ```
