@@ -90,6 +90,7 @@ impl<T: 'static, U: 'static, Mapper: 'static + Fn(U) -> T> MappedSender<U>
     }
 }
 
+/// Messages sent from the `Context` to communicate with the `Runtime`
 pub(crate) enum ContextMsg<T: 'static + Send> {
     Emission(Emission),
     LoadCss(String),
@@ -103,7 +104,7 @@ pub(crate) enum ContextMsg<T: 'static + Send> {
 }
 
 impl<T: Send + 'static> ContextMsg<T> {
-    pub fn map<U, Mapper>(self, mapper: Arc<Mapper>) -> ContextMsg<U>
+    pub(crate) fn map<U, Mapper>(self, mapper: Arc<Mapper>) -> ContextMsg<U>
     where
         U: 'static + Send,
         Mapper: 'static + Fn(T) -> U + Send + Sync
@@ -187,9 +188,8 @@ impl<T: Send + 'static> Context<T> {
 
     pub fn run_service<S, F>(&self, service: S, fun: F)
     where
-        S: Service + Send + Unpin + 'static,
-        T: Send,
-        F: 'static + Fn(S::Data) -> T + Send,
+        S: 'static + Service,
+        F: 'static + Send + Fn(S::Data) -> T,
     {
         let subs = ServiceSubscription::new(service, fun);
         self.tx.send(ContextMsg::Subscription(subs));

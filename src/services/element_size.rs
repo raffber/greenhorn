@@ -1,6 +1,6 @@
-use crate::service::{SimpleService, ServiceMailbox, SimpleServiceContainer, RxServiceMessage};
+use crate::service::{ServiceMailbox, RxServiceMessage, Service};
 use futures::StreamExt;
-use futures::channel::mpsc::UnboundedSender;
+use futures::channel::mpsc::{UnboundedReceiver, unbounded};
 use async_std::task;
 use serde::{Serialize,Deserialize};
 use handlebars::Handlebars;
@@ -49,41 +49,52 @@ pub struct ElementSize {
     pub dy: i32,
 }
 
-impl SimpleService for ElementSizeNotifier {
+impl Service for ElementSizeNotifier {
     type Data = ElementSize;
+    type DataStream = UnboundedReceiver<ElementSize>;
 
-    fn run(mut self, mut mailbox: ServiceMailbox, sender: UnboundedSender<Self::Data>) {
+    fn start(mut self, mut mailbox: ServiceMailbox) -> Self::DataStream {
         let handlebars = Handlebars::new();
         let data = TemplateData {
             element_id: self.html_id.clone(),
         };
         let js = handlebars.render_template(JS, &data).unwrap();
+        let (tx, rx) = unbounded();
         mailbox.run_js(js);
         task::spawn(async move {
             loop {
                 let msg = mailbox.next().await;
                 if let Some(msg) = msg {
                     if let Some(x) = self.process_msg(msg) {
-                        let _ = sender.unbounded_send(x);
+                        let _ = tx.unbounded_send(x);
+                    } else {
+                        break
                     }
                 } else {
                     break;
                 }
             }
         });
+        rx
     }
 }
 
 impl ElementSizeNotifier {
-    pub fn create<S: Into<String>>(html_id: S) -> SimpleServiceContainer<ElementSizeNotifier> {
-        SimpleServiceContainer::new(Self {
+    pub fn new<S: Into<String>>(html_id: S) -> Self {
+        Self {
             html_id: html_id.into()
-        })
+        }
     }
 
     fn process_msg(&mut self, msg: RxServiceMessage) -> Option<ElementSize> {
-        let RxServiceMessage::Frontend(data) = msg;
-        serde_json::from_str(&data).ok()
+        match msg {
+            RxServiceMessage::Frontend(data) => {
+                serde_json::from_str(&data).unwrap()
+            },
+            RxServiceMessage::Stop => {
+                None
+            },
+        }
     }
 
 }
