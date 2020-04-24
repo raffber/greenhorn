@@ -52,11 +52,10 @@
 //! }
 //! ```
 //!
+use crate::context::Context;
+use crate::node::Node;
 use crate::{App, Render, Updated};
 use std::any::Any;
-use crate::node::Node;
-use crate::context::Context;
-
 
 /// Wraps an type implementing [App](../trait.App.html), and as a consequence also [Render](../trait.Render.html)),
 /// and exposes a new `App`/`Render` implementation with the dynamic [AnyMsg](type.AnyMsg.htm) type.
@@ -66,17 +65,18 @@ use crate::context::Context;
 /// In case update() is called with an invalid type, which is not convertible to the actual
 /// message type of the underlying component.
 pub struct AnyApp {
-    inner: Box<dyn App<Message=AnyMsg> + Send>,
+    inner: Box<dyn App<Message = AnyMsg> + Send>,
 }
 
 impl AnyApp {
     /// Construct an `AnyApp` object, consuming the underlying component.
     pub fn new<T, M>(app: T) -> AnyApp
-        where
-            T: 'static + App<Message=M> + Send,
-            M: Any + Send + 'static {
+    where
+        T: 'static + App<Message = M> + Send,
+        M: Any + Send + 'static,
+    {
         AnyApp {
-            inner: Box::new(AnyAppConverter { inner: app })
+            inner: Box::new(AnyAppConverter { inner: app }),
         }
     }
 }
@@ -100,21 +100,26 @@ impl App for AnyApp {
 
 /// internal type for erasing the type of an App implementation.
 /// Note that when receiving a wrong message type, the `update()` function panics.
-struct AnyAppConverter<T: App<Message=M>, M: Any + Send + 'static> {
+struct AnyAppConverter<T: App<Message = M>, M: Any + Send + 'static> {
     inner: T,
 }
 
-impl<T: App<Message=M>, M: Any + Send + 'static> Render for AnyAppConverter<T, M> {
+impl<T: App<Message = M>, M: Any + Send + 'static> Render for AnyAppConverter<T, M> {
     type Message = Box<dyn Any + Send + 'static>;
 
     fn render(&self) -> Node<Self::Message> {
-        self.inner.render().map(|x| Box::new(x) as Box<dyn Any + Send + 'static>)
+        self.inner
+            .render()
+            .map(|x| Box::new(x) as Box<dyn Any + Send + 'static>)
     }
 }
 
-impl<T: App<Message=M>, M: Any + Send + 'static> App for AnyAppConverter<T, M> {
+impl<T: App<Message = M>, M: Any + Send + 'static> App for AnyAppConverter<T, M> {
     fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated {
         let new_msg = *msg.downcast().unwrap();
-        self.inner.update(new_msg, ctx.map(|x| Box::new(x) as Box<dyn Any + Send + 'static>))
+        self.inner.update(
+            new_msg,
+            ctx.map(|x| Box::new(x) as Box<dyn Any + Send + 'static>),
+        )
     }
 }

@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize};
 use crate::dialog::Dialog;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct FileFilter {
@@ -11,16 +11,15 @@ impl FileFilter {
     pub fn new<T: Into<String>>(description: T) -> Self {
         Self {
             description: description.into(),
-            filters: vec![]
+            filters: vec![],
         }
     }
 
     pub fn new_from_multiple<T: Into<String>>(description: T, filters: Vec<String>) -> Self {
         Self {
             description: description.into(),
-            filters
+            filters,
         }
-
     }
 
     pub fn push<T: Into<String>>(mut self, filter: T) -> Self {
@@ -51,7 +50,7 @@ impl FileOpenDialog {
             filter: None,
             multiple: false,
             title: title.into(),
-            path: path.into()
+            path: path.into(),
         }
     }
 
@@ -77,7 +76,7 @@ impl Dialog for FileOpenDialog {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum FileSaveMsg {
     SaveTo(String),
-    Cancel
+    Cancel,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -92,7 +91,7 @@ impl FileSaveDialog {
         Self {
             filter: None,
             title: title.into(),
-            path: path.into()
+            path: path.into(),
         }
     }
 
@@ -100,7 +99,6 @@ impl FileSaveDialog {
         self.filter = Some(filter);
         self
     }
-
 }
 
 impl Dialog for FileSaveDialog {

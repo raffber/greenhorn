@@ -114,4 +114,3 @@ impl<Msg: Send> ServiceRunner<Msg> {
         });
     }
 }
-

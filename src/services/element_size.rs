@@ -1,8 +1,8 @@
 use crate::service::{Mailbox, RxServiceMessage, Service};
+use futures::channel::mpsc::{unbounded, UnboundedReceiver};
 use futures::StreamExt;
-use futures::channel::mpsc::{UnboundedReceiver, unbounded};
-use serde::{Serialize,Deserialize};
 use handlebars::Handlebars;
+use serde::{Deserialize, Serialize};
 
 pub struct ElementSizeNotifier {
     html_id: String,
@@ -67,7 +67,7 @@ impl Service for ElementSizeNotifier {
                     if let Some(x) = self.process_msg(msg) {
                         let _ = tx.unbounded_send(x);
                     } else {
-                        break
+                        break;
                     }
                 } else {
                     break;
@@ -81,19 +81,14 @@ impl Service for ElementSizeNotifier {
 impl ElementSizeNotifier {
     pub fn new<S: Into<String>>(html_id: S) -> Self {
         Self {
-            html_id: html_id.into()
+            html_id: html_id.into(),
         }
     }
 
     fn process_msg(&mut self, msg: RxServiceMessage) -> Option<ElementSize> {
         match msg {
-            RxServiceMessage::Frontend(data) => {
-                serde_json::from_str(&data).unwrap()
-            },
-            RxServiceMessage::Stop => {
-                None
-            },
+            RxServiceMessage::Frontend(data) => serde_json::from_str(&data).unwrap(),
+            RxServiceMessage::Stop => None,
         }
     }
-
 }

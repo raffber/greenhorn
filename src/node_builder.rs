@@ -1,18 +1,17 @@
+use crate::blob::Blob;
 use crate::dom::DomEvent;
+use crate::element::Element;
+use crate::event::Subscription;
+use crate::listener::{Listener, Rpc};
+use crate::node::{Node, NodeItems};
 use crate::vdom::Attr;
 use crate::Id;
-use std::marker::PhantomData;
-use std::sync::{Arc, Mutex};
-use crate::node::{Node, NodeItems};
-use crate::element::Element;
-use crate::listener::{Listener, Rpc};
-use crate::blob::Blob;
-use std::iter::{Once, once};
-use crate::event::Subscription;
-use std::option;
-use std::vec;
 use serde_json::Value as JsonValue;
-
+use std::iter::{once, Once};
+use std::marker::PhantomData;
+use std::option;
+use std::sync::{Arc, Mutex};
+use std::vec;
 
 pub struct NodeBuilder<T> {
     namespace: Option<String>,
@@ -52,7 +51,7 @@ impl<T: 'static + Send> NodeBuilder<T> {
             mime_type: "".to_string(),
             data: vec![],
             on_change: None,
-            on_add: None
+            on_add: None,
         }
     }
 }
@@ -128,11 +127,15 @@ impl<T: 'static + Send> ElementBuilder<T> {
             namespace,
             classes: vec![],
             html_id: None,
-            rpc: None
+            rpc: None,
         }
     }
 
-    pub fn on<S: Into<String>, F: 'static + Send + Fn(DomEvent) -> T>(mut self, name: S, fun: F) -> Self {
+    pub fn on<S: Into<String>, F: 'static + Send + Fn(DomEvent) -> T>(
+        mut self,
+        name: S,
+        fun: F,
+    ) -> Self {
         if self.id.is_empty() {
             self.id = Id::new();
         }
@@ -160,16 +163,16 @@ impl<T: 'static + Send> ElementBuilder<T> {
         }
     }
 
-    pub fn rpc< F>(mut self, fun: F) -> Self
-        where
-            F: 'static + Send + Fn(JsonValue) -> T
+    pub fn rpc<F>(mut self, fun: F) -> Self
+    where
+        F: 'static + Send + Fn(JsonValue) -> T,
     {
         if self.id.is_empty() {
             self.id = Id::new();
         }
         let rpc = Rpc {
             node_id: self.id,
-            fun: Arc::new(Mutex::new(fun))
+            fun: Arc::new(Mutex::new(fun)),
         };
         self.rpc = Some(rpc);
         self
@@ -192,9 +195,9 @@ impl<T: 'static + Send> ElementBuilder<T> {
     }
 
     pub fn add<U, V>(mut self, children: V) -> Self
-        where
-            U: Iterator<Item=Node<T>>,
-            V: Into<NodeIter<T,U>>,
+    where
+        U: Iterator<Item = Node<T>>,
+        V: Into<NodeIter<T, U>>,
     {
         for child in children.into() {
             self.children.push(child);
@@ -220,10 +223,16 @@ impl<T: 'static + Send> ElementBuilder<T> {
     pub fn build(mut self) -> Node<T> {
         if !self.classes.is_empty() {
             let cls = self.classes.join(" ");
-            self.attrs.push(Attr { key: "class".to_string(), value: cls });
+            self.attrs.push(Attr {
+                key: "class".to_string(),
+                value: cls,
+            });
         }
         if let Some(x) = self.html_id.take() {
-            self.attrs.push(Attr { key: "id".to_string(), value: x })
+            self.attrs.push(Attr {
+                key: "id".to_string(),
+                value: x,
+            })
         }
 
         Node(NodeItems::Element(Element {
@@ -234,7 +243,7 @@ impl<T: 'static + Send> ElementBuilder<T> {
             listeners: Some(self.listeners),
             children: Some(self.children),
             namespace: self.namespace,
-            rpc: self.rpc
+            rpc: self.rpc,
         }))
     }
 }
@@ -273,7 +282,6 @@ impl<T: 'static + Send> ListenerBuilder<T> {
     }
 }
 
-
 impl<T: 'static + Send> From<ElementBuilder<T>> for Node<T> {
     fn from(builder: ElementBuilder<T>) -> Self {
         builder.build()
@@ -298,11 +306,11 @@ impl<T: 'static + Send> From<Subscription<T>> for Node<T> {
     }
 }
 
-pub struct NodeIter<T: 'static + Send, U: Iterator<Item=Node<T>>> {
+pub struct NodeIter<T: 'static + Send, U: Iterator<Item = Node<T>>> {
     pub(crate) inner: U,
 }
 
-impl<T: 'static + Send, U: Iterator<Item=Node<T>>> Iterator for NodeIter<T, U> {
+impl<T: 'static + Send, U: Iterator<Item = Node<T>>> Iterator for NodeIter<T, U> {
     type Item = Node<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -312,17 +320,21 @@ impl<T: 'static + Send, U: Iterator<Item=Node<T>>> Iterator for NodeIter<T, U> {
 
 impl<T: 'static + Send> From<Option<Node<T>>> for NodeIter<T, option::IntoIter<Node<T>>> {
     fn from(value: Option<Node<T>>) -> Self {
-        NodeIter { inner: value.into_iter() }
+        NodeIter {
+            inner: value.into_iter(),
+        }
     }
 }
 
 impl<T: 'static + Send> From<Blob> for NodeIter<T, Once<Node<T>>> {
     fn from(value: Blob) -> Self {
-        NodeIter { inner: once(Node(NodeItems::Blob(value))) }
+        NodeIter {
+            inner: once(Node(NodeItems::Blob(value))),
+        }
     }
 }
 
-impl<T: 'static + Send, U: Iterator<Item=Node<T>>> From<U> for NodeIter<T, U> {
+impl<T: 'static + Send, U: Iterator<Item = Node<T>>> From<U> for NodeIter<T, U> {
     fn from(value: U) -> Self {
         NodeIter { inner: value }
     }
@@ -330,25 +342,33 @@ impl<T: 'static + Send, U: Iterator<Item=Node<T>>> From<U> for NodeIter<T, U> {
 
 impl<T: 'static + Send> From<Vec<Node<T>>> for NodeIter<T, vec::IntoIter<Node<T>>> {
     fn from(value: Vec<Node<T>>) -> Self {
-        NodeIter { inner: value.into_iter() }
+        NodeIter {
+            inner: value.into_iter(),
+        }
     }
 }
 
 impl<T: 'static + Send> From<&str> for NodeIter<T, Once<Node<T>>> {
     fn from(value: &str) -> Self {
-        NodeIter { inner: once(Node(NodeItems::Text(value.to_string()))) }
+        NodeIter {
+            inner: once(Node(NodeItems::Text(value.to_string()))),
+        }
     }
 }
 
 impl<T: 'static + Send> From<String> for NodeIter<T, Once<Node<T>>> {
     fn from(value: String) -> Self {
-        NodeIter { inner: once(Node(NodeItems::Text(value))) }
+        NodeIter {
+            inner: once(Node(NodeItems::Text(value))),
+        }
     }
 }
 
 impl<T: 'static + Send> From<Subscription<T>> for NodeIter<T, Once<Node<T>>> {
     fn from(value: Subscription<T>) -> Self {
-        NodeIter { inner: once(value.into())}
+        NodeIter {
+            inner: once(value.into()),
+        }
     }
 }
 
@@ -360,31 +380,36 @@ impl<T: 'static + Send> From<Node<T>> for NodeIter<T, Once<Node<T>>> {
 
 impl<T: 'static + Send> From<ElementBuilder<T>> for NodeIter<T, Once<Node<T>>> {
     fn from(value: ElementBuilder<T>) -> Self {
-        NodeIter { inner: once(value.build()) }
+        NodeIter {
+            inner: once(value.build()),
+        }
     }
 }
 
 impl<T: 'static + Send> From<&Blob> for NodeIter<T, Once<Node<T>>> {
     fn from(value: &Blob) -> Self {
-        NodeIter { inner: once(Node(NodeItems::Blob(Blob {
-            inner: value.inner.clone()
-        }))) }
+        NodeIter {
+            inner: once(Node(NodeItems::Blob(Blob {
+                inner: value.inner.clone(),
+            }))),
+        }
     }
 }
 
 impl<T: 'static + Send> From<&String> for NodeIter<T, Once<Node<T>>> {
     fn from(value: &String) -> Self {
-        NodeIter { inner: once(Node(NodeItems::Text(value.clone()))) }
+        NodeIter {
+            inner: once(Node(NodeItems::Text(value.clone()))),
+        }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use assert_matches::assert_matches;
-    use crate::Render;
     use crate::dom::{BaseEvent, InputValue};
+    use crate::Render;
+    use assert_matches::assert_matches;
 
     #[derive(Debug)]
     enum Msg {

@@ -1,26 +1,26 @@
-use crate::event::{Emission};
 use crate::context::{Context, ContextMsg, ContextReceiver};
+use crate::dialog::DialogBinding;
+use crate::event::Emission;
 use crate::pipe::{Pipe, RxMsg, TxMsg};
-use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
-use crate::vdom::{Differ, patch_serialize, Patch};
-use crate::{Id, App};
 use crate::platform::{spawn, spawn_blocking};
+use crate::runtime::metrics::Metrics;
+pub(crate) use crate::runtime::render::RenderResult;
+use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
+pub(crate) use crate::runtime::state::Frame;
+use crate::runtime::state::RenderedState;
+use crate::vdom::{patch_serialize, Differ, Patch};
+use crate::{App, Id};
 use async_timer::Interval;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
-use futures::{select, FutureExt, StreamExt};
-use std::collections::{VecDeque, HashSet};
-use crate::runtime::state::RenderedState;
-pub(crate) use crate::runtime::render::RenderResult;
-pub(crate) use crate::runtime::state::Frame;
-use crate::runtime::metrics::Metrics;
-use std::time::{Instant, Duration};
-use crate::dialog::DialogBinding;
 use futures::SinkExt;
+use futures::{select, FutureExt, StreamExt};
+use std::collections::{HashSet, VecDeque};
+use std::time::{Duration, Instant};
 
-mod service_runner;
-mod render;
-mod metrics;
 mod component;
+mod metrics;
+mod render;
+mod service_runner;
 mod state;
 
 /// Wait time from an update() and a subsequent render
@@ -30,7 +30,6 @@ const DEFAULT_RENDER_INTERVAL_MS: u64 = 30;
 /// applies in case a render is still in progress on the frontend
 /// but a render is scheduled in the runtime
 const RENDER_RETRY_INTERVAL_MS: u64 = 10;
-
 
 /// `RuntimeControl` objects are used to control a `Runtime`, which in turn manages a user-defined
 /// application (implementing [`App`](../component/trait.App.html)).
@@ -61,7 +60,6 @@ enum RuntimeMsg<A: App> {
     NextFrameRendering(Frame<A>, Duration),
     AsyncMsg(A::Message),
 }
-
 
 /// The `Runtime` object manages the main application life-cycle as well as event distribution.
 /// It is the central object executing the backend portion of an application.
@@ -136,11 +134,10 @@ pub struct Runtime<A: 'static + App, P: 'static + Pipe> {
     not_applied_counter: i32,
     dirty: bool,
     metrics: Metrics,
-    dialogs: VecDeque<DialogBinding<A::Message>>
+    dialogs: VecDeque<DialogBinding<A::Message>>,
 }
 
 impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
-
     /// Create a new `Runtime`, which allows executing a given Application.
     /// Also returns an associated control object, which allows controlling the runtime and changing
     /// the state of the application.
@@ -228,8 +225,11 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         match msg {
             ServiceMessage::Update(msg) => self.update(msg).await,
             ServiceMessage::Tx(id, msg) => {
-                self.sender.send(TxMsg::Service(id.data(), msg)).await.unwrap();
-            },
+                self.sender
+                    .send(TxMsg::Service(id.data(), msg))
+                    .await
+                    .unwrap();
+            }
             ServiceMessage::Stopped() => {}
         }
     }
@@ -239,7 +239,8 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         match msg {
             RxMsg::Event(evt) => {
                 // search in listeners and get a message
-                let msg = self.rendered
+                let msg = self
+                    .rendered
                     .get_listener(evt.target(), evt.name())
                     .map(|listener| listener.call(evt));
 
@@ -259,7 +260,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             }
             RxMsg::Service(id, msg) => {
                 self.services.send(Id::new_from_data(id), msg);
-            },
+            }
             RxMsg::Dialog(data) => {
                 // cannot receive a dialog message if no dialog is active
                 // since this is the only place where we pop
@@ -274,10 +275,9 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                     self.sender.send(TxMsg::Dialog(data)).await.unwrap();
                 }
             }
-            RxMsg::ElementRpc(id,  value) => {
+            RxMsg::ElementRpc(id, value) => {
                 let id = Id::new_from_data(id);
-                let msg = self.rendered.get_rpc(id)
-                    .map(|rpc| rpc.call(value));
+                let msg = self.rendered.get_rpc(id).map(|rpc| rpc.call(value));
                 if let Some(msg) = msg {
                     self.update(msg).await;
                     self.process_events().await;
@@ -290,7 +290,9 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     /// Processes a message as received by the runtime control handle.
     async fn handle_runtime_msg(&mut self, msg: RuntimeMsg<A>) -> bool {
         match msg {
-            RuntimeMsg::Quit => {return false;},
+            RuntimeMsg::Quit => {
+                return false;
+            }
             RuntimeMsg::Update(msg) => {
                 self.update(msg).await;
             }
@@ -304,7 +306,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 // schedule next frame
                 self.next_frame = Some(frame);
                 self.metrics.diff.record(duration);
-            },
+            }
             RuntimeMsg::AsyncMsg(msg) => {
                 self.update(msg).await;
             }
@@ -343,7 +345,9 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             self.schedule_render(DEFAULT_RENDER_INTERVAL_MS);
         } else if let Some(invalidated) = updated.components_render {
             let invalidated_components = self.invalidated_components.as_mut().unwrap();
-            invalidated.iter().for_each(|x| { invalidated_components.insert(*x); });
+            invalidated.iter().for_each(|x| {
+                invalidated_components.insert(*x);
+            });
             self.schedule_render(DEFAULT_RENDER_INTERVAL_MS);
         };
         self.handle_context_result(receiver).await;
@@ -358,16 +362,16 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             match cmd {
                 ContextMsg::Emission(e) => {
                     self.event_queue.push_back(e);
-                },
+                }
                 ContextMsg::LoadCss(css) => {
                     self.sender.send(TxMsg::LoadCss(css)).await.unwrap();
-                },
+                }
                 ContextMsg::RunJs(js) => {
                     self.sender.send(TxMsg::RunJs(js)).await.unwrap();
-                },
+                }
                 ContextMsg::Propagate(prop) => {
                     self.sender.send(TxMsg::Propagate(prop)).await.unwrap();
-                },
+                }
                 ContextMsg::Subscription(service) => {
                     self.services.spawn(service);
                 }
@@ -395,7 +399,10 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 }
                 ContextMsg::Dialog(dialog) => {
                     if self.dialogs.is_empty() {
-                        self.sender.send(TxMsg::Dialog(dialog.serialize())).await.unwrap();
+                        self.sender
+                            .send(TxMsg::Dialog(dialog.serialize()))
+                            .await
+                            .unwrap();
                     }
                     self.dialogs.push_back(dialog);
                 }
@@ -410,7 +417,8 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     /// accordingly.
     async fn process_events(&mut self) {
         while let Some(evt) = self.event_queue.pop_front() {
-            let msg = self.rendered
+            let msg = self
+                .rendered
                 .get_subscription(evt.event_id)
                 .map(|subs| subs.call(evt.data));
             if let Some(msg) = msg {
@@ -425,7 +433,8 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     /// In case the a render was not yet processed by the frontend, this function delays the rendering
     /// operation several time to avoid overloading the frontend process.
     fn render_dom(&mut self) {
-        if self.next_frame.is_some() && self.current_frame.is_none() && self.not_applied_counter < 3 {
+        if self.next_frame.is_some() && self.current_frame.is_none() && self.not_applied_counter < 3
+        {
             self.not_applied_counter += 1;
             self.dirty = false;
             self.schedule_render(RENDER_RETRY_INTERVAL_MS);
@@ -436,7 +445,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
 
         let metrics = &mut self.metrics;
         let app = &mut self.app;
-        let dom = metrics.root.run(|| app.render() );
+        let dom = metrics.root.run(|| app.render());
 
         let updated = self.invalidated_components.take().unwrap();
         self.invalidated_components = Some(HashSet::new());
@@ -456,7 +465,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         spawn_blocking(async move {
             // create a patch
             let before = Instant::now();
-            let patch= if let Some(old_frame) = &old_frame {
+            let patch = if let Some(old_frame) = &old_frame {
                 Differ::new(&old_frame, &result, updated).diff()
             } else {
                 Patch::from_dom(&result)
@@ -480,17 +489,16 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Render, Updated};
     use crate::node::Node;
     use crate::pipe::tests::DummyPipe;
+    use crate::vdom::Attr;
+    use crate::vdom::{Patch, PatchItem, VElement, VNode};
+    use crate::{Render, Updated};
     use async_std::task::{block_on, spawn_blocking};
     use futures::stream::StreamExt;
-    use crate::vdom::{VNode, VElement, PatchItem, Patch};
-    use crate::vdom::Attr;
 
     struct DummyComponent(u32);
     impl Render for DummyComponent {
@@ -500,7 +508,7 @@ mod tests {
             Node::html()
                 .elem("div")
                 .id("html-id")
-                .add(Node::text(self.0.to_string()) )
+                .add(Node::text(self.0.to_string()))
                 .build()
         }
     }
@@ -515,7 +523,7 @@ mod tests {
     fn make_patch(patch: Vec<PatchItem>) -> Vec<u8> {
         let patch = Patch {
             items: patch,
-            translations: Default::default()
+            translations: Default::default(),
         };
         let render_result = RenderResult::<DummyComponent>::new_empty();
         patch_serialize(&render_result, &patch)
@@ -526,23 +534,21 @@ mod tests {
         let app = DummyComponent(1);
         let (pipe, mut frontend) = DummyPipe::new();
         let (rt, _control) = Runtime::new(app, pipe);
-        let handle = spawn_blocking(move || {
-            match block_on(frontend.sender_rx.next()) {
-                Some(TxMsg::Patch(msg)) => {
-                    let elem = VNode::element(VElement {
-                        id: Id::new_empty(),
-                        tag: "div".to_string(),
-                        attr: vec![Attr::new("id", "html-id")],
-                        js_events: vec![],
-                        events: vec![],
-                        children: vec![VNode::Text("1".to_string())],
-                        namespace: None
-                    });
-                    let serialized = make_patch(vec![PatchItem::Replace(&elem)]);
-                    assert_eq!(serialized, msg);
-                },
-                _ => panic!()
+        let handle = spawn_blocking(move || match block_on(frontend.sender_rx.next()) {
+            Some(TxMsg::Patch(msg)) => {
+                let elem = VNode::element(VElement {
+                    id: Id::new_empty(),
+                    tag: "div".to_string(),
+                    attr: vec![Attr::new("id", "html-id")],
+                    js_events: vec![],
+                    events: vec![],
+                    children: vec![VNode::Text("1".to_string())],
+                    namespace: None,
+                });
+                let serialized = make_patch(vec![PatchItem::Replace(&elem)]);
+                assert_eq!(serialized, msg);
             }
+            _ => panic!(),
         });
         rt.run_blocking();
         block_on(handle);
@@ -561,12 +567,12 @@ mod tests {
             match msg2 {
                 Some(TxMsg::Patch(msg)) => {
                     let new_text = "2";
-                    let serialized = make_patch(vec![PatchItem::Descend(), PatchItem::ChangeText(&new_text)]);
+                    let serialized =
+                        make_patch(vec![PatchItem::Descend(), PatchItem::ChangeText(&new_text)]);
                     assert_eq!(serialized, msg);
-                },
-                _ => panic!()
+                }
+                _ => panic!(),
             }
-
         });
         rt.run_blocking();
         block_on(handle);
@@ -591,14 +597,14 @@ mod tests {
                 js_events: vec![],
                 events: vec![],
                 children: vec![VNode::Text("2".to_string())],
-                namespace: None
+                namespace: None,
             });
             let serialized = make_patch(vec![PatchItem::Replace(&elem)]);
 
             match msg2 {
                 Some(TxMsg::Patch(msg)) => {
                     assert_eq!(msg, serialized);
-                },
+                }
                 _ => panic!(),
             }
         });
@@ -607,8 +613,5 @@ mod tests {
     }
 
     #[test]
-    fn test() {
-
-    }
-
+    fn test() {}
 }

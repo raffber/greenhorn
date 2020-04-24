@@ -1,8 +1,7 @@
 use crate::node::Node;
-use crate::vdom::Attr;
 use crate::node_builder::{ElementBuilder, NodeIter};
-use std::iter::{Once, once};
-
+use crate::vdom::Attr;
+use std::iter::{once, Once};
 
 pub struct CheckBox<T: 'static + Send> {
     attrs: Vec<Attr>,
@@ -25,7 +24,7 @@ impl<T: 'static + Send> CheckBox<T> {
     pub fn attr<R: Into<String>, S: Into<String>>(mut self, key: R, value: S) -> Self {
         let attr = Attr {
             key: key.into(),
-            value: value.into()
+            value: value.into(),
         };
         self.attrs.push(attr);
         self
@@ -45,22 +44,30 @@ impl<T: 'static + Send> CheckBox<T> {
     }
 }
 
-pub fn checkbox<T: 'static + Send, Fun: 'static + Send + Fn() -> T>(checked: bool, handler: Fun) -> CheckBox<T> {
+pub fn checkbox<T: 'static + Send, Fun: 'static + Send + Fn() -> T>(
+    checked: bool,
+    handler: Fun,
+) -> CheckBox<T> {
     let mut node = Node::html()
         .elem("input")
         .attr("type", "checkbox")
         .attr("checked", checked.to_string());
-    node = node.listener("click", move |_| handler()).prevent_default().build();
+    node = node
+        .listener("click", move |_| handler())
+        .prevent_default()
+        .build();
     CheckBox {
         attrs: vec![],
         classes: vec![],
         html_id: None,
-        node
+        node,
     }
 }
 
 impl<T: 'static + Send> From<CheckBox<T>> for NodeIter<T, Once<Node<T>>> {
     fn from(value: CheckBox<T>) -> Self {
-        NodeIter { inner: once(value.build()) }
+        NodeIter {
+            inner: once(value.build()),
+        }
     }
 }

@@ -1,17 +1,16 @@
-use crate::node::Node;
-use crate::dom::DomEvent;
-use std::collections::HashMap;
-use crate::event::Event;
 use crate::context::Context;
-use std::sync::{Arc, Mutex};
+use crate::dom::DomEvent;
+use crate::event::Event;
+use crate::node::Node;
 use crate::node_builder::{ElementBuilder, NodeIter};
-use std::iter::{Once, once};
 use crate::vdom::Attr;
-
+use std::collections::HashMap;
+use std::iter::{once, Once};
+use std::sync::{Arc, Mutex};
 
 pub struct SubscribedEvent {
     component_event: Event<DomEvent>,
-    evt: DomEvent
+    evt: DomEvent,
 }
 
 pub enum TextInputMsg {
@@ -42,23 +41,23 @@ impl TextInput {
         self.version += 1;
     }
 
-
     pub fn get(&self) -> &str {
         &self.text
     }
 
     pub fn update<T: 'static + Send>(&mut self, msg: TextInputMsg, ctx: &Context<T>) {
         match msg {
-            TextInputMsg::ValueChange(evt) => {
-                self.text = evt.target_value().get_text().unwrap()
-            },
+            TextInputMsg::ValueChange(evt) => self.text = evt.target_value().get_text().unwrap(),
             TextInputMsg::SubscribedEvent(subs) => {
                 ctx.emit(&subs.component_event, subs.evt);
             }
         }
     }
 
-    pub fn render<T: 'static + Send, F: 'static + Send + Fn(TextInputMsg) -> T>(&self, mapper: F) -> TextInputRender<T> {
+    pub fn render<T: 'static + Send, F: 'static + Send + Fn(TextInputMsg) -> T>(
+        &self,
+        mapper: F,
+    ) -> TextInputRender<T> {
         // we use this very simple technique to move the actual DOM diffing to the frontend side:
         // if we set the new text value, we also bump the version.
         // the version is also recorded in a custom attribute. If the frontend sees that
@@ -72,7 +71,8 @@ impl TextInput {
                 event.target.setAttribute('__rendered_version', value_version);
             }
         }";
-        let input_node = Node::html().elem("input")
+        let input_node = Node::html()
+            .elem("input")
             .attr("type", "text")
             .attr("__value_version", self.version)
             .attr("value", &self.text)
@@ -81,7 +81,7 @@ impl TextInput {
         TextInputRender {
             mapper: Arc::new(Mutex::new(mapper)),
             input_node,
-            events: Default::default()
+            events: Default::default(),
         }
     }
 }
@@ -93,10 +93,14 @@ pub struct TextInputRender<T: 'static + Send> {
 }
 
 impl<T: 'static + Send> TextInputRender<T> {
-    pub fn on<S: Into<String>, F: 'static + Send + Fn(DomEvent) -> T>(mut self, evt_name: S, mapper: F) -> Self {
+    pub fn on<S: Into<String>, F: 'static + Send + Fn(DomEvent) -> T>(
+        mut self,
+        evt_name: S,
+        mapper: F,
+    ) -> Self {
         let subs = TextInputSubscription {
             event: Default::default(),
-            mapper: Arc::new(Mutex::new(mapper))
+            mapper: Arc::new(Mutex::new(mapper)),
         };
         self.events.insert(evt_name.into(), subs);
         self
@@ -128,7 +132,7 @@ impl<T: 'static + Send> TextInputRender<T> {
             let fun = move |evt| {
                 let data = SubscribedEvent {
                     component_event: event_cloned.clone(),
-                    evt
+                    evt,
                 };
                 TextInputMsg::SubscribedEvent(data)
             };
@@ -150,7 +154,9 @@ impl<T: 'static + Send> From<TextInputRender<T>> for Node<T> {
 
 impl<T: 'static + Send> From<TextInputRender<T>> for NodeIter<T, Once<Node<T>>> {
     fn from(value: TextInputRender<T>) -> Self {
-        NodeIter { inner: once(value.render()) }
+        NodeIter {
+            inner: once(value.render()),
+        }
     }
 }
 
@@ -159,4 +165,3 @@ impl Default for TextInput {
         Self::new()
     }
 }
-

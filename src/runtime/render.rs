@@ -1,47 +1,52 @@
-use crate::vdom::{VNode, EventHandler, VElement, Path};
-use crate::node::{Node, NodeItems};
+use crate::blob::Blob;
 use crate::component::{ComponentContainer, ComponentMap};
 use crate::element::ElementMap;
-use crate::blob::Blob;
-use crate::{App, Id};
-use crate::listener::{Listener, ListenerKey, Rpc};
 use crate::event::Subscription;
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use crate::runtime::metrics::Metrics;
+use crate::listener::{Listener, ListenerKey, Rpc};
+use crate::node::{Node, NodeItems};
 use crate::runtime::component::RenderedComponent;
+use crate::runtime::metrics::Metrics;
 use crate::runtime::state::Frame;
+use crate::vdom::{EventHandler, Path, VElement, VNode};
+use crate::{App, Id};
+use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
+use std::sync::Arc;
 
 // TODO: currently an event cannot be subscribed to multiple times
 // since we store the event_id as the key to find a single subscription
 // however, we should use a subscription list as value
 
-
-pub(crate) fn render_component<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>) -> Option<VNode> {
+pub(crate) fn render_component<A: App>(
+    dom: Node<A::Message>,
+    result: &mut Vec<ResultItem<A>>,
+) -> Option<VNode> {
     let mut path = Path::new();
     render_recursive(dom, result, &mut path)
 }
 
-
 /// Recursively renders an arbitrary node.
 /// Non-tree elements will be pushed into `result`.
-fn render_recursive<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A>>, path: &mut Path) -> Option<VNode> {
+fn render_recursive<A: App>(
+    dom: Node<A::Message>,
+    result: &mut Vec<ResultItem<A>>,
+    path: &mut Path,
+) -> Option<VNode> {
     match dom.0 {
         NodeItems::ElementMap(mut elem) => render_element(&mut *elem.inner, result, path),
         NodeItems::Component(comp) => {
             let id = comp.id();
-            result.push( ResultItem::Component(comp, path.clone()) );
+            result.push(ResultItem::Component(comp, path.clone()));
             Some(VNode::Placeholder(id, path.clone()))
         }
         NodeItems::Text(text) => Some(VNode::text(text)),
         NodeItems::Element(mut elem) => render_element(&mut elem, result, path),
         NodeItems::EventSubscription(event_id, subs) => {
-            result.push( ResultItem::Subscription(event_id, subs) );
+            result.push(ResultItem::Subscription(event_id, subs));
             None
         }
         NodeItems::Blob(blob) => {
-            result.push( ResultItem::Blob(blob) );
+            result.push(ResultItem::Blob(blob));
             None
         }
     }
@@ -49,11 +54,16 @@ fn render_recursive<A: App>(dom: Node<A::Message>, result: &mut Vec<ResultItem<A
 
 /// Recursively renders an element into a VNode.
 /// Non-tree elements will be pushed into `result`.
-fn render_element<A: App>(elem: &mut dyn ElementMap<A::Message>, result: &mut Vec<ResultItem<A>>, path: &mut Path) -> Option<VNode> {
+fn render_element<A: App>(
+    elem: &mut dyn ElementMap<A::Message>,
+    result: &mut Vec<ResultItem<A>>,
+    path: &mut Path,
+) -> Option<VNode> {
     let mut children = Vec::new();
     path.push(0);
     for (k, child) in elem.take_children().drain(..).enumerate() {
-        path.pop(); path.push(k);
+        path.pop();
+        path.push(k);
         let child = render_component(child, result);
         if let Some(child) = child {
             children.push(child);
@@ -62,7 +72,7 @@ fn render_element<A: App>(elem: &mut dyn ElementMap<A::Message>, result: &mut Ve
     let mut events = Vec::new();
     for listener in elem.take_listeners().drain(..) {
         events.push(EventHandler::from_listener(&listener));
-        result.push( ResultItem::Listener(listener) );
+        result.push(ResultItem::Listener(listener));
     }
     if let Some(rpc) = elem.take_rpc() {
         result.push(ResultItem::Rpc(rpc));
@@ -79,13 +89,12 @@ fn render_element<A: App>(elem: &mut dyn ElementMap<A::Message>, result: &mut Ve
 }
 
 pub(crate) enum ResultItem<A: App> {
-    Listener( Listener<A::Message> ),
-    Subscription( Id, Subscription<A::Message> ),
-    Component( ComponentContainer<A::Message>, Path ),
-    Blob( Blob ),
+    Listener(Listener<A::Message>),
+    Subscription(Id, Subscription<A::Message>),
+    Component(ComponentContainer<A::Message>, Path),
+    Blob(Blob),
     Rpc(Rpc<A::Message>),
 }
-
 
 pub(crate) struct RenderResult<A: App> {
     pub(crate) listeners: HashMap<ListenerKey, Listener<A::Message>>,
@@ -107,7 +116,7 @@ impl<A: App> RenderResult<A> {
             rpcs: Default::default(),
             components: Default::default(),
             root_components: Default::default(),
-            root: Arc::new(root)
+            root: Arc::new(root),
         }
     }
 
@@ -121,7 +130,6 @@ impl<A: App> RenderResult<A> {
             components: Default::default(),
             root_components: vec![],
             root: Arc::new(VNode::Text("".to_string())),
-
         }
     }
 
@@ -129,8 +137,8 @@ impl<A: App> RenderResult<A> {
     /// Re-renders the whole component tree.
     pub(crate) fn new_from_root(root_rendered: Node<A::Message>, metrics: &mut Metrics) -> Self {
         let mut result = Vec::new();
-        let vdom = render_component::<A>(root_rendered, &mut result)
-            .expect("Root produced an empty DOM");
+        let vdom =
+            render_component::<A>(root_rendered, &mut result).expect("Root produced an empty DOM");
 
         let mut ret = Self {
             listeners: Default::default(),
@@ -146,17 +154,17 @@ impl<A: App> RenderResult<A> {
             match item {
                 ResultItem::Listener(listener) => {
                     ret.listeners.insert(ListenerKey::new(&listener), listener);
-                },
+                }
                 ResultItem::Subscription(id, subscription) => {
                     ret.subscriptions.insert(id, subscription);
-                },
+                }
                 ResultItem::Component(comp, path) => {
                     ret.root_components.push((comp.id(), path));
                     ret.render_component(None, comp, None, metrics);
-                },
+                }
                 ResultItem::Blob(blob) => {
                     ret.blobs.insert(blob.id(), blob);
-                },
+                }
                 ResultItem::Rpc(rpc) => {
                     ret.rpcs.insert(rpc.node_id, rpc);
                 }
@@ -169,14 +177,18 @@ impl<A: App> RenderResult<A> {
     /// that require rerendering.
     ///
     /// **Precondition**: The root component must still be valid and not require a re-render
-    pub(crate) fn new_from_frame(old: &Frame<A>, changes: &HashSet<Id>, metrics: &mut Metrics) -> Self {
+    pub(crate) fn new_from_frame(
+        old: &Frame<A>,
+        changes: &HashSet<Id>,
+        metrics: &mut Metrics,
+    ) -> Self {
         let old = &old.rendered;
         let mut ret = Self {
             listeners: Default::default(),
             subscriptions: Default::default(),
             blobs: Default::default(),
             rpcs: Default::default(),
-            components: HashMap::with_capacity(old.components.len() * 2 ),
+            components: HashMap::with_capacity(old.components.len() * 2),
             root_components: Default::default(),
             root: old.root.clone(),
         };
@@ -184,8 +196,7 @@ impl<A: App> RenderResult<A> {
         let root_components = old.root_components.clone(); // XXX: workaround
         for (id, _) in &root_components {
             let comp = old.components.get(id).unwrap();
-            ret.render_component_from_old(Some(old), comp.component(),
-            Some(changes), metrics);
+            ret.render_component_from_old(Some(old), comp.component(), Some(changes), metrics);
         }
 
         ret.root_components = old.root_components.clone();
@@ -194,25 +205,25 @@ impl<A: App> RenderResult<A> {
     }
 
     /// Renders a component and registers its results into the current object.
-    fn render_component(&mut self,
-            old: Option<&RenderResult<A>>,
-            comp: ComponentContainer<A::Message>,
-            changes: Option<&HashSet<Id>>,
-            metrics: &mut Metrics)
-        {
+    fn render_component(
+        &mut self,
+        old: Option<&RenderResult<A>>,
+        comp: ComponentContainer<A::Message>,
+        changes: Option<&HashSet<Id>>,
+        metrics: &mut Metrics,
+    ) {
         let id = comp.id();
-        let (rendered, mut result) =
-            RenderedComponent::new(comp, metrics);
+        let (rendered, mut result) = RenderedComponent::new(comp, metrics);
         self.components.insert(id, Arc::new(rendered));
 
         for item in result.drain(..) {
             match item {
                 ResultItem::Listener(listener) => {
                     self.listeners.insert(ListenerKey::new(&listener), listener);
-                },
+                }
                 ResultItem::Subscription(id, subscription) => {
                     self.subscriptions.insert(id, subscription);
-                },
+                }
                 ResultItem::Component(comp, _) => {
                     self.render_component_from_old(old, comp, changes, metrics);
                 }
@@ -227,17 +238,18 @@ impl<A: App> RenderResult<A> {
     }
 
     /// Renders a component which was not changed, thus re-using all of it's VDom.
-    fn render_unchanged_component(&mut self, old: &RenderResult<A>,
-                comp: ComponentContainer<A::Message>,
-                changes: &HashSet<Id>,
-                metrics: &mut Metrics)
-    {
+    fn render_unchanged_component(
+        &mut self,
+        old: &RenderResult<A>,
+        comp: ComponentContainer<A::Message>,
+        changes: &HashSet<Id>,
+        metrics: &mut Metrics,
+    ) {
         let id = comp.id();
         let old_render = old.components.get(&id).unwrap();
         for (child, _) in old_render.children() {
             let old_comp = old.components.get(child).unwrap();
-            self.render_component_from_old(Some(old), old_comp.component(),
-                                           Some(changes), metrics)
+            self.render_component_from_old(Some(old), old_comp.component(), Some(changes), metrics)
         }
         for key in old_render.listeners() {
             let listener = old.listeners.get(key).unwrap();
@@ -259,11 +271,13 @@ impl<A: App> RenderResult<A> {
     }
 
     /// Renders a component based on an old RenderResult
-    fn render_component_from_old(&mut self, old: Option<&RenderResult<A>>,
-                                 comp: ComponentContainer<A::Message>,
-                                 changes: Option<&HashSet<Id>>,
-                                 metrics: &mut Metrics)
-     {
+    fn render_component_from_old(
+        &mut self,
+        old: Option<&RenderResult<A>>,
+        comp: ComponentContainer<A::Message>,
+        changes: Option<&HashSet<Id>>,
+        metrics: &mut Metrics,
+    ) {
         let id = comp.id();
         if let Some(old) = old {
             let changes = changes.unwrap();
@@ -285,4 +299,3 @@ impl<A: App> RenderResult<A> {
         self.components.get(&component_id).map(|x| x.deref())
     }
 }
-

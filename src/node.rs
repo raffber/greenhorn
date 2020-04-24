@@ -1,11 +1,11 @@
-use crate::Id;
-use std::fmt::{Debug, Formatter, Error};
-use std::sync::{Arc, Mutex};
+use crate::blob::Blob;
+use crate::component::{ComponentContainer, MappedComponent};
+use crate::element::{Element, ElementMapDirect, ElementRemap, MappedElement};
 use crate::event::Subscription;
 use crate::node_builder::NodeBuilder;
-use crate::blob::Blob;
-use crate::element::{Element, ElementRemap, ElementMapDirect, MappedElement};
-use crate::component::{MappedComponent, ComponentContainer};
+use crate::Id;
+use std::fmt::{Debug, Error, Formatter};
+use std::sync::{Arc, Mutex};
 
 /// Represents a DOM node which might emit a message of type `T`.
 ///
@@ -81,12 +81,12 @@ pub(crate) enum NodeItems<T: 'static + Send> {
 impl<T: 'static + Send> Debug for Node<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match &self.0 {
-            NodeItems::ElementMap(x) => {std::fmt::Debug::fmt(&x, f)},
-            NodeItems::Component(x) => {std::fmt::Debug::fmt(&x, f)},
-            NodeItems::Text(text) => {f.write_str(&text)},
-            NodeItems::Element(elem) => {elem.fmt(f)},
-            NodeItems::EventSubscription(_, subs) => {subs.fmt(f)},
-            NodeItems::Blob(blob) => {blob.fmt(f)}
+            NodeItems::ElementMap(x) => std::fmt::Debug::fmt(&x, f),
+            NodeItems::Component(x) => std::fmt::Debug::fmt(&x, f),
+            NodeItems::Text(text) => f.write_str(&text),
+            NodeItems::Element(elem) => elem.fmt(f),
+            NodeItems::EventSubscription(_, subs) => subs.fmt(f),
+            NodeItems::Blob(blob) => blob.fmt(f),
         }
     }
 }
@@ -145,22 +145,28 @@ impl<T: 'static + Send> Node<T> {
     /// }
     /// ```
     pub fn map<U: 'static + Send, F: 'static + Send + Fn(T) -> U>(self, fun: F) -> Node<U> {
-        let fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>> = Arc::new(Mutex::new(Box::new(fun)));
+        let fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>> =
+            Arc::new(Mutex::new(Box::new(fun)));
         self.map_shared(fun)
     }
 
     /// same as `Node::map()` but uses a shared reference of an already created mapping function
-    pub fn map_shared<U: 'static + Send>(self, fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>) -> Node<U> {
+    pub fn map_shared<U: 'static + Send>(
+        self,
+        fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>,
+    ) -> Node<U> {
         let ret = match self.0 {
             NodeItems::ElementMap(inner) => {
                 let ret = ElementRemap::new_box(fun, inner.inner);
                 NodeItems::ElementMap(ret)
             }
-            NodeItems::Component(inner) => NodeItems::Component(MappedComponent::new_container(fun, inner.inner)),
+            NodeItems::Component(inner) => {
+                NodeItems::Component(MappedComponent::new_container(fun, inner.inner))
+            }
             NodeItems::Text(text) => NodeItems::Text(text),
             NodeItems::Element(elem) => NodeItems::ElementMap(ElementMapDirect::new_box(fun, elem)),
             NodeItems::EventSubscription(id, evt) => NodeItems::EventSubscription(id, evt.map(fun)),
-            NodeItems::Blob(blob) => NodeItems::Blob(blob)
+            NodeItems::Blob(blob) => NodeItems::Blob(blob),
         };
         Node(ret)
     }
@@ -183,9 +189,9 @@ impl<T: 'static + Send> Node<T> {
                 if elem.rpc.is_some() {
                     panic!();
                 }
-                let children = elem.children.map(
-                    |mut x| x.drain(..).map(|x| x.empty_map()).collect()
-                );
+                let children = elem
+                    .children
+                    .map(|mut x| x.drain(..).map(|x| x.empty_map()).collect());
                 Node(NodeItems::Element(Element {
                     id: elem.id,
                     tag: elem.tag,
@@ -196,7 +202,7 @@ impl<T: 'static + Send> Node<T> {
                     namespace: elem.namespace,
                     rpc: None,
                 }))
-            },
+            }
             NodeItems::EventSubscription(_, _) => panic!(),
             NodeItems::Blob(blob) => Node(NodeItems::Blob(blob)),
         }
@@ -214,11 +220,10 @@ impl<T: 'static + Send> Node<T> {
                 } else {
                     None
                 }
-            },
+            }
             NodeItems::Text(txt) => Some(Node(NodeItems::Text(txt.clone()))),
             NodeItems::Blob(blob) => Some(Node(NodeItems::Blob(blob.clone()))),
-            _ => None
+            _ => None,
         }
     }
 }
-

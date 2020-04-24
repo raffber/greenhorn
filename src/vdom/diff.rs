@@ -1,6 +1,6 @@
+use crate::runtime::{Frame, RenderResult};
+use crate::vdom::{Patch, PatchItem, VElement, VNode};
 use crate::{App, Id};
-use crate::runtime::{RenderResult, Frame};
-use crate::vdom::{Patch, VElement, PatchItem, VNode};
 use std::collections::{HashMap, HashSet};
 
 // Expansion ideas
@@ -27,7 +27,7 @@ impl<'a, A: App> Differ<'a, A> {
     /// Produce a patch based on the RenderResult
     pub(crate) fn diff(self) -> Patch<'a> {
         let mut patch = Patch::new();
-        self.diff_recursive(&self.old.rendered.root,   &self.new.root, &mut patch);
+        self.diff_recursive(&self.old.rendered.root, &self.new.root, &mut patch);
         patch.optimize();
         self.diff_blobs(&mut patch);
         patch
@@ -171,7 +171,7 @@ impl<'a, A: App> Differ<'a, A> {
             }
             let old_node = old.children.get(k).unwrap();
             let new_node = new.children.get(k).unwrap();
-            ret |= self.diff_recursive(old_node,  new_node, patch);
+            ret |= self.diff_recursive(old_node, new_node, patch);
         }
 
         if n_old > n_new {
@@ -226,7 +226,11 @@ impl<'a, A: App> Differ<'a, A> {
                     ret |= self.diff_js_events(elem_old, elem_new, patch);
                     ret |= self.diff_children(elem_old, elem_new, patch);
                     if !elem_old.id.is_empty() {
-                        let very_old_id = self.old.translations.get(&elem_old.id).unwrap_or(&elem_old.id);
+                        let very_old_id = self
+                            .old
+                            .translations
+                            .get(&elem_old.id)
+                            .unwrap_or(&elem_old.id);
                         patch.translate(elem_new.id, *very_old_id);
                     }
                 }
@@ -251,7 +255,7 @@ impl<'a, A: App> Differ<'a, A> {
                         // thus it must have the same children
                         let old_vdom = self.old.rendered.get_component_vdom(*child_id).unwrap();
 
-                        self.diff_recursive(old_vdom,  new_vdom, patch);
+                        self.diff_recursive(old_vdom, new_vdom, patch);
 
                         // check if a patch was actually emitted
                         if patch.len() == cur_len {
@@ -267,20 +271,19 @@ impl<'a, A: App> Differ<'a, A> {
                 } else if id_old == id_new {
                     let old_vdom = self.old.rendered.get_component_vdom(*id_old).unwrap();
                     let new_vdom = self.new.get_component_vdom(*id_new).unwrap();
-                    ret = self.diff_recursive(old_vdom,  new_vdom, patch);
+                    ret = self.diff_recursive(old_vdom, new_vdom, patch);
                 } else {
                     // don't even bother diffing
                     let new_vdom = self.new.get_component_vdom(*id_new).unwrap();
                     patch.push(PatchItem::Replace(new_vdom));
                     ret = true;
                 }
-            },
+            }
             (_, new) => {
                 ret = true;
                 patch.push(PatchItem::Replace(new));
-            },
+            }
         };
         ret
     }
 }
-

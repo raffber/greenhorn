@@ -1,2 +1,2 @@
 pub mod element_size;
-pub use element_size::{ElementSizeNotifier, ElementSize};
+pub use element_size::{ElementSize, ElementSizeNotifier};

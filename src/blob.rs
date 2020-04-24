@@ -1,7 +1,7 @@
 use crate::node_builder::BlobBuilder;
-use std::fmt::{Debug, Formatter, Error};
-use std::sync::Arc;
 use crate::Id;
+use std::fmt::{Debug, Error, Formatter};
+use std::sync::Arc;
 
 /// keeps track of all the blob data. `BlobData` objects are
 /// shared between serveral blobs.
@@ -12,7 +12,7 @@ pub(crate) struct BlobData {
     data: Vec<u8>,
     mime_type: String,
     on_change: Option<String>,
-    on_add: Option<String>
+    on_add: Option<String>,
 }
 
 ///
@@ -75,7 +75,7 @@ pub(crate) struct BlobData {
 ///
 #[derive(Clone)]
 pub struct Blob {
-    pub(crate) inner: Arc<BlobData>
+    pub(crate) inner: Arc<BlobData>,
 }
 
 impl Blob {
@@ -86,7 +86,7 @@ impl Blob {
             mime_type: "".to_string(),
             data: vec![],
             on_change: None,
-            on_add: None
+            on_add: None,
         }
     }
 
@@ -165,13 +165,17 @@ impl PartialEq for Blob {
 
 impl Debug for Blob {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        f.write_str(&format!("Blob {{id: {}, hash: {}}}", self.id(), self.hash()))
+        f.write_str(&format!(
+            "Blob {{id: {}, hash: {}}}",
+            self.id(),
+            self.hash()
+        ))
     }
 }
 
 impl From<BlobBuilder> for Blob {
     fn from(builder: BlobBuilder) -> Self {
-        let id = builder.id.unwrap_or_else( Id::new);
+        let id = builder.id.unwrap_or_else(Id::new);
         Blob {
             inner: Arc::new(BlobData {
                 hash: builder.hash,
@@ -184,4 +188,3 @@ impl From<BlobBuilder> for Blob {
         }
     }
 }
-

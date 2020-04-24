@@ -1,30 +1,30 @@
-
-mod serialize;
 mod diff;
-#[cfg(test)] mod tests;
+mod serialize;
+#[cfg(test)]
+mod tests;
 
-pub(crate) use diff::Differ;
-use crate::{Id, App};
-use std::collections::HashMap;
-pub(crate) use serialize::serialize as patch_serialize;
-use std::hash::{Hash, Hasher};
-use crate::listener::Listener;
 use crate::blob::Blob;
+use crate::listener::Listener;
 use crate::runtime::RenderResult;
+use crate::{App, Id};
+pub(crate) use diff::Differ;
+pub(crate) use serialize::serialize as patch_serialize;
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
-const DEFAULT_PATH_CAPACITY : usize = 64;
+const DEFAULT_PATH_CAPACITY: usize = 64;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Path {
-    inner: Vec<usize>
+    inner: Vec<usize>,
 }
 
 impl Path {
     pub(crate) fn new() -> Path {
         // preallocate as length probably fairly small
         Path {
-            inner: Vec::with_capacity(DEFAULT_PATH_CAPACITY)
+            inner: Vec::with_capacity(DEFAULT_PATH_CAPACITY),
         }
     }
 
@@ -167,7 +167,8 @@ impl<'a> Patch<'a> {
         }
     }
 
-    pub(crate) fn from_dom<A: App>(rendered: &'a RenderResult<A>) -> Self { // TODO: rename
+    pub(crate) fn from_dom<A: App>(rendered: &'a RenderResult<A>) -> Self {
+        // TODO: rename
         let mut patch = Patch::new();
         patch.push(PatchItem::Replace(&rendered.root));
         for v in rendered.blobs.values() {
@@ -189,8 +190,12 @@ impl<'a> Patch<'a> {
     pub(crate) fn push_reverse_path(&mut self, path: &Path) {
         for _ in &path.inner {
             match self.items[self.items.len() - 1] {
-                PatchItem::Descend() => {self.items.pop();}
-                _ => {self.items.push(PatchItem::Ascend());}
+                PatchItem::Descend() => {
+                    self.items.pop();
+                }
+                _ => {
+                    self.items.push(PatchItem::Ascend());
+                }
             }
         }
     }
@@ -246,5 +251,3 @@ impl<'a> Patch<'a> {
         self.items.len()
     }
 }
-
-

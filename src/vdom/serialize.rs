@@ -1,6 +1,6 @@
-use crate::vdom::{EventHandler, Patch, PatchItem, VNode};
-use crate::{Id, App};
 use crate::runtime::RenderResult;
+use crate::vdom::{EventHandler, Patch, PatchItem, VNode};
+use crate::{App, Id};
 
 trait PatchSerialize {
     fn serialize(&self, output: &mut Vec<u8>);
@@ -37,11 +37,11 @@ impl NodeSerialize for VNode {
                 for c in elem.children.iter() {
                     c.serialize(rendered, output);
                 }
-            },
+            }
             VNode::Text(elem) => {
                 output.push(1);
                 elem.serialize(output);
-            },
+            }
             VNode::Placeholder(id, _path) => {
                 let vdom = rendered.get_component_vdom(*id).unwrap();
                 vdom.serialize(rendered, output);
