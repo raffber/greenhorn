@@ -1,17 +1,8 @@
+import Pipe from '../../../js/src/wasm.js'
+import App from '../../../js/src/app.js'
 
-import('../pkg').then(module => {
-    window.push_string = (arg) => {
-        console.log("push_string")
-        // module.js_to_wasm('{ "Dialog": [] }');
-        console.log(arg)
-    };
-
-
-    window.push_binary = (arg) => {
-        console.log("push_binary")
-        console.log(arg)
-    };
-
-
+import('../pkg').then(module => { 
+    let pipe = new Pipe(module);
+    let app = new App(pipe, document.body);
     module.start();
 }).catch(console.error)
