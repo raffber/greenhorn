@@ -530,6 +530,7 @@ dependencies = [
  "hdrhistogram",
  "html_macro",
  "js-sys",
+ "lazy_static",
  "log",
  "proc-macro-hack",
  "proc-macro-nested",
