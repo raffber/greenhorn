@@ -12,7 +12,7 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 use std::convert::TryInto;
 
-struct WasmPipe;
+pub struct WasmPipe;
 
 fn vec_to_array(data: Vec<u8>) -> Uint8Array {
     // it would be awesome to use unsafe Uint8Array::view(). We would just need to make sure
@@ -32,7 +32,12 @@ impl Pipe for WasmPipe {
     fn split(self) -> (Self::Sender, Self::Receiver) {
         let (txmsg_tx, txmsg_rx) = unbounded();
         let (rxmsg_tx, rxmsg_rx) = unbounded();
+
         let endpoint = PipeJsEndpoint { rxmsg_tx };
+        let mut locked = PIPE.lock().unwrap();
+        assert!(!locked.is_some());
+        *locked = Some(endpoint);
+
         crate::platform::spawn(async move {
             let mut txmsg_rx = txmsg_rx;
             while let Some(msg) = txmsg_rx.next().await {
@@ -47,15 +52,12 @@ impl Pipe for WasmPipe {
                 }
             }
         });
-        let mut locked = PIPE.lock().unwrap();
-        assert!(!locked.is_some());
-        *locked = Some(endpoint);
         (WasmSender(txmsg_tx), rxmsg_rx)
     }
 }
 
 impl WasmPipe {
-    fn new() -> WasmPipe {
+    pub fn new() -> WasmPipe {
         WasmPipe
     }
 }
@@ -66,7 +68,7 @@ struct PipeJsEndpoint {
 
 
 #[derive(Clone)]
-pub(crate) struct WasmSender(UnboundedSender<TxMsg>);
+pub struct WasmSender(pub UnboundedSender<TxMsg>);
 
 impl Sink<TxMsg> for WasmSender {
     type Error = Box<dyn Error>;
@@ -113,4 +115,16 @@ pub fn js_to_wasm(data: String) {
     if let Some(pipe) = &*borrowed {
         let _ = pipe.rxmsg_tx.unbounded_send(msg);
     }
+}
+
+
+#[wasm_bindgen]
+extern {
+    fn alert(s: &str);
+}
+
+
+#[wasm_bindgen]
+pub fn greet_two() {
+    alert("greet_two!!");
 }

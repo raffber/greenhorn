@@ -7,8 +7,8 @@ mod wasm {
 
     pub fn spawn<F, T>(future: F)
     where
-        F: Future<Output = T> + Send + 'static,
-        T: Send + 'static,
+        F: Future<Output = T> + 'static,
+        T: 'static,
     {
         spawn_local(async move {
             future.await;
@@ -17,8 +17,8 @@ mod wasm {
 
     pub fn spawn_blocking<F, T>(future: F)
     where
-        F: Future<Output = T> + Send + 'static,
-        T: Send + 'static,
+        F: Future<Output = T> + 'static,
+        T: 'static,
     {
         spawn(future);
     }

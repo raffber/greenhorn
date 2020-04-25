@@ -327,12 +327,14 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             return;
         }
         let render_tx = self.render_tx.clone();
-        spawn(async move {
-            let mut timer = Interval::platform_new(core::time::Duration::from_millis(wait_time));
-            timer.as_mut().await;
-            timer.cancel();
-            let _ = render_tx.unbounded_send(());
-        });
+        // spawn(async move {
+        //     let mut timer = Interval::platform_new(core::time::Duration::from_millis(wait_time));
+        //     timer.as_mut().await;
+        //     timer.cancel();
+        //     let _ = render_tx.unbounded_send(());
+        // });
+
+        let _ = render_tx.unbounded_send(());
         self.dirty = true;
     }
 
@@ -464,14 +466,15 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
 
         spawn_blocking(async move {
             // create a patch
-            let before = Instant::now();
+            // let before = Instant::now();
             let patch = if let Some(old_frame) = &old_frame {
                 Differ::new(&old_frame, &result, updated).diff()
             } else {
                 Patch::from_dom(&result)
             };
-            let after = Instant::now();
-            let delta = after.duration_since(before);
+            // let after = Instant::now();
+            // let delta = after.duration_since(before);
+            let delta = Duration::new(0, 1);
 
             if patch.is_empty() {
                 let translations = patch.translations;

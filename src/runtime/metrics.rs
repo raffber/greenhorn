@@ -92,6 +92,7 @@ impl Throughput {
         self.last_count += 1;
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn update(&mut self) {
         let now = Instant::now();
         if let Some(last_update) = self.last_update {
@@ -109,6 +110,9 @@ impl Throughput {
             self.last_update = Some(now);
         }
     }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn update(&mut self) {}
 }
 
 impl Default for Throughput {
@@ -130,6 +134,7 @@ impl ResponseTime {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn run<T, F: FnOnce() -> T>(&mut self, fun: F) -> T {
         let before = Instant::now();
         let ret = fun();
@@ -140,6 +145,15 @@ impl ResponseTime {
         ret
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub fn run<T, F: FnOnce() -> T>(&mut self, fun: F) -> T {
+        fun()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn record(&mut self, delta: Duration) {}
+
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn record(&mut self, delta: Duration) {
         self.hist.record(delta.as_micros() as u64).unwrap();
     }
