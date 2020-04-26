@@ -15,7 +15,8 @@ use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::SinkExt;
 use futures::{select, FutureExt, StreamExt};
 use std::collections::{HashSet, VecDeque};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use instant::Instant;
 
 mod component;
 mod metrics;
@@ -466,15 +467,14 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
 
         spawn_blocking(async move {
             // create a patch
-            // let before = Instant::now();
+            let before = Instant::now();
             let patch = if let Some(old_frame) = &old_frame {
                 Differ::new(&old_frame, &result, updated).diff()
             } else {
                 Patch::from_dom(&result)
             };
-            // let after = Instant::now();
-            // let delta = after.duration_since(before);
-            let delta = Duration::new(0, 1);
+            let after = Instant::now();
+            let delta = after.duration_since(before);
 
             if patch.is_empty() {
                 let translations = patch.translations;
