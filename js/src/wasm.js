@@ -1,5 +1,7 @@
 "use strict";
 
+import serializeEvent from './event.js'
+
 export default class Pipe {
     constructor(wasm_module) {
         this.wasm_module = wasm_module;

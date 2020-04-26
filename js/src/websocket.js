@@ -1,5 +1,8 @@
 "use strict";
 
+import serializeEvent from './event.js'
+
+
 export default class Pipe {
     constructor(url) {
         this.url = url;
