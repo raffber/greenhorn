@@ -62,7 +62,7 @@ mod default {
         });
     }
 
-    pub fn set_timeout<F: FnOnce()>(fun: F, wait_time_ms: u64) {
+    pub fn set_timeout<F: 'static + Send + FnOnce()>(fun: F, wait_time_ms: u64) {
         spawn(async move {
             let mut timer = Interval::platform_new(core::time::Duration::from_millis(wait_time_ms));
             timer.as_mut().await;
