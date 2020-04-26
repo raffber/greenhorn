@@ -43,11 +43,11 @@ impl Pipe for WasmPipe {
             while let Some(msg) = txmsg_rx.next().await {
                 match msg {
                     TxMsg::Patch(data) => {
-                        push_binary(vec_to_array(data));
+                        greenhorn_push_binary(vec_to_array(data));
                     },
                     rest => {
                         let msg = serde_json::to_string(&rest).unwrap();
-                        push_string(msg);
+                        greenhorn_push_string(msg);
                     }
                 }
             }
@@ -104,27 +104,15 @@ lazy_static!{
 
 #[wasm_bindgen]
 extern "C" {
-    fn push_string(data: String);
-    fn push_binary(data: Uint8Array);
+    fn greenhorn_push_string(data: String);
+    fn greenhorn_push_binary(data: Uint8Array);
 }
 
 #[wasm_bindgen]
-pub fn js_to_wasm(data: String) {
+pub fn greenhorn_send_to_wasm(data: String) {
     let msg: RxMsg = serde_json::from_str(&data).unwrap();
     let borrowed = PIPE.lock().unwrap();
     if let Some(pipe) = &*borrowed {
         let _ = pipe.rxmsg_tx.unbounded_send(msg);
     }
-}
-
-
-#[wasm_bindgen]
-extern {
-    fn alert(s: &str);
-}
-
-
-#[wasm_bindgen]
-pub fn greet_two() {
-    alert("greet_two!!");
 }

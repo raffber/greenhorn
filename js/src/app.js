@@ -8,6 +8,14 @@ function loadCss(css) {
     document.getElementsByTagName("head")[0].appendChild(s);
 }
 
+function injectEvent(event, prop, default_action) {
+    // TODO: use prop, default_action
+    let evt = deserializeEvent(event);
+    let query = "[__id__=\"" + evt.__id__ + "\"]";
+    let elem = document.querySelector(query);
+    elem.dispatchEvent(evt);
+}
+
 function serializeModifierState(evt) {
     return {
         "alt_key": evt.altKey,
@@ -176,10 +184,12 @@ export default class App {
         this.pipe.onPatch = (e) => {
             self.onPatch(e);
         }
-
         this.pipe.onRunJsMsg = (id, js) => {
             self.onRunJsMsg(id, js);
         }
+        this.pipe.onLoadCss = loadCss;
+        this.pipe.onInjectEvent = injectEvent;
+
         this.afterRender = [];
         this.blobs = {}
     }

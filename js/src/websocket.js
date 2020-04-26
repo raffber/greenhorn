@@ -7,6 +7,8 @@ export default class Pipe {
         this.onPatch = (patch_data) => {};
         this.onServiceMsg = (id, service_msg) => {};
         this.onRunJsMsg = (id, run_js_msg) => {};
+        this.onLoadCss = (css) => {};
+        this.onInjectEvent = (event, prop, default_action) => {};
     }
 
     setupSocket() {
@@ -79,10 +81,10 @@ export default class Pipe {
                 let run_js_msg = service_msg[1].RunJs;
                 this.onRunJsMsg(id, run_js_msg);
             } else if (service_msg[1].hasOwnProperty("LoadCss")) {
-                loadCss(service_msg[1].LoadCss);
+                this.onLoadCss(service_msg[1].LoadCss);
             }
         } else if (msg.hasOwnProperty("LoadCss")) {
-            loadCss(msg.LoadCss);
+            this.onloadCss(msg.LoadCss);
         } else if (msg.hasOwnProperty("RunJs")) {
             (function() {
                 eval(msg.RunJs);
@@ -91,7 +93,7 @@ export default class Pipe {
             let event = msg.Propagate.event;
             let prop = msg.Propagate.propagate;
             let default_action = msg.Propagate.default_action;
-            this.injectEvent(event, prop, default_action);
+            this.onInjectEvent(event, prop, default_action);
         } else if (msg.hasOwnProperty("Dialog")) {
             this.spawnDialog(msg.Dialog);
         }
@@ -102,14 +104,6 @@ export default class Pipe {
             "Dialog": dialog
         };
         external.invoke(JSON.stringify(in_msg));
-    }
-
-    injectEvent(event, prop, default_action) {
-        // TODO: use prop, default_action
-        let evt = deserializeEvent(event);
-        let query = "[__id__=\"" + evt.__id__ + "\"]";
-        let elem = document.querySelector(query);
-        elem.dispatchEvent(evt);
     }
 
     sendEvent(id, name, evt) {
