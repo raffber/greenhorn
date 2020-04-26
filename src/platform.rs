@@ -4,6 +4,10 @@ use cfg_if::cfg_if;
 mod wasm {
     use futures::Future;
     use wasm_bindgen_futures::spawn_local;
+    use wasm_bindgen::closure::Closure;
+    use wasm_bindgen::JsCast;
+    use std::convert::TryInto;
+    use web_sys::window;
 
     pub fn spawn<F, T>(future: F)
     where
@@ -22,12 +26,21 @@ mod wasm {
     {
         spawn(future);
     }
+
+    pub fn set_timeout<F: 'static + FnOnce()>(fun: F, wait_time_ms: u64) {
+        let window = window().unwrap();
+        let wait_time_ms: i32 = wait_time_ms.try_into().unwrap();
+        let fun = Closure::once(move || fun());
+        window.set_timeout_with_callback_and_timeout_and_arguments_0(fun.as_ref().unchecked_ref(), wait_time_ms).unwrap();
+        fun.forget();
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 mod default {
     use async_std::task;
     use futures::Future;
+    use async_timer::Interval;
 
     pub fn spawn<F, T>(future: F)
     where
@@ -48,12 +61,21 @@ mod default {
             })
         });
     }
+
+    pub fn set_timeout<F: FnOnce()>(fun: F, wait_time_ms: u64) {
+        spawn(async move {
+            let mut timer = Interval::platform_new(core::time::Duration::from_millis(wait_time_ms));
+            timer.as_mut().await;
+            timer.cancel();
+            fun();
+        });
+    }
 }
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
-        pub use wasm::{spawn, spawn_blocking};
+        pub use wasm::{spawn, spawn_blocking, set_timeout};
     } else {
-        pub use default::{spawn, spawn_blocking};
+        pub use default::{spawn, spawn_blocking, set_timeout};
     }
 }

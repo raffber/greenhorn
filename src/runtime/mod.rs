@@ -10,7 +10,6 @@ pub(crate) use crate::runtime::state::Frame;
 use crate::runtime::state::RenderedState;
 use crate::vdom::{patch_serialize, Differ, Patch};
 use crate::{App, Id};
-use async_timer::Interval;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::SinkExt;
 use futures::{select, FutureExt, StreamExt};
@@ -328,14 +327,9 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             return;
         }
         let render_tx = self.render_tx.clone();
-        // spawn(async move {
-        //     let mut timer = Interval::platform_new(core::time::Duration::from_millis(wait_time));
-        //     timer.as_mut().await;
-        //     timer.cancel();
-        //     let _ = render_tx.unbounded_send(());
-        // });
-
-        let _ = render_tx.unbounded_send(());
+        crate::platform::set_timeout(move || {
+            let _ = render_tx.unbounded_send(());
+        }, wait_time);
         self.dirty = true;
     }
 
