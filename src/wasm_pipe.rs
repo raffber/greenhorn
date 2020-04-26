@@ -10,7 +10,6 @@ use std::task::Context;
 use futures::StreamExt;
 use std::sync::Mutex;
 use lazy_static::lazy_static;
-use std::convert::TryInto;
 
 pub struct WasmPipe;
 
@@ -18,11 +17,8 @@ fn vec_to_array(data: Vec<u8>) -> Uint8Array {
     // it would be awesome to use unsafe Uint8Array::view(). We would just need to make sure
     // we don't leak backing [u8], thus we would need to know when js is done
     // with the object, maybe after receiving the next message from js?
-    let array = Uint8Array::new_with_length(data.len().try_into().unwrap());
-    for k in 0..data.len() {
-        array.set_index(k as u32, data[k]);
-    }
-    array
+    let data: &[u8] = &data;
+    data.into()
 }
 
 impl Pipe for WasmPipe {
