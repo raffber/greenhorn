@@ -52,7 +52,7 @@ export default class Pipe {
 
     sendApplied() {
         let reply = JSON.stringify({"FrameApplied": []}); 
-        this.wasm_module.js_to_wasm(reply);
+        this.wasm_module.greenhorn_send_to_wasm(reply);
     }
 
     spawnDialog(dialog) {
