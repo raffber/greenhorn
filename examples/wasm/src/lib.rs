@@ -33,7 +33,7 @@ impl App for MyApp {
     }
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(start)]
 pub fn start() {
     set_panic_hook();
     println!("test");
