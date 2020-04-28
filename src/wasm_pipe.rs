@@ -10,8 +10,16 @@ use std::task::Context;
 use futures::StreamExt;
 use std::sync::Mutex;
 use lazy_static::lazy_static;
+use web_sys::console::log_1;
 
 pub struct WasmPipe;
+
+// A macro to provide `println!(..)`-style syntax for `console.log` logging.
+macro_rules! log {
+    ( $( $t:tt )* ) => {
+        log_1(&format!( $( $t )* ).into());
+    }
+}
 
 fn vec_to_array(data: Vec<u8>) -> Uint8Array {
     // it would be awesome to use unsafe Uint8Array::view(). We would just need to make sure
@@ -106,9 +114,12 @@ extern "C" {
 
 #[wasm_bindgen]
 pub fn greenhorn_send_to_wasm(data: String) {
-    let msg: RxMsg = serde_json::from_str(&data).unwrap();
-    let borrowed = PIPE.lock().unwrap();
-    if let Some(pipe) = &*borrowed {
-        let _ = pipe.rxmsg_tx.unbounded_send(msg);
+    if let Ok(msg) = serde_json::from_str::<RxMsg>(&data) {
+        let borrowed = PIPE.lock().unwrap();
+        if let Some(pipe) = &*borrowed {
+            let _ = pipe.rxmsg_tx.unbounded_send(msg);
+        }
+    } else {
+        log!("Garbage received: {}", data);
     }
 }

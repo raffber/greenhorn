@@ -1,6 +1,6 @@
 "use strict";
 
-function initWasmPipe(wasm_module) {
+export default function initWasmPipe(wasm_module) {
     window.greenhorn_push_string = (arg) => {
         window.postMessage(arg, null);
     };
@@ -9,8 +9,10 @@ function initWasmPipe(wasm_module) {
         window.postMessage(null, [arg.buffer]);
     };
     
-    window.onmessage = (msg) => {
-        let msg = msg.data;
+    window.onmessage = (event) => {
+        console.log(event);
+        console.log(event.data);
+        let msg = event.data;
         wasm_module.greenhorn_send_to_wasm(msg);
     };
 }

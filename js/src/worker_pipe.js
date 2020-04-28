@@ -4,8 +4,8 @@ import serializeEvent from './event.js'
 
 
 export default class WorkerPipe {
-    constructor(js_url) {
-        this.worker = new Worker(js_url);
+    constructor(worker) {
+        this.worker = worker;
         this.worker.onmessage = this.onMessage;
 
         this.onPatch = (patch_data) => {};

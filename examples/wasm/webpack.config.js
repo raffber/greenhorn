@@ -5,20 +5,12 @@ const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 
 module.exports = {
     entry: {
-        app: './src/app.js',
-        search: './src/search.js'
+        app: './js/app.js',
+        worker: './js/worker.js'
     },
     output: {
         filename: '[name].js',
         path: __dirname + '/pkg'
     },
-    plugins: [
-        new HtmlWebpackPlugin({
-            template: './html/index.html'
-        }),
-        new WasmPackPlugin({
-            crateDirectory: path.resolve(__dirname, ".")
-        }) 
-    ],
     mode: 'development'
 };

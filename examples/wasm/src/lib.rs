@@ -36,7 +36,6 @@ impl App for MyApp {
 #[wasm_bindgen(start)]
 pub fn start() {
     set_panic_hook();
-    println!("test");
     let pipe = WasmPipe::new();
     let app = MyApp { state: 123 };
     let (rt, _control) = Runtime::new(app, pipe);

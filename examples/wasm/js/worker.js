@@ -1,4 +1,5 @@
+import initWasmPipe from '../../../js/src/wasm.js'
+
 import('../pkg').then(module => { 
     initWasmPipe(module);
-    module.start();
 }).catch(console.error)
