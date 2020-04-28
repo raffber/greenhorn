@@ -1,23 +1,16 @@
 "use strict";
 
-window.greenhorn_push_string = (arg) => {
-    postMessage(arg, null);
-};
-
-window.greenhorn_push_binary = (arg) => {
-    postMessage(null, [arg.buffer]);
-}
-
-var wasm_module = null;
-
-onmessage = (msg) => {
-    let msg = msg.data;
-    if (msg.hasOwnProperty("LoadWasm")) {
-        WebAssembly.instantiateStreaming(fetch(msg.LoadWasm)).then( (m) => {
-            wasm_module = m;
-        });
-    } else if (wasm_module !== null) {
+function initWasmPipe(wasm_module) {
+    window.greenhorn_push_string = (arg) => {
+        window.postMessage(arg, null);
+    };
+    
+    window.greenhorn_push_binary = (arg) => {
+        window.postMessage(null, [arg.buffer]);
+    };
+    
+    window.onmessage = (msg) => {
+        let msg = msg.data;
         wasm_module.greenhorn_send_to_wasm(msg);
-    }
-};
-
+    };
+}

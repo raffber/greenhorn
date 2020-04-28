@@ -1,14 +1,12 @@
-
 "use strict";
 
 import serializeEvent from './event.js'
 
 
 export default class WorkerPipe {
-    constructor(js_url, wasm_url) {
+    constructor(js_url) {
         this.worker = new Worker(js_url);
         this.worker.onmessage = this.onMessage;
-        this.worker.postMessage({"LoadWasm": wasm_url});
 
         this.onPatch = (patch_data) => {};
         this.onServiceMsg = (id, service_msg) => {};
