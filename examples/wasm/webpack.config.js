@@ -1,16 +1,28 @@
-const path = require('path');
+const path = require('path')
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const webpack = require('webpack');
-const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 
-module.exports = {
-    entry: {
-        app: './js/app.js',
-        worker: './js/worker.js'
-    },
-    output: {
-        filename: '[name].js',
-        path: __dirname + '/pkg'
-    },
-    mode: 'development'
-};
+const browserConfig = {
+  entry: './js/app.js',
+  output: {
+    path: path.resolve(__dirname, "dist"),
+    filename: "app.js",
+  },
+  plugins: [
+    new HtmlWebpackPlugin({
+        template: './html/index.html'
+    }),
+  ],
+  mode: "development"
+}
+
+const workerConfig = {
+  entry: "./js/worker.js",
+  output: {
+    path: path.resolve(__dirname, "dist"),
+    filename: "worker.js",
+  },
+  target: "webworker",
+  mode: "development",
+}
+
+module.exports = [browserConfig, workerConfig]

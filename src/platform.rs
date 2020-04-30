@@ -28,11 +28,12 @@ mod wasm {
     }
 
     pub fn set_timeout<F: 'static + FnOnce()>(fun: F, wait_time_ms: u64) {
-        let window = window().unwrap();
-        let wait_time_ms: i32 = wait_time_ms.try_into().unwrap();
-        let fun = Closure::once(move || fun());
-        window.set_timeout_with_callback_and_timeout_and_arguments_0(fun.as_ref().unchecked_ref(), wait_time_ms).unwrap();
-        fun.forget();
+        fun();
+        // let window = window().unwrap();
+        // let wait_time_ms: i32 = wait_time_ms.try_into().unwrap();
+        // let fun = Closure::once(move || fun());
+        // window.set_timeout_with_callback_and_timeout_and_arguments_0(fun.as_ref().unchecked_ref(), wait_time_ms).unwrap();
+        // fun.forget();
     }
 }
 
