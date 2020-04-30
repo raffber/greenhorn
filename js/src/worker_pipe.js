@@ -6,7 +6,8 @@ import serializeEvent from './event.js'
 export default class WorkerPipe {
     constructor(worker) {
         this.worker = worker;
-        this.worker.onmessage = this.onMessage;
+        let self = this;
+        this.worker.onmessage = (evt) => { self.onMessage(evt) };
 
         this.onPatch = (patch_data) => {};
         this.onServiceMsg = (id, service_msg) => {};
@@ -16,12 +17,14 @@ export default class WorkerPipe {
     }
 
     onMessage(event) {
-        let msg = JSON.parse(event.data);
-        if (msg.hasOwnProperty("Patch")) {
-            let data = new Uint8Array(msg.Patch);
-            this.onPatch(data.buffer);
+        console.log(event);
+        if (event.data instanceof ArrayBuffer) {
+            this.onPatch(event.data);
             this.sendApplied();
-        } else if (msg.hasOwnProperty("Service")) {
+            return;
+        }
+        let msg = JSON.parse(event.data);
+        if (msg.hasOwnProperty("Service")) {
             let service_msg = msg.Service;
             let id = service_msg[0];
             if (service_msg[1].hasOwnProperty("Frontend")) {
