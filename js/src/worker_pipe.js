@@ -37,7 +37,7 @@ export default class WorkerPipe {
                 this.loadCss(service_msg[1].LoadCss);
             }
         } else if (msg.hasOwnProperty("LoadCss")) {
-            this.loadCss(msg.LoadCss);
+            this.onLoadCss(msg.LoadCss);
         } else if (msg.hasOwnProperty("RunJs")) {
             (function() {
                 eval(msg.RunJs);

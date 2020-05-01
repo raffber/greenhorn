@@ -1247,6 +1247,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "todomvc"
+version = "0.1.0"
+dependencies = [
+ "greenhorn",
+]
+
+[[package]]
 name = "tungstenite"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1344,6 +1351,7 @@ dependencies = [
  "console_error_panic_hook",
  "futures",
  "greenhorn",
+ "todomvc",
  "wasm-bindgen",
  "wee_alloc",
 ]
