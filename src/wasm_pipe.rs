@@ -109,7 +109,6 @@ lazy_static!{
 #[wasm_bindgen]
 extern "C" {
     fn greenhorn_push_string(data: String);
-
     fn greenhorn_push_binary(data: Uint8Array);
 }
 

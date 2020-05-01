@@ -5,9 +5,13 @@ mod wasm {
     use futures::Future;
     use wasm_bindgen_futures::spawn_local;
     use wasm_bindgen::closure::Closure;
-    use wasm_bindgen::JsCast;
     use std::convert::TryInto;
-    use web_sys::window;
+    use wasm_bindgen::prelude::*;
+
+    #[wasm_bindgen]
+    extern "C" {
+        fn greenhorn_set_timeout(fun: JsValue, timeout: i32);
+    }
 
     pub fn spawn<F, T>(future: F)
     where
@@ -28,12 +32,9 @@ mod wasm {
     }
 
     pub fn set_timeout<F: 'static + FnOnce()>(fun: F, wait_time_ms: u64) {
-        fun();
-        // let window = window().unwrap();
-        // let wait_time_ms: i32 = wait_time_ms.try_into().unwrap();
-        // let fun = Closure::once(move || fun());
-        // window.set_timeout_with_callback_and_timeout_and_arguments_0(fun.as_ref().unchecked_ref(), wait_time_ms).unwrap();
-        // fun.forget();
+        let fun = Closure::once_into_js(move || fun());
+        let wait_time_ms: i32 = wait_time_ms.try_into().unwrap();
+        greenhorn_set_timeout(fun, wait_time_ms);
     }
 }
 
