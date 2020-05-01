@@ -1,7 +1,5 @@
 use crate::service::{RxServiceMessage, ServiceSubscription, TxServiceMessage};
 use crate::Id;
-use async_std::task;
-use async_std::task::JoinHandle;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::select;
 use futures::task::{Context, Poll};
@@ -45,19 +43,13 @@ impl<Msg: Send> ServiceCollection<Msg> {
 
     pub(crate) fn spawn(&mut self, subs: ServiceSubscription<Msg>) {
         let id = subs.id();
-
         let mailbox_tx = subs.rxmailbox_tx.clone();
-
         let runner = ServiceRunner {
             tx: self.msg_sender.clone(),
             service: subs,
         };
-
-        let control = ServiceControl {
-            handle: runner.run(),
-            mailbox_tx,
-        };
-
+        runner.run();
+        let control = ServiceControl { mailbox_tx };
         self.services.insert(id, control);
     }
 
@@ -76,7 +68,6 @@ impl<Msg: Send> ServiceCollection<Msg> {
 }
 
 struct ServiceControl {
-    handle: JoinHandle<()>,
     mailbox_tx: UnboundedSender<RxServiceMessage>,
 }
 
@@ -92,9 +83,9 @@ pub struct ServiceRunner<Msg: 'static + Send> {
 }
 
 impl<Msg: Send> ServiceRunner<Msg> {
-    pub(crate) fn run(self) -> task::JoinHandle<()> {
+    pub(crate) fn run(self) {
         let runner = self;
-        task::spawn(async {
+        crate::platform::spawn(async {
             let id = runner.service.id();
             let mut service = runner.service;
             let mut txmailbox_rx = service.txmailbox_rx.take().unwrap();
@@ -120,7 +111,6 @@ impl<Msg: Send> ServiceRunner<Msg> {
                     },
                 };
             }
-        })
+        });
     }
 }
-

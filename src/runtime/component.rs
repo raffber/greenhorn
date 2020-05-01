@@ -1,9 +1,9 @@
-use crate::{App, Id};
-use crate::vdom::{VNode, Path};
-use crate::runtime::render::{ResultItem, render_component};
 use crate::component::{ComponentContainer, ComponentMap};
 use crate::listener::ListenerKey;
 use crate::runtime::metrics::Metrics;
+use crate::runtime::render::{render_component, ResultItem};
+use crate::vdom::{Path, VNode};
+use crate::{App, Id};
 
 pub(crate) struct RenderedComponent<A: App> {
     component: ComponentContainer<A::Message>,
@@ -16,11 +16,13 @@ pub(crate) struct RenderedComponent<A: App> {
 }
 
 impl<A: App> RenderedComponent<A> {
-    pub(crate) fn new(comp: ComponentContainer<A::Message>, metrics: &mut Metrics) -> (Self, Vec<ResultItem<A>>) {
-        let dom = metrics.run_comp(comp.id(), || comp.render() );
+    pub(crate) fn new(
+        comp: ComponentContainer<A::Message>,
+        metrics: &mut Metrics,
+    ) -> (Self, Vec<ResultItem<A>>) {
+        let dom = metrics.run_comp(comp.id(), || comp.render());
         let mut result = Vec::new();
-        let vdom = render_component(dom, &mut result)
-            .expect("Expected an actual DOM to render.");
+        let vdom = render_component(dom, &mut result).expect("Expected an actual DOM to render.");
 
         let mut subs = Vec::with_capacity(result.len());
         let mut listeners = Vec::with_capacity(result.len());
@@ -33,25 +35,30 @@ impl<A: App> RenderedComponent<A> {
                 ResultItem::Listener(listener) => {
                     let key = ListenerKey::new(listener);
                     listeners.push(key)
-                },
+                }
                 ResultItem::Subscription(id, _) => {
                     subs.push(id.clone());
-                },
-                ResultItem::Component(comp, path) => {
-                    children.push((comp.id(), path.clone()))
-                },
+                }
+                ResultItem::Component(comp, path) => children.push((comp.id(), path.clone())),
                 ResultItem::Blob(blob) => {
                     blobs.push(blob.id());
                 }
-                ResultItem::Rpc(rpc) => {rpcs.push(rpc.node_id)}
+                ResultItem::Rpc(rpc) => rpcs.push(rpc.node_id),
             }
         }
 
-        (Self {
-            component: comp, vdom, listeners,
-            subscriptions: subs, children, blobs,
-            rpcs
-        }, result)
+        (
+            Self {
+                component: comp,
+                vdom,
+                listeners,
+                subscriptions: subs,
+                children,
+                blobs,
+                rpcs,
+            },
+            result,
+        )
     }
 
     pub(crate) fn children(&self) -> &Vec<(Id, Path)> {

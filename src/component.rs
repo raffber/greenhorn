@@ -130,15 +130,14 @@
 //! }
 //! ```
 
-use std::ops::DerefMut;
 use crate::context::Context;
-use crate::{Id, Render, App};
-use std::fmt::{Debug, Formatter, Error};
 use crate::node::{Node, NodeItems};
-use std::collections::HashSet;
+use crate::{App, Id, Render};
 use std::collections::hash_map::RandomState;
+use std::collections::HashSet;
+use std::fmt::{Debug, Error, Formatter};
+use std::ops::DerefMut;
 use std::sync::{Arc, Mutex, MutexGuard};
-
 
 /// Allows the `update()` cycle of an application or component to signal the runtime what portion
 /// of the DOM requires re-rendering.
@@ -165,14 +164,14 @@ impl Updated {
     pub fn yes() -> Updated {
         Updated {
             should_render: true,
-            components_render: None
+            components_render: None,
         }
     }
     /// Creates a new `Updated` object which signal that *no* re-render is required.
     pub fn no() -> Updated {
         Updated {
             should_render: false,
-            components_render: None
+            components_render: None,
         }
     }
 
@@ -270,7 +269,7 @@ pub struct Component<T: Render + Send> {
 
 impl<T: Render + Send> Debug for Component<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        f.write_fmt(format_args!("<Component {:?} />", self.id) )
+        f.write_fmt(format_args!("<Component {:?} />", self.id))
     }
 }
 
@@ -284,7 +283,6 @@ impl<T: Render + Send> Clone for Component<T> {
 }
 
 impl<T: 'static + Render + Send> Component<T> {
-
     /// Creates a new `Component` by taking ownership of the underlying type.
     pub fn new(inner: T) -> Self {
         Self {
@@ -383,7 +381,6 @@ impl<T: 'static + Render + Send> Component<T> {
 /// If the underlying type is also `App` the `Component` also provides access to the
 /// `App::update()` and `App::mount()` function.
 impl<T: 'static + App + Send> Component<T> {
-
     /// If the underlying type is also `App`, this function provides direct access
     /// to the `update()` function of the underlying component.
     pub fn update(&mut self, msg: T::Message, ctx: Context<T::Message>) -> Updated {
@@ -414,20 +411,20 @@ pub(crate) struct ComponentContainer<T: 'static + Send> {
 
 impl<T: 'static + Send> ComponentContainer<T> {
     /// Create a new ComponentContainer based on a component
-    fn new<U: 'static + Render<Message=T> + Send>(comp: &Component<U>) -> Self {
+    fn new<U: 'static + Render<Message = T> + Send>(comp: &Component<U>) -> Self {
         let mounted = ComponentMapDirect {
-            inner: comp.clone()
+            inner: comp.clone(),
         };
         let inner = Arc::new(Mutex::new(mounted));
-        ComponentContainer {
-            inner
-        }
+        ComponentContainer { inner }
     }
 }
 
 impl<T: 'static + Send> Clone for ComponentContainer<T> {
     fn clone(&self) -> Self {
-        Self { inner: self.inner.clone() }
+        Self {
+            inner: self.inner.clone(),
+        }
     }
 }
 
@@ -450,7 +447,7 @@ impl<T: 'static + Send> ComponentMap<T> for ComponentContainer<T> {
 /// This trait defines the interface for the runtime to access the wrapped functionality.
 ///
 /// Used to implement type erasure.
-pub(crate) trait ComponentMap<T: 'static + Send> : Debug + Send {
+pub(crate) trait ComponentMap<T: 'static + Send>: Debug + Send {
     fn render(&self) -> Node<T>;
     fn id(&self) -> Id;
 }
@@ -493,18 +490,21 @@ impl<T: 'static + Send, U: 'static + Send> MappedComponent<T, U> {
         inner: Arc<Mutex<dyn ComponentMap<T>>>,
     ) -> ComponentContainer<U> {
         ComponentContainer {
-            inner: Arc::new(Mutex::new(Self { fun, inner }))
+            inner: Arc::new(Mutex::new(Self { fun, inner })),
         }
     }
 }
 
 impl<T: Send + 'static, U: Send + 'static> ComponentMap<U> for MappedComponent<T, U> {
     fn render(&self) -> Node<U> {
-        self.inner.lock().unwrap().render().map_shared(self.fun.clone())
+        self.inner
+            .lock()
+            .unwrap()
+            .render()
+            .map_shared(self.fun.clone())
     }
 
     fn id(&self) -> Id {
         self.inner.lock().unwrap().id()
     }
 }
-

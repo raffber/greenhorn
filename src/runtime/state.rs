@@ -1,8 +1,8 @@
-use crate::{App, Id};
 use crate::event::Subscription;
-use std::collections::HashMap;
 use crate::listener::{Listener, ListenerKey, Rpc};
 use crate::runtime::RenderResult;
+use crate::{App, Id};
+use std::collections::HashMap;
 
 #[cfg(test)]
 use crate::vdom::VNode;
@@ -14,18 +14,20 @@ pub(crate) struct Frame<A: App> {
 
 impl<A: App> Frame<A> {
     pub(crate) fn new(rendered: RenderResult<A>, translations: HashMap<Id, Id>) -> Self {
-        Self { rendered, translations }
+        Self {
+            rendered,
+            translations,
+        }
     }
 
     #[cfg(test)]
     pub(crate) fn new_from_vnode(vdom: VNode) -> Self {
         Self {
             rendered: RenderResult::new_from_vnode(vdom),
-            translations: Default::default()
+            translations: Default::default(),
         }
     }
 }
-
 
 pub(crate) struct RenderedState<A: App> {
     subscriptions: HashMap<Id, Subscription<A::Message>>,
@@ -34,14 +36,13 @@ pub(crate) struct RenderedState<A: App> {
     rpcs: HashMap<Id, Rpc<A::Message>>,
 }
 
-
 impl<A: App> RenderedState<A> {
     pub(crate) fn new() -> Self {
         Self {
             subscriptions: Default::default(),
             listeners: Default::default(),
             translations: Default::default(),
-            rpcs: Default::default()
+            rpcs: Default::default(),
         }
     }
 
@@ -50,7 +51,7 @@ impl<A: App> RenderedState<A> {
         self.rpcs.get(&target)
     }
 
-    pub(crate) fn get_listener(&self, target: Id, name: &str) -> Option<&Listener<A::Message>>{
+    pub(crate) fn get_listener(&self, target: Id, name: &str) -> Option<&Listener<A::Message>> {
         let target = self.translations.get(&target).unwrap_or(&target);
         let key = ListenerKey::from_raw(*target, &name);
         self.listeners.get(&key)

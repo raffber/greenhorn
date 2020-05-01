@@ -1,14 +1,14 @@
-use std::marker::PhantomData;
-use serde::Serialize;
-use std::sync::{Mutex, Arc};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use serde_json::Value as JsonValue;
+use std::marker::PhantomData;
+use std::sync::{Arc, Mutex};
 
 mod file_dialogs;
 mod msg_box;
 
-pub use file_dialogs::{FileOpenDialog, FileSaveDialog, FileFilter, FileOpenMsg, FileSaveMsg};
-pub use msg_box::{MessageBox, MessageBoxResult, MsgBoxType, MsgBoxIcon};
+pub use file_dialogs::{FileFilter, FileOpenDialog, FileOpenMsg, FileSaveDialog, FileSaveMsg};
+pub use msg_box::{MessageBox, MessageBoxResult, MsgBoxIcon, MsgBoxType};
 
 // ensure that external crates cannot implement Dialog
 // otherwise this would allow them to inject unknown data
@@ -56,13 +56,16 @@ pub(crate) struct DialogBinding<T: Send + 'static> {
 }
 
 impl<T: Send + 'static> DialogBinding<T> {
-    pub(crate) fn new<D: 'static + Dialog, F: 'static + Fn(D::Msg) -> T>(dialog: D, fun: F) -> Self {
+    pub(crate) fn new<D: 'static + Dialog, F: 'static + Fn(D::Msg) -> T>(
+        dialog: D,
+        fun: F,
+    ) -> Self {
         Self {
             inner: Some(Box::new(DialogBindingDirect {
                 fun: Arc::new(Mutex::new(fun)),
                 dialog: Some(dialog),
-                marker: PhantomData
-            }))
+                marker: PhantomData,
+            })),
         }
     }
 
@@ -70,11 +73,14 @@ impl<T: Send + 'static> DialogBinding<T> {
         self.inner.take().unwrap().resolve(data)
     }
 
-    pub(crate) fn map<U: 'static + Send, F: 'static + Send + Sync + Fn(T) -> U>(self, fun: Arc<F>) -> DialogBinding<U> {
-        let inner: Box<dyn DialogBindingTrait<U>> = Box::new(DialogBindingMap{
+    pub(crate) fn map<U: 'static + Send, F: 'static + Send + Sync + Fn(T) -> U>(
+        self,
+        fun: Arc<F>,
+    ) -> DialogBinding<U> {
+        let inner: Box<dyn DialogBindingTrait<U>> = Box::new(DialogBindingMap {
             fun,
             inner: self.inner,
-            marker: PhantomData
+            marker: PhantomData,
         });
         DialogBinding { inner: Some(inner) }
     }
@@ -96,7 +102,9 @@ struct DialogBindingDirect<T: Send + 'static, U: Dialog, Fun: Fn(U::Msg) -> T> {
     marker: PhantomData<T>,
 }
 
-impl<T: Send + 'static, U: Dialog, Fun: Fn(U::Msg) -> T> DialogBindingTrait<T> for DialogBindingDirect<T, U, Fun> {
+impl<T: Send + 'static, U: Dialog, Fun: Fn(U::Msg) -> T> DialogBindingTrait<T>
+    for DialogBindingDirect<T, U, Fun>
+{
     fn resolve(&mut self, data: JsonValue) -> Result<T, serde_json::Error> {
         let msg = self.dialog.take().unwrap().resolve(data)?;
         let fun = self.fun.lock().unwrap();
@@ -109,13 +117,19 @@ impl<T: Send + 'static, U: Dialog, Fun: Fn(U::Msg) -> T> DialogBindingTrait<T> f
     }
 }
 
-struct DialogBindingMap<T: Send + 'static, U: Send + 'static, Fun: 'static + Send + Sync + Fn(U) -> T> {
+struct DialogBindingMap<
+    T: Send + 'static,
+    U: Send + 'static,
+    Fun: 'static + Send + Sync + Fn(U) -> T,
+> {
     fun: Arc<Fun>,
     inner: Option<Box<dyn DialogBindingTrait<U>>>,
     marker: PhantomData<T>,
 }
 
-impl<T: Send + 'static, U: Send + 'static, Fun: 'static + Send + Sync + Fn(U) -> T> DialogBindingTrait<T> for DialogBindingMap<T, U, Fun> {
+impl<T: Send + 'static, U: Send + 'static, Fun: 'static + Send + Sync + Fn(U) -> T>
+    DialogBindingTrait<T> for DialogBindingMap<T, U, Fun>
+{
     fn resolve(&mut self, data: JsonValue) -> Result<T, serde_json::Error> {
         let msg = self.inner.take().unwrap().resolve(data)?;
         let ret = (*self.fun)(msg);

@@ -1,9 +1,9 @@
-use std::sync::{Arc, Mutex};
-use crate::Id;
 use crate::dom::DomEvent;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hasher, Hash};
+use crate::Id;
 use serde_json::Value as JsonValue;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::sync::{Arc, Mutex};
 
 pub(crate) struct Rpc<T> {
     pub(crate) node_id: Id,
@@ -14,13 +14,16 @@ impl<T> Clone for Rpc<T> {
     fn clone(&self) -> Self {
         Self {
             node_id: self.node_id,
-            fun: self.fun.clone()
+            fun: self.fun.clone(),
         }
     }
 }
 
 impl<T: 'static> Rpc<T> {
-    pub(crate) fn map<U: 'static>(self, fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>) -> Rpc<U> {
+    pub(crate) fn map<U: 'static>(
+        self,
+        fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>,
+    ) -> Rpc<U> {
         let self_fun = self.fun;
         let new_fun = move |e: JsonValue| {
             let unlocked_fun = self_fun.lock().unwrap();
@@ -28,7 +31,8 @@ impl<T: 'static> Rpc<T> {
             let ret: U = (fun.lock().unwrap())(inner_result);
             ret
         };
-        let new_fun: Arc<Mutex<dyn Fn(JsonValue) -> U + Send>> = Arc::new(Mutex::new(Box::new(new_fun)));
+        let new_fun: Arc<Mutex<dyn Fn(JsonValue) -> U + Send>> =
+            Arc::new(Mutex::new(Box::new(new_fun)));
         Rpc {
             node_id: self.node_id,
             fun: new_fun,
@@ -39,7 +43,6 @@ impl<T: 'static> Rpc<T> {
         (self.fun.lock().unwrap())(e)
     }
 }
-
 
 pub(crate) struct Listener<T> {
     pub(crate) event_name: String,
@@ -62,7 +65,10 @@ impl<T> Clone for Listener<T> {
 }
 
 impl<T: 'static> Listener<T> {
-    pub(crate) fn map<U: 'static>(self, fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>) -> Listener<U> {
+    pub(crate) fn map<U: 'static>(
+        self,
+        fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>,
+    ) -> Listener<U> {
         let self_fun = self.fun;
         let new_fun = move |e: DomEvent| {
             let unlocked_fun = self_fun.lock().unwrap();
@@ -70,7 +76,8 @@ impl<T: 'static> Listener<T> {
             let ret: U = (fun.lock().unwrap())(inner_result);
             ret
         };
-        let new_fun: Arc<Mutex<dyn Fn(DomEvent) -> U + Send>> = Arc::new(Mutex::new(Box::new(new_fun)));
+        let new_fun: Arc<Mutex<dyn Fn(DomEvent) -> U + Send>> =
+            Arc::new(Mutex::new(Box::new(new_fun)));
         Listener {
             event_name: self.event_name,
             node_id: self.node_id,
@@ -85,10 +92,9 @@ impl<T: 'static> Listener<T> {
     }
 }
 
-
 #[derive(Eq, Debug, Clone)]
 pub(crate) struct ListenerKey {
-    hash: u64
+    hash: u64,
 }
 
 impl Hash for ListenerKey {
@@ -121,7 +127,6 @@ impl PartialEq for ListenerKey {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,13 +149,13 @@ mod tests {
             node_id: Id::new(),
             fun: Arc::new(Mutex::new(Box::new(MsgInner::Event))),
             no_propagate: false,
-            prevent_default: false
+            prevent_default: false,
         };
         let mapped = listener.map(Arc::new(Mutex::new(Box::new(MsgOuter::Inner))));
         let evt = BaseEvent {
             target: Default::default(),
             event_name: "foo".to_string(),
-            target_value: InputValue::NoValue
+            target_value: InputValue::NoValue,
         };
         let evt = DomEvent::Base(evt);
         let msg = mapped.call(evt);

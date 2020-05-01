@@ -1,17 +1,17 @@
-use std::collections::HashMap;
 use crate::Id;
-use std::io;
-use serde::{Serialize, Serializer};
-use std::time::{Instant, Duration};
 use hdrhistogram::Histogram as HdrHistogram;
 use hdrhistogram::{CreationError, RecordError};
-use std::result::Result as StdResult;
+use serde::{Serialize, Serializer};
 use serde_json::json;
 use std::cmp::max;
+use std::collections::HashMap;
+use std::io;
+use std::result::Result as StdResult;
+use std::time::Duration;
+use instant::Instant;
 
 // newtype for histogram to impl Serialize
 struct Histogram(HdrHistogram<u64>);
-
 
 impl Histogram {
     pub fn new_with_bounds(low: u64, high: u64, sigfig: u8) -> Result<Self, CreationError> {
@@ -29,15 +29,23 @@ impl Histogram {
 
 impl Serialize for Histogram {
     fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-        where S: Serializer
+    where
+        S: Serializer,
     {
         let num = 16;
         let step = max((self.0.max() / num) + 1, 1);
-        let quantiles: Vec<_> = self.0
+        let quantiles: Vec<_> = self
+            .0
             .iter_linear(step)
             .take(num as usize)
             .enumerate()
-            .map(|(k, x)| (k*(step as usize), x.quantile(), x.count_since_last_iteration() as f64) )
+            .map(|(k, x)| {
+                (
+                    k * (step as usize),
+                    x.quantile(),
+                    x.count_since_last_iteration() as f64,
+                )
+            })
             .collect();
 
         let json = json!({
@@ -51,7 +59,7 @@ impl Serialize for Histogram {
     }
 }
 
-trait Metric<'de> : Serialize {
+trait Metric<'de>: Serialize {
     fn histogram(&self) -> &Histogram;
 }
 
@@ -116,11 +124,10 @@ impl Metric<'_> for Throughput {
     }
 }
 
-
 impl ResponseTime {
     pub fn new() -> Self {
         Self {
-            hist: Histogram::new_with_bounds(1, 1e6 as u64, 3).unwrap()
+            hist: Histogram::new_with_bounds(1, 1e6 as u64, 3).unwrap(),
         }
     }
 
@@ -152,7 +159,9 @@ pub struct ComponentMetric {
 }
 
 impl ComponentMetric {
-    pub fn new() -> Self { Default::default() }
+    pub fn new() -> Self {
+        Default::default()
+    }
 
     pub fn run<T, F: FnOnce() -> T>(&mut self, fun: F) -> T {
         let ret = self.time.run(fun);
@@ -169,15 +178,14 @@ pub struct Metrics {
     pub empty_patch: ResponseTime,
 }
 
-
 impl Metrics {
     pub fn new() -> Self {
         Default::default()
     }
 
     pub fn run_comp<T, F>(&mut self, id: Id, fun: F) -> T
-        where
-            F: FnOnce() -> T
+    where
+        F: FnOnce() -> T,
     {
         let metric = if let Some(metric) = self.components.get_mut(&id) {
             metric
@@ -189,7 +197,6 @@ impl Metrics {
     }
 
     pub fn write(&self, out: impl io::Write) -> StdResult<(), String> {
-        serde_json::to_writer(out, self)
-            .map_err(|x| format!("{}", x))
+        serde_json::to_writer(out, self).map_err(|x| format!("{}", x))
     }
 }

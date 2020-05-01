@@ -12,18 +12,18 @@
 //! For more details, refer to the [Context](struct.Context.html) type.
 //!
 
+use crate::dialog::{Dialog, DialogBinding};
 use crate::dom::DomEvent;
 use crate::event::{Emission, Event};
 use crate::service::{Service, ServiceSubscription};
+use futures::{Stream, StreamExt};
+use serde::{Deserialize, Serialize};
 use std::any::Any;
+use std::future::Future;
 use std::marker::PhantomData;
+use std::pin::Pin;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
-use std::future::Future;
-use futures::{Stream, StreamExt};
-use std::pin::Pin;
-use crate::dialog::{Dialog, DialogBinding};
 
 enum MapSender<T> {
     Direct(Sender<T>),
@@ -97,8 +97,8 @@ pub(crate) enum ContextMsg<T: 'static + Send> {
     RunJs(String),
     Propagate(EventPropagate),
     Subscription(ServiceSubscription<T>),
-    Future(Pin<Box<dyn Send + Future<Output=T>>>, bool), // (future, blocking)
-    Stream(Pin<Box<dyn Send + Stream<Item=T>>>),
+    Future(Pin<Box<dyn Send + Future<Output = T>>>, bool), // (future, blocking)
+    Stream(Pin<Box<dyn Send + Stream<Item = T>>>),
     Dialog(DialogBinding<T>),
     Quit,
 }
@@ -107,22 +107,18 @@ impl<T: Send + 'static> ContextMsg<T> {
     pub(crate) fn map<U, Mapper>(self, mapper: Arc<Mapper>) -> ContextMsg<U>
     where
         U: 'static + Send,
-        Mapper: 'static + Fn(T) -> U + Send + Sync
+        Mapper: 'static + Fn(T) -> U + Send + Sync,
     {
         match self {
             ContextMsg::Subscription(subs) => ContextMsg::Subscription(subs.map(mapper)),
             ContextMsg::Future(fut, blocking) => {
-                ContextMsg::Future(Box::pin(async move {
-                    (mapper)(fut.await)
-                }), blocking)
-            },
+                ContextMsg::Future(Box::pin(async move { (mapper)(fut.await) }), blocking)
+            }
             ContextMsg::Stream(stream) => {
                 ContextMsg::Stream(Box::pin(stream.map(move |x| (mapper)(x))))
-            },
-            ContextMsg::Dialog(d) => {
-                ContextMsg::Dialog(d.map(mapper))
             }
-            _ => panic!()
+            ContextMsg::Dialog(d) => ContextMsg::Dialog(d.map(mapper)),
+            _ => panic!(),
         }
     }
 }
@@ -160,9 +156,7 @@ impl<T: Send + 'static> Context<T> {
             Context {
                 tx: MapSender::new(tx),
             },
-            ContextReceiver {
-                rx,
-            },
+            ContextReceiver { rx },
         )
     }
 
@@ -198,17 +192,17 @@ impl<T: Send + 'static> Context<T> {
     }
 
     /// Spawns a future. The result of the future will be used to `update()` the application.
-    pub fn spawn<Fut: 'static + Send + Future<Output=T>>(&self, fut: Fut) {
+    pub fn spawn<Fut: 'static + Send + Future<Output = T>>(&self, fut: Fut) {
         self.tx.send(ContextMsg::Future(Box::pin(fut), false));
     }
 
     /// Spawns a future which is blocking
-    pub fn spawn_blocking<Fut: 'static + Send + Future<Output=T>>(&self, fut: Fut) {
+    pub fn spawn_blocking<Fut: 'static + Send + Future<Output = T>>(&self, fut: Fut) {
         self.tx.send(ContextMsg::Future(Box::pin(fut), true));
     }
 
     /// Subscribe to a stream. Each item the screen issues will be used to `udpate()` the application.
-    pub fn subscribe<S: 'static + Send + Stream<Item=T>>(&self, stream: S) {
+    pub fn subscribe<S: 'static + Send + Stream<Item = T>>(&self, stream: S) {
         self.tx.send(ContextMsg::Stream(Box::pin(stream)));
     }
 
@@ -220,40 +214,35 @@ impl<T: Send + 'static> Context<T> {
         let mapper = Arc::new(fun);
         let new_sender = self.tx.clone();
         let mapped = new_sender.map(move |msg: ContextMsg<U>| msg.map(mapper.clone()));
-        Context {
-            tx: mapped,
-        }
+        Context { tx: mapped }
     }
 
     /// Propagates a previously intercepted js event to the frontend
     pub fn propagate(&self, e: DomEvent) {
-        self.tx
-            .send(ContextMsg::Propagate(EventPropagate {
-                event: e,
-                propagate: true,
-                default_action: false,
-            }));
+        self.tx.send(ContextMsg::Propagate(EventPropagate {
+            event: e,
+            propagate: true,
+            default_action: false,
+        }));
     }
 
     /// Propagates a js event to the frontend executing the default action
     pub fn default_action(&self, e: DomEvent) {
-        self.tx
-            .send(ContextMsg::Propagate(EventPropagate {
-                event: e,
-                propagate: false,
-                default_action: true,
-            }));
+        self.tx.send(ContextMsg::Propagate(EventPropagate {
+            event: e,
+            propagate: false,
+            default_action: true,
+        }));
     }
 
     /// Propagates a previously intercepted js event to the frontend and execute the default
     /// action
     pub fn propagate_and_default(&self, e: DomEvent) {
-        self.tx
-            .send(ContextMsg::Propagate(EventPropagate {
-                event: e,
-                propagate: true,
-                default_action: true,
-            }));
+        self.tx.send(ContextMsg::Propagate(EventPropagate {
+            event: e,
+            propagate: true,
+            default_action: true,
+        }));
     }
 
     /// Opens a dialog on the frontend.
@@ -274,16 +263,18 @@ impl<T: Send + 'static> Context<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context::tests::MsgA::ItemA;
     use crate::context::tests::MsgB::ItemB;
+    use crate::context::Context;
+    use crate::context::ContextMsg::Subscription;
+    use crate::service::Mailbox;
     use assert_matches::assert_matches;
-    use futures::task::Poll;
+    use async_std::task::block_on;
+    use futures::channel::mpsc::{unbounded, UnboundedReceiver};
     use futures::task::Context as TaskContext;
+    use futures::task::Poll;
     use futures::{Stream, StreamExt};
     use std::pin::Pin;
-    use crate::service::Mailbox;
-    use crate::context::ContextMsg::Subscription;
-    use crate::context::tests::MsgA::ItemA;
-    use crate::context::Context;
 
     #[derive(Debug)]
     enum MsgA {
@@ -299,11 +290,12 @@ mod tests {
 
     impl Service for MyService {
         type Data = i32;
+        type DataStream = UnboundedReceiver<i32>;
 
-        fn start(&mut self, _mailbox: Mailbox) {
-        }
-
-        fn stop(self) {
+        fn start(self, _: Mailbox) -> Self::DataStream {
+            let (tx, rx) = unbounded();
+            let _ = tx.unbounded_send(1);
+            rx
         }
     }
 
@@ -321,8 +313,8 @@ mod tests {
         let mapped = mb.map(MsgA::ItemA);
         let service = MyService {};
         mapped.run_service(service, ItemB);
-        if let Ok(Subscription(mut subs)) = rx.recv() {
-            let result = async_std::task::block_on(subs.next());
+        if let Ok(Subscription(mut subs)) = rx.rx.try_recv() {
+            let result = block_on(subs.next());
             assert_matches!(result, Some(MsgA::ItemA(MsgB::ItemB(1))));
         } else {
             panic!();
@@ -331,15 +323,13 @@ mod tests {
 
     #[test]
     fn test_future() {
-        let fut = async {
-            MsgB::ItemB(123)
-        };
+        let fut = async { MsgB::ItemB(123) };
 
         let (mb, rx) = Context::<MsgA>::new();
         let mapped = mb.map(MsgA::ItemA);
         mapped.spawn(fut);
-        if let Ok(ContextMsg::Future(fut, _blocking)) = rx.recv() {
-            let result = async_std::task::block_on(fut);
+        if let Ok(ContextMsg::Future(fut, _blocking)) = rx.rx.try_recv() {
+            let result = block_on(fut);
             assert_matches!(result, MsgA::ItemA(MsgB::ItemB(123)));
         } else {
             panic!();
@@ -359,8 +349,8 @@ mod tests {
         let (mb, rx) = Context::<MsgA>::new();
         let mapped = mb.map(MsgA::ItemA);
         mapped.subscribe(stream);
-        if let Ok(ContextMsg::Stream(stream)) = rx.recv() {
-            let data: Vec<MsgA> = async_std::task::block_on(stream.collect::<Vec<MsgA>>());
+        if let Ok(ContextMsg::Stream(stream)) = rx.rx.try_recv() {
+            let data: Vec<MsgA> = block_on(stream.collect::<Vec<MsgA>>());
             assert_eq!(data.len(), 3);
             assert_matches!(data[0], ItemA(ItemB(0)));
             assert_matches!(data[1], ItemA(ItemB(1)));

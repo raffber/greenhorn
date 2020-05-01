@@ -66,7 +66,10 @@ impl<'a> ViewBuilder {
     }
 
     pub fn format_html(&self, port: u16) -> String {
-        let js_main = format!("window.onload = function() {{ app = new greenhorn.Application(\"ws://127.0.0.1:\" + {}, document.body); }}", port);
+        let js_main = format!("window.onload = function() {{ \
+            let pipe = new greenhorn.Pipe(\"ws://127.0.0.1:\" + {});
+            let app = new greenhorn.App(pipe, document.body);
+        }}", port);
         let js_lib = include_str!("../res/bundle.js");
         let mut additional = Vec::new();
         for x in &self.js {

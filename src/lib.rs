@@ -108,7 +108,11 @@ pub mod service;
 /// Virtual DOM implementation with diffing and patch generation
 mod vdom;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub mod websockets;
+
+#[cfg(target_arch = "wasm32")]
+pub mod wasm_pipe;
 
 /// Defines `Node<T>` type for building DOMs in pure rust
 pub mod node;
@@ -133,6 +137,8 @@ pub mod services;
 
 pub mod any;
 
+pub mod platform;
+
 /// Prelude, `use greehorn::prelude::*` imports the most important symbols for quick access
 ///
 /// This module allows importing the most common types for building a greenhorn powered application
@@ -141,22 +147,27 @@ pub mod any;
 /// use greenhorn::prelude::*;
 /// ```
 pub mod prelude {
-    pub use crate::Id;
     pub use crate::component::{Component, Updated};
-    pub use crate::{App, Render};
-    pub use crate::node::Node;
-    pub use crate::dom::{KeyboardEvent, WheelEvent, MouseEvent, DomEvent, InputValue};
-    pub use crate::event::Event;
     pub use crate::context::Context;
+    pub use crate::dom::{DomEvent, InputValue, KeyboardEvent, MouseEvent, WheelEvent};
+    pub use crate::event::Event;
+    pub use crate::node::Node;
+    pub use crate::Id;
+    pub use crate::{App, Render};
+
+    #[cfg(not(target_arch = "wasm32"))]
     pub use crate::websockets::WebSocketPipe;
-    pub use crate::node_builder::{NodeBuilder, ElementBuilder};
+
     pub use crate::blob::Blob;
+    pub use crate::node_builder::{ElementBuilder, NodeBuilder};
     pub use crate::runtime::{Runtime, RuntimeControl};
     pub use serde_json::Value as JsonValue;
 }
 
 pub use crate::component::{Component, Updated};
 pub use crate::runtime::{Runtime, RuntimeControl};
+
+#[cfg(not(target_arch = "wasm32"))]
 pub use crate::websockets::WebSocketPipe;
 
 /// Type to produce unique IDs within the process.
@@ -350,7 +361,6 @@ pub trait Render {
 ///
 /// ```
 pub trait App: Render {
-
     /// Modify the state of this object based on the received `Message`.
     /// Returns an [`Updated`](component/struct.Updated.html) which should mark whether this
     /// component is to be re-rendered.
@@ -362,7 +372,6 @@ pub trait App: Render {
     /// A parent component is required to call this function of all child components.
     fn mount(&mut self, _ctx: Context<Self::Message>) {}
 }
-
 
 use proc_macro_hack::proc_macro_hack;
 
@@ -389,6 +398,8 @@ use proc_macro_hack::proc_macro_hack;
 #[proc_macro_hack(support_nested)]
 pub use html_macro::html;
 
+use crate::context::Context;
+use crate::node::Node;
 /// Proc macro to generate SVG [Nodes](struct.Node.html) implementing a JSX like syntax.
 ///
 /// ```
@@ -411,6 +422,3 @@ pub use html_macro::html;
 ///
 #[proc_macro_hack(support_nested)]
 pub use html_macro::svg;
-use crate::context::Context;
-use crate::node::Node;
-

@@ -1,9 +1,9 @@
-use crate::Id;
-use crate::vdom::Attr;
 use crate::listener::{Listener, Rpc};
 use crate::node::Node;
-use std::fmt::{Debug, Formatter, Error};
+use crate::vdom::Attr;
+use crate::Id;
 use std::fmt;
+use std::fmt::{Debug, Error, Formatter};
 use std::sync::{Arc, Mutex};
 
 /// Element type to represent a DOM element
@@ -12,13 +12,13 @@ use std::sync::{Arc, Mutex};
 /// Element instance.
 pub(crate) struct Element<T: 'static + Send> {
     pub(crate) id: Id,
-    pub(crate) tag: Option<String>,             // The tag name. Must be present.
-    pub(crate) attrs: Option<Vec<Attr>>,        // Generic HTML attributes
-    pub(crate) js_events: Option<Vec<Attr>>,    // JS event handlers
+    pub(crate) tag: Option<String>, // The tag name. Must be present.
+    pub(crate) attrs: Option<Vec<Attr>>, // Generic HTML attributes
+    pub(crate) js_events: Option<Vec<Attr>>, // JS event handlers
     pub(crate) listeners: Option<Vec<Listener<T>>>, // Registered listeners
-    pub(crate) children: Option<Vec<Node<T>>>,  // child nodes
-    pub(crate) namespace: Option<String>,       // an optional namespace. If None the HTML namespace is assumed
-    pub(crate) rpc: Option<Rpc<T>>,             // An RPC message handler for this node
+    pub(crate) children: Option<Vec<Node<T>>>, // child nodes
+    pub(crate) namespace: Option<String>, // an optional namespace. If None the HTML namespace is assumed
+    pub(crate) rpc: Option<Rpc<T>>,       // An RPC message handler for this node
 }
 
 impl<T: 'static + Send> Element<T> {
@@ -46,7 +46,7 @@ impl<T: 'static + Send> Element<T> {
             listeners: self.listeners.clone(),
             children,
             namespace: self.namespace.clone(),
-            rpc: self.rpc.clone()
+            rpc: self.rpc.clone(),
         })
     }
 }
@@ -87,9 +87,7 @@ impl<T: 'static + Send> Debug for MappedElement<T> {
 
 impl<T: 'static + Send> MappedElement<T> {
     fn new(elem: Box<dyn ElementMap<T>>) -> Self {
-        Self {
-            inner: elem
-        }
+        Self { inner: elem }
     }
 }
 
@@ -97,7 +95,7 @@ impl<T: 'static + Send> MappedElement<T> {
 ///
 /// All `.take_*()` functions are only callable once. Calling them more then once
 /// will cause a panic.
-pub(crate) trait ElementMap<T: 'static + Send> : Debug {
+pub(crate) trait ElementMap<T: 'static + Send>: Debug {
     fn take_listeners(&mut self) -> Vec<Listener<T>>;
     fn take_children(&mut self) -> Vec<Node<T>>;
     fn id(&self) -> Id;
@@ -109,25 +107,57 @@ pub(crate) trait ElementMap<T: 'static + Send> : Debug {
 }
 
 impl<T: 'static + Send> ElementMap<T> for MappedElement<T> {
-    fn take_listeners(&mut self) -> Vec<Listener<T>> { self.inner.take_listeners() }
-    fn take_children(&mut self) -> Vec<Node<T>> { self.inner.take_children() }
-    fn id(&self) -> Id { self.inner.id() }
-    fn take_attrs(&mut self) -> Vec<Attr> { self.inner.take_attrs() }
-    fn take_tag(&mut self) -> String { self.inner.take_tag() }
-    fn take_namespace(&mut self) -> Option<String> { self.inner.take_namespace() }
-    fn take_js_events(&mut self) -> Vec<Attr> { self.inner.take_js_events() }
-    fn take_rpc(&mut self) -> Option<Rpc<T>> { self.inner.take_rpc() }
+    fn take_listeners(&mut self) -> Vec<Listener<T>> {
+        self.inner.take_listeners()
+    }
+    fn take_children(&mut self) -> Vec<Node<T>> {
+        self.inner.take_children()
+    }
+    fn id(&self) -> Id {
+        self.inner.id()
+    }
+    fn take_attrs(&mut self) -> Vec<Attr> {
+        self.inner.take_attrs()
+    }
+    fn take_tag(&mut self) -> String {
+        self.inner.take_tag()
+    }
+    fn take_namespace(&mut self) -> Option<String> {
+        self.inner.take_namespace()
+    }
+    fn take_js_events(&mut self) -> Vec<Attr> {
+        self.inner.take_js_events()
+    }
+    fn take_rpc(&mut self) -> Option<Rpc<T>> {
+        self.inner.take_rpc()
+    }
 }
 
 impl<T: 'static + Send> ElementMap<T> for Element<T> {
-    fn take_listeners(&mut self) -> Vec<Listener<T>> { self.listeners.take().unwrap() }
-    fn take_children(&mut self) -> Vec<Node<T>> { self.children.take().unwrap() }
-    fn id(&self) -> Id { self.id }
-    fn take_attrs(&mut self) -> Vec<Attr> { self.attrs.take().unwrap() }
-    fn take_tag(&mut self) -> String { self.tag.take().unwrap() }
-    fn take_namespace(&mut self) -> Option<String> { self.namespace.take() }
-    fn take_js_events(&mut self) -> Vec<Attr> { self.js_events.take().unwrap() }
-    fn take_rpc(&mut self) -> Option<Rpc<T>> { self.rpc.take() }
+    fn take_listeners(&mut self) -> Vec<Listener<T>> {
+        self.listeners.take().unwrap()
+    }
+    fn take_children(&mut self) -> Vec<Node<T>> {
+        self.children.take().unwrap()
+    }
+    fn id(&self) -> Id {
+        self.id
+    }
+    fn take_attrs(&mut self) -> Vec<Attr> {
+        self.attrs.take().unwrap()
+    }
+    fn take_tag(&mut self) -> String {
+        self.tag.take().unwrap()
+    }
+    fn take_namespace(&mut self) -> Option<String> {
+        self.namespace.take()
+    }
+    fn take_js_events(&mut self) -> Vec<Attr> {
+        self.js_events.take().unwrap()
+    }
+    fn take_rpc(&mut self) -> Option<Rpc<T>> {
+        self.rpc.take()
+    }
 }
 
 pub(crate) struct ElementMapDirect<T: 'static + Send, U: 'static + Send> {
@@ -142,11 +172,12 @@ impl<T: 'static + Send, U: 'static + Send> Debug for ElementMapDirect<T, U> {
 }
 
 impl<T: 'static + Send, U: 'static + Send> ElementMapDirect<T, U> {
-    pub(crate) fn new_box(fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>, inner: Element<T>) -> MappedElement<U> {
+    pub(crate) fn new_box(
+        fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>,
+        inner: Element<T>,
+    ) -> MappedElement<U> {
         let ret = Box::new(ElementMapDirect { fun, inner });
-        MappedElement {
-            inner: ret
-        }
+        MappedElement { inner: ret }
     }
 }
 
@@ -188,7 +219,10 @@ impl<T: 'static + Send, U: 'static + Send> ElementMap<U> for ElementMapDirect<T,
     }
 
     fn take_js_events(&mut self) -> Vec<Attr> {
-        self.inner.js_events.take().expect("js_events cannot be taken multiple times")
+        self.inner
+            .js_events
+            .take()
+            .expect("js_events cannot be taken multiple times")
     }
 
     fn take_rpc(&mut self) -> Option<Rpc<U>> {
@@ -208,7 +242,10 @@ impl<T, U> Debug for ElementRemap<T, U> {
 }
 
 impl<T: 'static + Send, U: 'static + Send> ElementRemap<T, U> {
-    pub(crate) fn new_box(fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>, inner: Box<dyn ElementMap<T>>) -> MappedElement<U> {
+    pub(crate) fn new_box(
+        fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>>,
+        inner: Box<dyn ElementMap<T>>,
+    ) -> MappedElement<U> {
         MappedElement::new(Box::new(ElementRemap { fun, inner }))
     }
 }
@@ -230,11 +267,21 @@ impl<T: 'static + Send, U: 'static + Send> ElementMap<U> for ElementRemap<T, U> 
             .collect()
     }
 
-    fn id(&self) -> Id { self.inner.id() }
-    fn take_attrs(&mut self) -> Vec<Attr> { self.inner.take_attrs() }
-    fn take_tag(&mut self) -> String { self.inner.take_tag() }
-    fn take_namespace(&mut self) -> Option<String> { self.inner.take_namespace() }
-    fn take_js_events(&mut self) -> Vec<Attr> { self.inner.take_js_events() }
+    fn id(&self) -> Id {
+        self.inner.id()
+    }
+    fn take_attrs(&mut self) -> Vec<Attr> {
+        self.inner.take_attrs()
+    }
+    fn take_tag(&mut self) -> String {
+        self.inner.take_tag()
+    }
+    fn take_namespace(&mut self) -> Option<String> {
+        self.inner.take_namespace()
+    }
+    fn take_js_events(&mut self) -> Vec<Attr> {
+        self.inner.take_js_events()
+    }
 
     fn take_rpc(&mut self) -> Option<Rpc<U>> {
         self.inner.take_rpc().map(|x| x.map(self.fun.clone()))

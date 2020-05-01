@@ -4,11 +4,11 @@ version = "0.1.0"
 authors = ["Raphael Bernhard <beraphae@gmail.com>"]
 edition = "2018"
 
+
 [dependencies]
 async-timer = "0.7.3"
 futures = "0.3"
 log = "0.4.8"
-tungstenite = "0.10.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 handlebars = "3.0"
@@ -16,16 +16,22 @@ proc-macro-hack = "0.5.11"
 html_macro = { path = "html_macro" }
 proc-macro-nested = "0.1.3"
 hdrhistogram = "7.0.0"
+cfg-if = "0.1.10"
+instant = { version = "0.1", features = ["wasm-bindgen"]}
 
-[dependencies.async-std]
-version = "1.5.0"
-features = ["unstable"]
-
-[dependencies.async-tungstenite]
-version = "0.4.2"
-features = ["async-std-runtime"]
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tungstenite = "0.10.1"
+async-tungstenite = {version = "0.4.2", features=["async-std-runtime"]}
+async-std = {version = "1.5.0", features = ["unstable"]}
 
 [dev-dependencies]
 url = "2.1.0"
 assert_matches = "1.3.0"
 trybuild = "1.0.24"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures = "0.4.10"
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["Window", "console"] }
+lazy_static = "1.4.0"

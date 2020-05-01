@@ -14,7 +14,6 @@
 use crate::Id;
 use serde::{Deserialize, Serialize};
 
-
 /// Defines whether a modifier is currently pressed
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ModifierState {
@@ -171,13 +170,12 @@ impl DomEvent {
     /// This is useful for [HTMLInputElements](https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement).
     pub fn target_value(&self) -> &InputValue {
         match self {
-            DomEvent::Base(e) => {&e.target_value},
-            DomEvent::Focus(e) => {&e.target_value},
-            DomEvent::Keyboard(e) => {&e.target_value},
-            DomEvent::Mouse(e) => {&e.target_value},
-            DomEvent::Wheel(e) => {&e.target_value},
+            DomEvent::Base(e) => &e.target_value,
+            DomEvent::Focus(e) => &e.target_value,
+            DomEvent::Keyboard(e) => &e.target_value,
+            DomEvent::Mouse(e) => &e.target_value,
+            DomEvent::Wheel(e) => &e.target_value,
         }
-
     }
 
     /// Attempt to convert this type into a [KeyboardEvent](struct.KeyboardEvent.html)
@@ -198,20 +196,18 @@ impl DomEvent {
             DomEvent::Focus(_) => None,
             DomEvent::Keyboard(_) => None,
             DomEvent::Mouse(evt) => Some(evt),
-            DomEvent::Wheel(evt) => {
-                Some(MouseEvent {
-                    target: evt.target,
-                    event_name: evt.event_name,
-                    modifier_state: evt.modifier_state,
-                    button: evt.button,
-                    buttons: evt.buttons,
-                    client: evt.client,
-                    offset: evt.offset,
-                    page: evt.page,
-                    screen: evt.screen,
-                    target_value: evt.target_value
-                })
-            },
+            DomEvent::Wheel(evt) => Some(MouseEvent {
+                target: evt.target,
+                event_name: evt.event_name,
+                modifier_state: evt.modifier_state,
+                button: evt.button,
+                buttons: evt.buttons,
+                client: evt.client,
+                offset: evt.offset,
+                page: evt.page,
+                screen: evt.screen,
+                target_value: evt.target_value,
+            }),
         }
     }
 

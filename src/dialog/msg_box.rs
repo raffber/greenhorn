@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize};
 use crate::dialog::Dialog;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum MsgBoxType {
@@ -13,7 +13,7 @@ pub enum MsgBoxIcon {
     Info,
     Warning,
     Error,
-    Question
+    Question,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -40,7 +40,7 @@ impl MessageBox {
             title: title.to_string(),
             message: message.to_string(),
             icon: MsgBoxIcon::Question,
-            default: MessageBoxResult::Yes
+            default: MessageBoxResult::Yes,
         }
     }
 
@@ -50,7 +50,7 @@ impl MessageBox {
             title: title.to_string(),
             message: message.to_string(),
             icon: MsgBoxIcon::Question,
-            default: MessageBoxResult::Ok
+            default: MessageBoxResult::Ok,
         }
     }
 
@@ -60,7 +60,7 @@ impl MessageBox {
             title: title.to_string(),
             message: message.to_string(),
             icon: MsgBoxIcon::Info,
-            default: MessageBoxResult::Ok
+            default: MessageBoxResult::Ok,
         }
     }
 
@@ -84,4 +84,3 @@ impl Dialog for MessageBox {
         "MessageBox"
     }
 }
-

@@ -1,6 +1,6 @@
-use crate::Id;
-use crate::node::Node;
 use crate::blob::Blob;
+use crate::node::Node;
+use crate::Id;
 
 pub struct Image {
     blob: Blob,
@@ -34,22 +34,23 @@ impl Into<Image> for ImageBuilder {
     fn into(self) -> Image {
         let blob_id = Id::new();
         let html_id = self.html_id.unwrap_or_else(|| format!("__id_{}", blob_id));
-        let blob= Image::build_blob(&html_id, blob_id, self.data, self.mime_type);
-        Image {
-            blob,
-            html_id
-        }
+        let blob = Image::build_blob(&html_id, blob_id, self.data, self.mime_type);
+        Image { blob, html_id }
     }
 }
 
 impl Image {
     fn build_blob(html_id: &str, blob_id: Id, data: Vec<u8>, mime_type: String) -> Blob {
-        let js = format!("{{
+        let js = format!(
+            "{{
             var elem = document.getElementById('{}');
             var blob = app.getBlob({});
             var img_url = URL.createObjectURL(blob.blob);
             elem.src = img_url;
-        }}", html_id, blob_id.data());
+        }}",
+            html_id,
+            blob_id.data()
+        );
 
         Blob::build(Id::new().id)
             .data(data)
@@ -68,21 +69,29 @@ impl Image {
     }
 
     pub fn update(&mut self, data: Vec<u8>) {
-        let blob = Image::build_blob(&self.html_id, self.blob.id(), data, self.blob.mime_type().into());
+        let blob = Image::build_blob(
+            &self.html_id,
+            self.blob.id(),
+            data,
+            self.blob.mime_type().into(),
+        );
         self.blob = blob;
     }
 
     pub fn render<T: 'static + Send>(&self) -> Node<T> {
-        let js = format!("{{
+        let js = format!(
+            "{{
             var blob = app.getBlob({});
             var img_url = URL.createObjectURL(blob.blob);
             event.target.src = img_url;
-        }}", self.blob.id().data());
-        Node::html().elem("img")
+        }}",
+            self.blob.id().data()
+        );
+        Node::html()
+            .elem("img")
             .id(self.html_id.clone())
-            .js_event("render", js )
+            .js_event("render", js)
             .add(&self.blob)
             .build()
     }
 }
-

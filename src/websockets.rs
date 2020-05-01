@@ -5,19 +5,18 @@ use crate::pipe::{Pipe, RxMsg, TxMsg};
 use async_std::net::{TcpListener, TcpStream};
 use async_std::task;
 use async_tungstenite::{accept_async, WebSocketStream};
+use futures::channel::mpsc::SendError;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::prelude::*;
 use futures::select;
 use futures::task::{Context, Poll};
+use futures::Sink;
 use futures::Stream;
 use log::error;
+use std::error::Error;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use tungstenite::protocol::Message;
-use futures::Sink;
-use std::error::Error;
-use futures::channel::mpsc::SendError;
-
 
 /// The `WebSocketPipe` type implements a [Pipe](../pipe/trait.Pipe.html) on top of WebSockets.
 ///
@@ -59,9 +58,7 @@ pub struct WebSocketPipe {
 impl WebSocketPipe {
     /// Starts listening to a given `SocketAddr`
     pub fn listen_to_addr(addr: SocketAddr) -> WebSocketPipe {
-        let try_socket = task::block_on(async {
-            TcpListener::bind(&addr).await
-        });
+        let try_socket = task::block_on(async { TcpListener::bind(&addr).await });
         let listener = try_socket.expect("Failed to bind");
         Self::listen_to_socket(listener)
     }
@@ -194,9 +191,7 @@ impl Sink<TxMsg> for WebSocketSender {
 
     fn start_send(mut self: Pin<&mut Self>, item: TxMsg) -> Result<(), Self::Error> {
         let msg = match item {
-            TxMsg::Patch(p) => {
-                Message::Binary(p)
-            },
+            TxMsg::Patch(p) => Message::Binary(p),
             msg => {
                 // for performance notes regarding serialization and underlying transport, refer to index.js
                 // tldr: JSON.parse() in the browser is very fast
@@ -263,7 +258,7 @@ impl Stream for WebSocketReceiver {
                 Message::Text(data) => match serde_json::from_str(&data).ok() {
                     None => Poll::Pending,
                     Some(x) => Poll::Ready(Some(x)),
-                }
+                },
                 Message::Binary(_) => Poll::Pending,
                 Message::Ping(_) => Poll::Pending,
                 Message::Pong(_) => Poll::Pending,
@@ -322,7 +317,7 @@ mod tests {
             while let Some(msg) = stream.next().await {
                 // receive one message, then terminate
                 match msg {
-                    Ok(Message::Text(data))=> {
+                    Ok(Message::Text(data)) => {
                         let msg: TxMsg = serde_json::from_str(&data).unwrap();
                         assert_matches!(msg, TxMsg::Ping());
                         break;
