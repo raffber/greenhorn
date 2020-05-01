@@ -3,6 +3,7 @@ use greenhorn::prelude::*;
 use greenhorn::html;
 use greenhorn::components::{checkbox, TextInput, TextInputMsg};
 
+pub const CSS: &'static str = include_str!("../dist/styles.css");
 
 pub struct MainApp {
     todos: Vec<Todo>,

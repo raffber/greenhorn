@@ -2,11 +2,11 @@
 
 use greenhorn_web_view::ViewBuilder;
 use greenhorn::prelude::Runtime;
-use ::todomvc::MainApp;
+use ::todomvc::{MainApp, CSS};
 
 fn main() {
     ViewBuilder::new()
-        .css(include_str!("../dist/styles.css"))
+        .css(CSS)
         .title("Greenhorn - TodoMVC")
         .size(1200, 900)
         .run(move |pipe| {

@@ -14,11 +14,8 @@ default = ["console_error_panic_hook"]
 wasm-bindgen = "0.2"
 console_error_panic_hook = { version = "0.1.1", optional = true }
 wee_alloc = { version = "0.4.2", optional = true }
-greenhorn = {path = "../.."}
+greenhorn = {path = "../../.."}
 futures = "0.3"
-
-[dev-dependencies]
-wasm-bindgen-test = "0.2"
 
 [profile.release]
 opt-level = "s"

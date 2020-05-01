@@ -1,0 +1,10 @@
+[package]
+name = "todomvc-webview"
+version = "0.1.0"
+authors = ["Raphael Bernhard <beraphae@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+greenhorn = {path = "../../.."}
+greenhorn_web_view = {path = "../../../web_view"}
+todomvc = {path = "../lib"}
