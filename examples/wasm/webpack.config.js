@@ -4,7 +4,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const browserConfig = {
   entry: './js/app.js',
   output: {
-    path: path.resolve(__dirname, "dist"),
+    path: path.resolve(__dirname, "pkg"),
     filename: "app.js",
   },
   plugins: [
@@ -18,7 +18,7 @@ const browserConfig = {
 const workerConfig = {
   entry: "./js/worker.js",
   output: {
-    path: path.resolve(__dirname, "dist"),
+    path: path.resolve(__dirname, "pkg"),
     filename: "worker.js",
   },
   target: "webworker",
