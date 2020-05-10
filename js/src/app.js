@@ -112,7 +112,9 @@ export default class App {
 
     onRunJsMsg(id, js) {
         let ctx = new Context(id, this);
-        eval(js);
+        (function(ctx) {
+            eval(js);
+        })(ctx);        
     }
 
     sendReturnMessage(ret_msg) {

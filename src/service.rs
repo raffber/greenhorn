@@ -195,7 +195,6 @@ impl Mailbox {
     ///
     /// TODO: document ctx js object
     /// TODO: add an example
-    /// TODO: on frontend improve the way js code is executed
     pub fn run_js<T: Into<String>>(&self, code: T) {
         let _ = self.tx.unbounded_send(TxServiceMessage::RunJs(code.into()));
     }
