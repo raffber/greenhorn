@@ -7,9 +7,10 @@ use std::collections::HashMap;
 #[cfg(test)]
 use crate::vdom::VNode;
 
+/// Collects the result of a render operation and collects all state of the frontend.
 pub(crate) struct Frame<A: App> {
     pub(crate) rendered: RenderResult<A>,
-    pub(crate) translations: HashMap<Id, Id>, // new -> old
+    pub(crate) translations: HashMap<Id, Id>, // maps new node ids to old node ids
 }
 
 impl<A: App> Frame<A> {
@@ -29,6 +30,10 @@ impl<A: App> Frame<A> {
     }
 }
 
+/// Captures the currently rendered state.
+///
+/// This allows matching messages arriving from the frontend
+/// to their respective backend handlers
 pub(crate) struct RenderedState<A: App> {
     subscriptions: HashMap<Id, Subscription<A::Message>>,
     listeners: HashMap<ListenerKey, Listener<A::Message>>,
@@ -61,6 +66,7 @@ impl<A: App> RenderedState<A> {
         self.subscriptions.get(&event_id)
     }
 
+    /// Updated the current state based on a newly rendered frame
     pub(crate) fn apply(&mut self, frame: &Frame<A>) {
         self.listeners = frame.rendered.listeners.clone();
         self.rpcs = frame.rendered.rpcs.clone();

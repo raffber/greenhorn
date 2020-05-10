@@ -132,9 +132,6 @@ pub mod components;
 /// Allows spawning native dialogs such as file-open dialogs and retrieving their results.
 pub mod dialog;
 
-/// Exposes a built-in set of commonly used services
-pub mod services;
-
 pub mod any;
 
 pub mod platform;
