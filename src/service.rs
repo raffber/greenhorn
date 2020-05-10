@@ -20,7 +20,39 @@ use std::sync::Arc;
 /// with the [Mailbox](struct.Mailbox.html)
 /// object it has received with the `start()` call.
 ///
-/// TODO: add an example
+/// # Example
+///
+/// ```
+/// # use greenhorn::service::{Service, Mailbox, RxServiceMessage};
+/// # use std::str::FromStr;
+/// use futures::{channel::mpsc, StreamExt};
+/// use greenhorn::platform;
+///
+/// struct MyService {}
+///
+/// impl Service for MyService {
+///    type Data = i32;
+///    type DataStream = mpsc::UnboundedReceiver<i32>;
+///
+///    fn start(self, mut mailbox: Mailbox) -> Self::DataStream {
+///        mailbox.run_js("ctx.send('123')");
+///        let (tx, rx) = mpsc::unbounded();
+///        platform::spawn(async move {
+///            loop {
+///                if let Some(RxServiceMessage::Frontend(data)) = mailbox.next().await {
+///                    // this will receive '123' from the frontend
+///                    let data = i32::from_str(&data).unwrap();
+///                    // send the i32 into the update() cycle of the application
+///                    tx.unbounded_send(data).unwrap();
+///                } else {
+///                    break;
+///                }
+///            }
+///        });
+///        rx
+///    }
+///}
+/// ```
 pub trait Service {
     /// The data item the service emits.
     ///
@@ -30,17 +62,18 @@ pub trait Service {
     /// A stream which produces the services data items
     type DataStream: Stream<Item = <Self as Service>::Data> + Send;
 
+    /// Starts a service and consumes it.
+    ///
+    /// The returned `DataStream` may produce items to be passed into the `update()` loop of the
+    /// applications.
+    /// The service should subscribe to messages from the [Mailbox](struct.Mailbox.html) (a `Stream`).
     fn start(self, mailbox: Mailbox) -> Self::DataStream;
 }
 
-pub(crate) struct ServiceSubscription<T: 'static + Send> {
-    inner: BoxedStream<T>,
-    id: Id,
-    pub(crate) rxmailbox_tx: UnboundedSender<RxServiceMessage>,
-    pub(crate) txmailbox_rx: Option<UnboundedReceiver<TxServiceMessage>>,
-}
 
-// this is a bit redundant with futures::BoxStream
+/// A wrapper for a polymorphic stream
+///
+/// This is a bit redundant with `futures::BoxStream`
 struct BoxedStream<T: 'static + Send> {
     inner: Pin<Box<dyn Stream<Item = T> + Send>>,
 }
@@ -65,7 +98,17 @@ impl<T: 'static + Send> Stream for BoxedStream<T> {
     }
 }
 
+
+/// Holds a started service, its meta-data and channels to control it
+pub(crate) struct ServiceSubscription<T: 'static + Send> {
+    inner: BoxedStream<T>,
+    id: Id,
+    pub(crate) rxmailbox_tx: UnboundedSender<RxServiceMessage>,
+    pub(crate) txmailbox_rx: Option<UnboundedReceiver<TxServiceMessage>>,
+}
+
 impl<T: 'static + Send> ServiceSubscription<T> {
+    /// Start a new service and subscribe to it
     pub(crate) fn new<Data, DataStream, S, Fun>(service: S, fun: Fun) -> Self
     where
         Data: 'static + Send,
@@ -141,7 +184,7 @@ pub enum RxServiceMessage {
 /// The mailbox type allows a [Service](trait.Service.html) to communicate with the frontend via
 /// custom messages.
 ///
-/// Note that this type implements `Stream` with `Item=RxServiceMessage`.
+/// Note that this type implements `Stream` with `Item = RxServiceMessage`.
 pub struct Mailbox {
     pub(crate) rx: UnboundedReceiver<RxServiceMessage>,
     pub(crate) tx: UnboundedSender<TxServiceMessage>,
