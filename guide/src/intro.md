@@ -5,73 +5,30 @@ pure rust.
 
 This is accomplished by separating the application into a server-side process
 (the backend) and web view implemented in javascript (the frontend).
-While most HTML-based desktop applications leave state synchronization up to the
-application logic, this library synchronizes its state at DOM-level.
-Thus, the user may implement the application logic purely in the backend using rust.
-This facilitates the integration of a desktop GUI with system
-services and simplifies application development considerably.
+While most HTML-based desktop applications leave state synchronization
+between frontend and backend up to the application logic, this library synchronizes its state at DOM-level.
+Thus, the user may implement the application logic purely in the backend using rust and the DOM is automatically synchronized with the frontend.
+This facilitates the integration of a desktop GUI with system services and simplifies application development considerably.
 
-## Features
+## Deploying
 
-* Elm-like architecture
-* Components support fine-grained update/render cycle
-* Components are owned by the application state and may interact with each other using events
-* Macros to write SVG and HTML in-line with Rust code
-* Most tasks can be accomplished using pure-rust. If required, injecting and calling js is supported.
-* Built-in performance metrics
-* Spawning system dialogs
-* This crate does not itself implement a frontend. A frontend is implemented in `greenhorn_web_view`.
-  It makes use of [web_view](https://github.com/Boscop/web-view) and [tinyfiledialogs-rs](https://github.com/jdm/tinyfiledialogs-rs).
+The greenhorn library is not opinionated on how to deploy applications. However, the projects ships additional facilities to deploy applications to common targets.
 
-## Example
+ * Desktop applications may be deployed using [Boscop's WebView](https://github.com/Boscop/web-view).
+The `greenhorn_web_view` crates serves as an adapter for it. This is the easiest deployment method for desktop operating systems.
+Refer to this [page for details](./deploy_webview.md).
 
-```
-use greenhorn::prelude::*;
-use greenhorn::html;
+ * greenhorn application may be deployed in a webbrowser. Refer to [this page for details](./deploy_wasm.m)
+ and check out [this example](https://github.com/raffber/greenhorn/tree/master/examples/todomvc/wasm).
 
-struct MyApp {
-    text: String,
-}
+ * Desktop applications may also be deployed with electron. An example is still pending.
 
-enum MyMsg {
-    Clicked(DomEvent),
-    KeyDown(DomEvent),
-}
+## Examples
 
-impl Render for MyApp {
-    type Message = MyMsg;
+A `todomvc` example is presented in the repository at `examples/todomvc`:
 
-    fn render(&self) -> Node<Self::Message> {
-        html!(
-            <div #my-app>
-                <button type="button"
-                        @keydown={MyMsg::KeyDown}
-                        @mousedown={MyMsg::Clicked}>
-                    {&self.text}
-                </>
-            </>
-        ).into()
-    }
-}
-
-impl App for MyApp {
-    fn update(&mut self,msg: Self::Message,ctx: Context<Self::Message>) -> Updated {
-        match msg {
-            MyMsg::Clicked(evt) => self.text = "Button clicked!".into(),
-            MyMsg::KeyDown(evt) => self.text = "Button keypress!".into()
-        }
-        Updated::yes()
-    }
-
-}
-```
-
-## Acknowledgments
-
-The concpet of this library is not at all new. It was already implemented before at least by the
-[Threepenny-GUI library](https://github.com/HeinrichApfelmus/threepenny-gui).
-The API was inspired by the many great rust frontend libraries:
- * [Yew](https://github.com/yewstack/yew)
- * [Seed-rs](https://github.com/seed-rs/seed)
+ * The core applications logic is located in the `lib` crate.
+ * A deployment example for [WebView](https://github.com/Boscop/web-view) is given in the `webview` crate.
+ * 
 
 
