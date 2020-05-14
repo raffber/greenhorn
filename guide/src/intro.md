@@ -29,6 +29,6 @@ A `todomvc` example is presented in the repository at `examples/todomvc`:
 
  * The core applications logic is located in the `lib` crate.
  * A deployment example for [WebView](https://github.com/Boscop/web-view) is given in the `webview` crate.
- * 
+ * An example of how to deploy with `electron` is planned.
 
 
