@@ -65,6 +65,7 @@ impl<'a> ViewBuilder {
         let js_main = format!("window.onload = function() {{ \
             let pipe = new greenhorn.Pipe(\"ws://127.0.0.1:\" + {});
             let app = new greenhorn.App(pipe, document.body);
+            window.app = app;
         }}", port);
         let js_lib = include_str!("../res/bundle.js");
         let mut additional = Vec::new();

@@ -7,7 +7,6 @@ edition = "2018"
 [features]
 default = []
 native-dialogs = ["tinyfiledialogs"]
-server-dialogs = ["tinyfiledialogs"]
 
 [dependencies]
 async-timer = "0.7.3"

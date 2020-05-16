@@ -395,33 +395,19 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                     });
                 }
                 ContextMsg::Dialog(dialog) => {
-                    self.handle_dialog(dialog).await;
+                    if self.dialogs.is_empty() {
+                        self.sender
+                            .send(TxMsg::Dialog(dialog.serialize()))
+                            .await
+                            .unwrap();
+                    }
+                    self.dialogs.push_back(dialog);
                 }
                 ContextMsg::Quit => {
                     self.tx.unbounded_send(RuntimeMsg::Quit).unwrap();
                 }
             }
         }
-    }
-
-    #[cfg(not(feature = "server-dialogs"))]
-    async fn handle_dialog(&mut self, dialog: DialogBinding<A::Message>) {
-        if self.dialogs.is_empty() {
-            self.sender
-                .send(TxMsg::Dialog(dialog.serialize()))
-                .await
-                .unwrap();
-        }
-        self.dialogs.push_back(dialog);
-    }
-
-    #[cfg(feature = "server-dialogs")]
-    async fn handle_dialog(&mut self, dialog: DialogBinding<A::Message>) {
-        use crate::dialog::native_dialogs::show_dialog;
-        let data = show_dialog(dialog.serialize());
-        // panic if data was ill formated since that is a bug in the backend
-        let msg = dialog.resolve(data).unwrap();
-        self.tx.unbounded_send(RuntimeMsg::Update(msg)).unwrap();
     }
 
     /// Processes all events in the event queue, retrieves subscriptions and updates the app-state
