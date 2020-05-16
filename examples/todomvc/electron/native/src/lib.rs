@@ -1,9 +1,23 @@
 use neon::prelude::*;
+use ::todomvc::{MainApp, CSS};
+use greenhorn::{Runtime, WebSocketPipe};
+use std::net::SocketAddr;
+use std::str::FromStr;
+use async_std::task;
+use std::thread;
 
-fn hello(mut cx: FunctionContext) -> JsResult<JsString> {
-    Ok(cx.string("hello node"))
+fn run(mut cx: FunctionContext) -> JsResult<JsNumber> {
+    let addr = SocketAddr::from_str("127.0.0.1:0").unwrap();
+    let pipe = WebSocketPipe::listen_to_addr(addr);
+    let port = pipe.port();
+    thread::spawn(|| {
+        let app = MainApp::new();
+        let (rt, _control) = Runtime::new(app, pipe);
+        rt.run_blocking();
+    });
+    Ok(cx.number(port))
 }
 
 register_module!(mut cx, {
-    cx.export_function("hello", hello)
+    cx.export_function("run", run)
 });
