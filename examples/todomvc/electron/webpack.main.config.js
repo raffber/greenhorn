@@ -13,7 +13,12 @@ module.exports = {
     __dirname: false
   },
   module: {
-    rules: [],
+    rules: [
+      {
+        test: /\.node$/,
+        use: 'node-loader'
+      }
+    ],
   },
   plugins: [new webpack.DefinePlugin({})],
   optimization: {

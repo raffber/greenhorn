@@ -1,15 +1,20 @@
-var addon = require('../native');
+var addon = require('../native/index.node');
 
-const {app, BrowserWindow} = require('electron');
+const {app, BrowserWindow, Menu} = require('electron');
+process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = true;
+
 
 function createWindow () {
   const port = addon.run();
   console.log('PORT' + port);
   global.port = port;
+
+  Menu.setApplicationMenu(null);
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
+      webSecurity: false,
       nodeIntegration: true
     }
   });
