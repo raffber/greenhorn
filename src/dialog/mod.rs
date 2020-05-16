@@ -7,6 +7,9 @@ use std::sync::{Arc, Mutex};
 mod file_dialogs;
 mod msg_box;
 
+#[cfg(feature = "native-dialogs")]
+pub mod native_dialogs;
+
 pub use file_dialogs::{FileFilter, FileOpenDialog, FileOpenMsg, FileSaveDialog, FileSaveMsg};
 pub use msg_box::{MessageBox, MessageBoxResult, MsgBoxIcon, MsgBoxType};
 
