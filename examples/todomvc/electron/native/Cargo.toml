@@ -1,0 +1,21 @@
+[package]
+name = "electron_todomvc"
+version = "0.1.0"
+authors = ["Raphael Bernhard <beraphae@gmail.com>"]
+license = "MIT"
+build = "build.rs"
+edition = "2018"
+exclude = ["artifacts.json", "index.node"]
+
+[lib]
+name = "todomvc"
+crate-type = ["cdylib"]
+
+[build-dependencies]
+neon-build = "0.4.0"
+
+[dependencies]
+neon = "0.4.0"
+greenhorn = {path = "../../../..", features = ["server-dialogs", "native-dialogs"]}
+todomvc = {path = "../../lib"}
+async-std = {version = "1.5.0", features = ["unstable"]}
