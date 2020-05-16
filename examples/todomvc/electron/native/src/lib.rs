@@ -1,9 +1,8 @@
 use neon::prelude::*;
-use ::todomvc::{MainApp, CSS};
+use ::todomvc::MainApp;
 use greenhorn::{Runtime, WebSocketPipe};
 use std::net::SocketAddr;
 use std::str::FromStr;
-use async_std::task;
 use std::thread;
 
 fn run(mut cx: FunctionContext) -> JsResult<JsNumber> {

@@ -421,8 +421,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         let data = show_dialog(dialog.serialize());
         // panic if data was ill formated since that is a bug in the backend
         let msg = dialog.resolve(data).unwrap();
-        self.update(msg).await;
-        self.process_events().await;
+        self.tx.unbounded_send(RuntimeMsg::Update(msg)).unwrap();
     }
 
     /// Processes all events in the event queue, retrieves subscriptions and updates the app-state
