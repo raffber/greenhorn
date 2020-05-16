@@ -2,7 +2,7 @@
   "name": "todomvc",
   "version": "0.1.0",
   "description": "",
-  "main": "lib/main.js",
+  "main": "dist/main.js",
   "author": "Raphael Bernhard <beraphae@gmail.com>",
   "license": "MIT",
   "devDependencies": {
@@ -23,6 +23,15 @@
   "scripts": {
     "build-dev": "electron-build-env neon build && webpack --config webpack.renderer.config.js --mode=development && webpack --config webpack.main.config.js --mode=development",
     "build-prod": "electron-build-env neon build --release && webpack --config webpack.renderer.config.js --mode=production && webpack --config webpack.main.config.js --mode=production",
-    "start": "electron dist/main.js"
+    "package": "yarn build-prod && electron-builder",
+    "start": "yarn build-dev && electron dist/main.js"
+  },
+  "build": {
+    "directories": {
+      "output": "out"
+    },
+    "files": [
+      "dist/*"
+    ]
   }
 }

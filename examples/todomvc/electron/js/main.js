@@ -1,4 +1,4 @@
-var addon = require('../native/index.node');
+import addon from 'node-loader!../native/index.node';
 
 const {app, BrowserWindow, Menu} = require('electron');
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = true;
@@ -18,8 +18,10 @@ function createWindow () {
       nodeIntegration: true
     }
   });
-  mainWindow.loadFile('index.html');
-  mainWindow.webContents.openDevTools()
+  mainWindow.loadURL(`file://${__dirname}/index.html`);
+  if (process.env.NODE_ENV === "development") {
+    mainWindow.webContents.openDevTools();
+  }
 }
 
 app.whenReady().then(() => {
