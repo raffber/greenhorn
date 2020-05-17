@@ -8,11 +8,13 @@ use std::collections::HashMap;
 use std::iter::{once, Once};
 use std::sync::{Arc, Mutex};
 
+#[derive(Debug)]
 pub struct SubscribedEvent {
     component_event: Event<DomEvent>,
     evt: DomEvent,
 }
 
+#[derive(Debug)]
 pub enum TextInputMsg {
     ValueChange(DomEvent),
     SubscribedEvent(SubscribedEvent),

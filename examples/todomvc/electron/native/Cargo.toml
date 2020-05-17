@@ -16,6 +16,6 @@ neon-build = "0.4.0"
 
 [dependencies]
 neon = "0.4.0"
-greenhorn = {path = "../../../..", features = ["server-dialogs", "native-dialogs"]}
+greenhorn = {path = "../../../.."}
 todomvc = {path = "../../lib"}
 async-std = {version = "1.5.0", features = ["unstable"]}

@@ -17,7 +17,7 @@ fn handle_msgbox(value: JsonValue) -> JsonValue {
     match msgbox.box_type {
         MsgBoxType::Ok => {
             message_box_ok(&msgbox.title, &msgbox.message, icon);
-            JsonValue::Null
+            serde_json::to_value(&MessageBoxResult::Ok).unwrap()
         },
         MsgBoxType::OkCancel => {
             let default = match msgbox.default {

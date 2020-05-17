@@ -5,7 +5,7 @@ use std::str::FromStr;
 use greenhorn::prelude::*;
 use async_std::net::TcpListener;
 use async_std::task;
-use greenhorn::pipe::TxMsg;
+use greenhorn::pipe::{TxMsg, RxMsg};
 use greenhorn::dialog::native_dialogs;
 
 pub struct ViewBuilder {
@@ -130,11 +130,12 @@ fn handler(webview: &mut WebView<()>, arg: &str) {
      // if this happens it's a mistake somewhere
     let rx: TxMsg = serde_json::from_str(arg).expect("Invalid message received.");
     let ret = match rx {
-        TxMsg::Dialog(dialog) => native_dialogs::show_dialog( dialog),
+        TxMsg::Dialog(dialog) => RxMsg::Dialog(native_dialogs::show_dialog( dialog)),
         _ => panic!()
     };
     // this already produces an escaped js string
     let ret = serde_json::to_string(&ret).unwrap();
     let arg = format!("window.app.sendReturnMessage({});", ret);
+    println!("{:?}", arg);
     webview.eval(&arg).unwrap();
 }

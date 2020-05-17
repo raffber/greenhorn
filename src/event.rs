@@ -189,6 +189,7 @@ impl<T: 'static> Debug for Subscription<T> {
 /// to triggers a new `update()` cycle.
 ///
 /// For more information refer to the [module-level documentation](index.html).
+#[derive(Debug)]
 pub struct Event<T: Any> {
     id: Id,
     marker: PhantomData<T>,
