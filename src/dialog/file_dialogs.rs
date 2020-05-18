@@ -3,28 +3,28 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct FileFilter {
-    pub description: String,
-    pub filters: Vec<String>,
+    pub name: String,
+    pub extensions: Vec<String>,
 }
 
 impl FileFilter {
     pub fn new<T: Into<String>>(description: T) -> Self {
         Self {
-            description: description.into(),
-            filters: vec![],
+            name: description.into(),
+            extensions: vec![],
         }
     }
 
     pub fn new_from_multiple<T: Into<String>>(description: T, filters: Vec<String>) -> Self {
         Self {
-            description: description.into(),
-            filters,
+            name: description.into(),
+            extensions: filters,
         }
     }
 
     pub fn push<T: Into<String>>(mut self, filter: T) -> Self {
         let filter = filter.into();
-        self.filters.push(filter);
+        self.extensions.push(filter);
         self
     }
 }
@@ -38,7 +38,7 @@ pub enum FileOpenMsg {
 
 #[derive(Serialize, Deserialize)]
 pub struct FileOpenDialog {
-    pub filter: Option<FileFilter>,
+    pub filter: Vec<FileFilter>,
     pub multiple: bool,
     pub title: String,
     pub path: String,
@@ -47,7 +47,7 @@ pub struct FileOpenDialog {
 impl FileOpenDialog {
     pub fn new<A: Into<String>, B: Into<String>>(title: A, path: B) -> Self {
         Self {
-            filter: None,
+            filter: Vec::new(),
             multiple: false,
             title: title.into(),
             path: path.into(),
@@ -55,7 +55,7 @@ impl FileOpenDialog {
     }
 
     pub fn with_filter(mut self, filter: FileFilter) -> Self {
-        self.filter = Some(filter);
+        self.filter.push(filter);
         self
     }
 
@@ -83,20 +83,20 @@ pub enum FileSaveMsg {
 pub struct FileSaveDialog {
     pub title: String,
     pub path: String,
-    pub filter: Option<FileFilter>,
+    pub filter: Vec<FileFilter>,
 }
 
 impl FileSaveDialog {
     pub fn new<A: Into<String>, B: Into<String>>(title: A, path: B) -> Self {
         Self {
-            filter: None,
+            filter: Vec::new(),
             title: title.into(),
             path: path.into(),
         }
     }
 
     pub fn with_filter(mut self, filter: FileFilter) -> Self {
-        self.filter = Some(filter);
+        self.filter.push(filter);
         self
     }
 }

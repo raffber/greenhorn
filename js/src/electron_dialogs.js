@@ -50,23 +50,16 @@ function messageBox(value, cb) {
 }
 
 function handleFileSave(value, cb) {
-    console.log(value);
-    let filters = [];
-    if (value.filters) {
-        for (const filter of value.filters) {
-            filters.push({'name': filter.description, 'extensions': filter.filters});
-        }
-    }    
     dialog.showSaveDialog({
         'title': value.title,
         'defaultPath': value.path,
-        'filters': filters,
+        'filters': value.filter,
     }).then(result => {
         if (result.canceled) {
             cb('Cancel');
             return;
         }
-        cb({'SaveTo': value.filePath});
+        cb({'SaveTo': result.filePath});
     }).catch(err => console.log(err));
 }
 
@@ -75,13 +68,9 @@ function handleFileOpen(value, cb) {
     if (value.multiple) {
         props.push('multiSelections');
     }
-    let filters = [];
-    for (const filter of value.filters) {
-        filters.push({'name': filter.description, 'extensions': filter.filters});
-    }
     dialog.showOpenDialog({
         'title': value.title,
-        'filters': filters,
+        'filters': value.filter,
         'properties': props,
         'defaultPath': value.path
     }).then(result => {

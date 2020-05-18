@@ -72,7 +72,7 @@ fn handle_file_open(value: JsonValue) -> JsonValue {
     let dialog: FileOpenDialog = serde_json::from_value(value).unwrap();
     let mut filters: Vec<&str> = Vec::new();
     let filter: Option<(&[&str], &str)> = if let Some(filter) = dialog.filter.as_ref() {
-        for x in &filter.filters {
+        for x in &filter.extensions {
             filters.push(x);
         }
         Some( (&filters, &filter.description) )
