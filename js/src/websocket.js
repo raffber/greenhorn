@@ -12,6 +12,7 @@ export default class Pipe {
         this.onRunJsMsg = (id, run_js_msg) => {};
         this.onLoadCss = (css) => {};
         this.onInjectEvent = (event, prop, default_action) => {};
+        this.onDialog = (dialog) => {}
     }
 
     setupSocket() {
@@ -27,7 +28,7 @@ export default class Pipe {
         }
         this.socket.onclose = (e) => { 
             self.retryConnect();
-         };
+        };
         this.socket.onmessage = (e) => { self.onMessage(e); };
     }
 
@@ -98,15 +99,8 @@ export default class Pipe {
             let default_action = msg.Propagate.default_action;
             this.onInjectEvent(event, prop, default_action);
         } else if (msg.hasOwnProperty("Dialog")) {
-            this.spawnDialog(msg.Dialog);
+            this.onDialog(msg.Dialog);
         }
-    }
-
-    spawnDialog(dialog) {
-        let in_msg = {
-            "Dialog": dialog
-        };
-        external.invoke(JSON.stringify(in_msg));
     }
 
     sendEvent(id, name, evt) {

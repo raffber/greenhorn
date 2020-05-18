@@ -1,12 +1,13 @@
 import addon from 'node-loader!../native/index.node';
 
-const {app, BrowserWindow, Menu} = require('electron');
+import showDialog from '../../../../js/src/electron_dialogs';
+
+const {app, BrowserWindow, Menu, ipcMain} = require('electron');
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = true;
 
 
 function createWindow () {
   const port = addon.run();
-  console.log('PORT' + port);
   global.port = port;
 
   Menu.setApplicationMenu(null);
@@ -36,3 +37,9 @@ app.on('window-all-closed', function () {
       app.quit();
   }
 })
+
+ipcMain.on('dialog', (event, arg) => {
+  showDialog(arg, (result) => {
+    event.reply('dialog', result);
+  });
+});

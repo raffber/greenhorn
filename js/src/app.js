@@ -80,8 +80,14 @@ class Context {
 }
 
 export default class App {
-    constructor(pipe, root_element) {
+    constructor(pipe, root_element, dialog_handler) {
         this.pipe = pipe;
+        if (dialog_handler) {
+            this.dialog_handler = dialog_handler;
+        } else {
+            this.dialog_handler = (app, dialog) => {};
+        }
+        
         let self = this;
         this.root_element = root_element;
         if (!this.root_element.firstElementChild) {
@@ -97,9 +103,14 @@ export default class App {
         }
         this.pipe.onLoadCss = loadCss;
         this.pipe.onInjectEvent = injectEvent;
+        this.pipe.onDialog = (dialog) => { self.onDialog(dialog); };
 
         this.afterRender = [];
         this.blobs = {}
+    }
+
+    onDialog(dialog) {
+        this.dialog_handler(this, dialog);
     }
 
     getBlob(blob_id) {
