@@ -1,17 +1,15 @@
 {
-  "name": "js",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "rust-greenhorn",
+  "version": "0.1.0",
+  "description": "Support package for the Rust-based greenhorn library",
   "scripts": {
     "start": "webpack-dev-server --config ./webpack.config.js --mode development",
     "build-prod": "webpack --config ./webpack.config.js --mode production && cp dist/bundle.js ../web_view/res/",
     "build-dev": "webpack --config ./webpack.config.js --mode development && cp dist/bundle.js ../web_view/res/",
-    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["rust"],
+  "author": "Raphael Bernhard <beraphae@gmail.com>",
+  "license": "MIT",
   "devDependencies": {
     "@babel/core": "^7.8.3",
     "@babel/preset-env": "^7.8.3",
