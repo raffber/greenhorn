@@ -12,8 +12,8 @@ function createWindow () {
 
   Menu.setApplicationMenu(null);
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1000,
+    height: 800,
     webPreferences: {
       webSecurity: false,
       nodeIntegration: true
@@ -28,8 +28,10 @@ function createWindow () {
 app.whenReady().then(() => {
   createWindow();
   app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  })
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
 })
 
 app.on('window-all-closed', function () {

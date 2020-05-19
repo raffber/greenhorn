@@ -2,23 +2,27 @@ const { dialog } = require('electron');
 
 
 function messageBox(value, cb) {
-    // TODO: default button
-    // TODO: icon...
+    let defaultButton = 0;
     switch (value.box_type) {
         case 'Ok':
             dialog.showMessageBox({
                 'title': value.title,
                 'message': value.message,
-                'buttons': ['Ok']
+                'buttons': ['Ok'],
+                'defaultId': defaultButton,
             }).then(result => {
                 cb('Ok');
             }).catch(err => console.log(err));
             break;
         case 'OkCancel':
+            if (value.default == "Cancel") {
+                defaultButton = 1;
+            }
             dialog.showMessageBox({
                 'title': value.title,
                 'message': value.message,
-                'buttons': ['Ok', 'Cancel']
+                'buttons': ['Ok', 'Cancel'],
+                'defaultId': defaultButton
             }).then(result => {
                 switch (result.response) {
                     case 0:
@@ -31,10 +35,14 @@ function messageBox(value, cb) {
             }).catch(err => console.log(err));
             break;
         case 'YesNo':
+            if (value.default == "No") {
+                defaultButton = 1;
+            }
             dialog.showMessageBox({
                 'title': value.title,
                 'message': value.message,
-                'buttons': ['Yes', 'No']
+                'buttons': ['Yes', 'No'],
+                'defaultId': defaultButton
             }).then(result => {
                 switch (result.response) {
                     case 0:
