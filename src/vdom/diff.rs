@@ -1,3 +1,12 @@
+//! This module implement the DOM diffing algorithm
+//!
+//! Currently, the algorithm is very simple and perform in O(n).
+//! It recursively compares two DOM nodes and diffs the all nodes in
+//! the order they are given.
+//! Therefore, neither DOM node re-orders nor insertion are detected by this algorithm.
+//! In these cases, the DOM will simply be re-emiited.
+//!
+
 use crate::runtime::{Frame, RenderResult};
 use crate::vdom::{Patch, PatchItem, VElement, VNode};
 use crate::{App, Id};
@@ -13,6 +22,8 @@ use std::collections::{HashMap, HashSet};
 // potentially parallelize using a concurrent hashmap in RenderResult (or just use RwLock<HashMap<>>
 //
 
+/// Helper object to diff a previously applied `Frame` with a new
+/// result from the `render()` cycle.
 pub(crate) struct Differ<'a, A: App> {
     old: &'a Frame<A>,
     new: &'a RenderResult<A>,

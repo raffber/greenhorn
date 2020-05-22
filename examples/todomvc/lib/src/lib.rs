@@ -19,6 +19,7 @@ struct Todo {
     editing: bool,
 }
 
+#[derive(Debug)]
 pub enum MainMsg {
     NewTodoMsg(TextInputMsg),
     NewTodoKeyUp(DomEvent),
@@ -35,7 +36,7 @@ pub enum MainMsg {
     TodoToggle(Id),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Filter {
     All,
     Active,
@@ -96,6 +97,7 @@ impl Todo {
 
 impl App for MainApp {
     fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated {
+        println!("{:?}", msg);
         match msg {
             MainMsg::NewTodoKeyUp(evt) => {
                 let evt = evt.into_keyboard().unwrap();
@@ -115,6 +117,9 @@ impl App for MainApp {
             MainMsg::TodoInputKeyUp(id, evt) => {
                 if evt.into_keyboard().unwrap().key == "Enter" {
                     self.todo_edit_done(id);
+                    use greenhorn::dialog::MessageBox;
+                    let mbox = MessageBox::new_ok("foo", "bar");
+                    ctx.dialog(mbox, |_| MainMsg::SelectAll);
                 }
             },
 

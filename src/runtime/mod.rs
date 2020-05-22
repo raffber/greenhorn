@@ -465,7 +465,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             let patch = if let Some(old_frame) = &old_frame {
                 Differ::new(&old_frame, &result, updated).diff()
             } else {
-                Patch::from_dom(&result)
+                Patch::new_from_dom(&result)
             };
             let after = Instant::now();
             let delta = after.duration_since(before);

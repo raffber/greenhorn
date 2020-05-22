@@ -1,3 +1,10 @@
+//! This modules implements the serialization of Patch to bytearrays.
+//!
+//! The `serialize()` function consumes a [Patch](../struct.Patch.html)
+//! and emits bytearray. The employed data format is optimized for maximum
+//! decode speed in javascript.
+//!
+
 use crate::runtime::RenderResult;
 use crate::vdom::{EventHandler, Patch, PatchItem, VNode};
 use crate::{App, Id};
@@ -14,7 +21,6 @@ impl NodeSerialize for VNode {
     fn serialize<A: App>(&self, rendered: &RenderResult<A>, output: &mut Vec<u8>) {
         match self {
             VNode::Element(elem) => {
-                // TODO: serialize js_events
                 output.push(0);
                 elem.tag.serialize(output);
                 elem.namespace.serialize(output);

@@ -12,6 +12,11 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 use web_sys::console::log_1;
 
+/// A [Pipe](../pipe/trait.Pipe.html) implementation to run an application with WebAssembly
+/// in the browser.
+///
+/// This implementation uses `js_sys` and `wasm_bindgen` to create the binding to to transfer
+/// data from the `wasm` process to the js-frontend.
 pub struct WasmPipe;
 
 // A macro to provide `println!(..)`-style syntax for `console.log` logging.
@@ -61,6 +66,7 @@ impl Pipe for WasmPipe {
 }
 
 impl WasmPipe {
+    /// Create a new `WasmPipe`.
     pub fn new() -> WasmPipe {
         WasmPipe
     }

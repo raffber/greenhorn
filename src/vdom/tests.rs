@@ -298,7 +298,7 @@ fn test_output_patch() {
     });
 
     let new = RenderResult::<DummyApp>::new_from_vnode(elem_b);
-    let patch = Patch::from_dom(&new);
+    let patch = Patch::new_from_dom(&new);
     let serialized = serialize(&new, &patch);
     fs::write("test_patch.bin", serialized).expect("Unable to write file!");
 }

@@ -15,6 +15,9 @@ use std::ops::Deref;
 
 const DEFAULT_PATH_CAPACITY: usize = 64;
 
+/// Represents a path in the DOM.
+///
+/// The path is simply a list of indices which recursively define the index of the child elements.
 #[derive(Debug, Clone)]
 pub(crate) struct Path {
     inner: Vec<usize>,
@@ -37,14 +40,15 @@ impl Path {
     }
 }
 
+/// A key-value pair to represent an attribute in the DOM
 #[derive(Debug, Clone)]
-pub struct Attr {
+pub(crate) struct Attr {
     pub key: String,
     pub value: String,
 }
 
 impl Attr {
-    pub fn new<K: Into<String>, V: Into<String>>(key: K, value: V) -> Self {
+    pub(crate) fn new<K: Into<String>, V: Into<String>>(key: K, value: V) -> Self {
         Attr {
             key: key.into(),
             value: value.into(),
@@ -52,11 +56,12 @@ impl Attr {
     }
 }
 
+/// Represents an event handler installed on a DOM node.
 #[derive(Debug, Clone, Eq)]
-pub struct EventHandler {
-    pub name: String,
-    pub no_propagate: bool,
-    pub prevent_default: bool,
+pub(crate) struct EventHandler {
+    pub(crate) name: String,
+    pub(crate) no_propagate: bool,
+    pub(crate) prevent_default: bool,
 }
 
 impl EventHandler {
@@ -84,7 +89,7 @@ impl Hash for EventHandler {
 }
 
 #[derive(Debug, Clone)]
-pub struct VElement {
+pub(crate) struct VElement {
     pub(crate) id: Id,
     pub(crate) tag: String,
     pub(crate) attr: Vec<Attr>,
@@ -94,11 +99,12 @@ pub struct VElement {
     pub(crate) namespace: Option<String>,
 }
 
+/// Represents a node in the virtual DOM
 #[derive(Debug, Clone)]
 pub(crate) enum VNode {
     Element(VElement),
     Text(String),
-    Placeholder(Id, Path),
+    Placeholder(Id, Path), // placeholder for a mounted component
 }
 
 impl VNode {
@@ -119,6 +125,16 @@ impl VNode {
     }
 }
 
+/// Instruction set for patching a DOM.
+///
+/// These instructions are designed to support simple
+/// and fast implementations in javascript to ensure
+/// that the work done in javascript is minimal.
+///
+/// The routine interpreting these instructions
+/// keeps a pointer to a DOM node. There are two types of instructions:
+/// * Instructions that modify this pointer
+/// * Instructions that modify the DOM node defined by the current pointer
 #[derive(Clone, Debug)]
 pub(crate) enum PatchItem<'a> {
     AppendSibling(&'a VNode),
@@ -143,6 +159,8 @@ pub(crate) enum PatchItem<'a> {
 }
 
 impl<'a> PatchItem<'a> {
+    /// Determines if the instruction only moves the pointer to
+    /// another DOM node.
     fn is_move(&'a self) -> bool {
         match self {
             PatchItem::Ascend() => true,
@@ -167,8 +185,7 @@ impl<'a> Patch<'a> {
         }
     }
 
-    pub(crate) fn from_dom<A: App>(rendered: &'a RenderResult<A>) -> Self {
-        // TODO: rename
+    pub(crate) fn new_from_dom<A: App>(rendered: &'a RenderResult<A>) -> Self {
         let mut patch = Patch::new();
         patch.push(PatchItem::Replace(&rendered.root));
         for v in rendered.blobs.values() {
