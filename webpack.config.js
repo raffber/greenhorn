@@ -1,5 +1,5 @@
 module.exports = {
-    entry: './src/web_view.js',
+    entry: './js/web_view.js',
     module: {
       rules: [
         {

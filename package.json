@@ -4,8 +4,8 @@
   "description": "Support package for the Rust-based greenhorn library",
   "scripts": {
     "start": "webpack-dev-server --config ./webpack.config.js --mode development",
-    "build-prod": "webpack --config ./webpack.config.js --mode production && cp dist/bundle.js ../web_view/res/",
-    "build-dev": "webpack --config ./webpack.config.js --mode development && cp dist/bundle.js ../web_view/res/",
+    "build-prod": "webpack --config ./webpack.config.js --mode production && cp dist/bundle.js ./web_view/res/",
+    "build-dev": "webpack --config ./webpack.config.js --mode development && cp dist/bundle.js ./web_view/res/"
   },
   "keywords": ["rust"],
   "author": "Raphael Bernhard <beraphae@gmail.com>",

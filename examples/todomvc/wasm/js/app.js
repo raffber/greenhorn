@@ -1,5 +1,5 @@
-import WorkerPipe from '../../../../js/src/worker_pipe.js'
-import App from '../../../../js/src/app.js'
+import WorkerPipe from '../../../../js/worker_pipe.js'
+import App from '../../../../js/app.js'
 
 onload = (evt) => {
     var worker = new Worker('/worker.js');

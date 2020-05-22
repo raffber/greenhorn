@@ -1,6 +1,6 @@
 import addon from 'node-loader!../native/index.node';
 
-import showDialog from '../../../../js/src/electron_dialogs';
+import showDialog from '../../../../js/electron_dialogs';
 
 const {app, BrowserWindow, Menu, ipcMain} = require('electron');
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = true;

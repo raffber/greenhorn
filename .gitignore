@@ -5,8 +5,9 @@ test_patch\.bin
 
 parser/target/
 
-js/dist/
+dist/
 
 html_macro/target/
 
 scripts/.ipynb_checkpoints/
+node_modules

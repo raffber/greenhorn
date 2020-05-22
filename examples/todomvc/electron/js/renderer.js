@@ -1,8 +1,8 @@
 
 var {remote, ipcRenderer} = require('electron');
 import '../../lib/dist/styles.css';
-import Application from '../../../../js/src/app.js';
-import Pipe from '../../../../js/src/websocket.js';
+import Application from '../../../../js/app.js';
+import Pipe from '../../../../js/websocket.js';
 
 let app = null;
 
