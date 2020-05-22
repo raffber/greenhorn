@@ -1,4 +1,4 @@
-import { setupWorker, onImportWorker } from '../../../../js/src/wasm.js'
+import { setupWorker, onImportWorker } from '../../../../js/wasm.js'
 
 setupWorker();
 
