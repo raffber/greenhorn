@@ -150,7 +150,7 @@ pub mod prelude {
     pub use crate::event::Event;
     pub use crate::node::Node;
     pub use crate::Id;
-    pub use crate::{App, Render};
+    pub use crate::{Update, Render};
 
     #[cfg(not(target_arch = "wasm32"))]
     pub use crate::websockets::WebSocketPipe;
@@ -357,7 +357,12 @@ pub trait Render {
 /// }
 ///
 /// ```
-pub trait App: Render {
+pub trait Update {
+    /// Defines a message type that is handled by the update() function
+    ///
+    /// Typically this is an enum.
+    type Message: 'static + Send;
+
     /// Modify the state of this object based on the received `Message`.
     /// Returns an [`Updated`](component/struct.Updated.html) which should mark whether this
     /// component is to be re-rendered.
@@ -368,6 +373,14 @@ pub trait App: Render {
     /// Shall be called upon application startup.
     /// A parent component is required to call this function of all child components.
     fn mount(&mut self, _ctx: Context<Self::Message>) {}
+}
+
+trait App : Render + Update {
+    type Msg: 'static + Send;
+}
+
+impl<T, M: 'static + Send> App for T where T: Render<Message=M> + Update<Message=M> {
+    type Msg = M;
 }
 
 use proc_macro_hack::proc_macro_hack;

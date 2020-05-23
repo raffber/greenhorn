@@ -102,11 +102,11 @@ fn render_element<A: App>(
 
 /// Non-DOM items which are emitted from rendering a `Node<T>` data structure.
 pub(crate) enum ResultItem<A: App> {
-    Listener(Listener<A::Message>),
-    Subscription(Id, Subscription<A::Message>),
-    Component(ComponentContainer<A::Message>, Path),
+    Listener(Listener<A::Msg>),
+    Subscription(Id, Subscription<A::Msg>),
+    Component(ComponentContainer<A::Msg>, Path),
     Blob(Blob),
-    Rpc(Rpc<A::Message>),
+    Rpc(Rpc<A::Msg>),
 }
 
 /// Collects the result of a render operation.
@@ -114,10 +114,10 @@ pub(crate) enum ResultItem<A: App> {
 /// This is a collection of Non-DOM items, such as DOM-event listeners or event subscriptions,
 /// a root-VDOM and a list of rendered components.
 pub(crate) struct RenderResult<A: App> {
-    pub(crate) listeners: HashMap<ListenerKey, Listener<A::Message>>,
-    pub(crate) subscriptions: HashMap<Id, Subscription<A::Message>>,
+    pub(crate) listeners: HashMap<ListenerKey, Listener<A::Msg>>,
+    pub(crate) subscriptions: HashMap<Id, Subscription<A::Msg>>,
     pub(crate) blobs: HashMap<Id, Blob>,
-    pub(crate) rpcs: HashMap<Id, Rpc<A::Message>>,
+    pub(crate) rpcs: HashMap<Id, Rpc<A::Msg>>,
     components: HashMap<Id, Arc<RenderedComponent<A>>>,
     pub(crate) root_components: Vec<(Id, Path)>,
     pub(crate) root: Arc<VNode>,

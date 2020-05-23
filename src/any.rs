@@ -54,7 +54,7 @@
 //!
 use crate::context::Context;
 use crate::node::Node;
-use crate::{App, Render, Updated};
+use crate::{App, Render, Updated, Update};
 use std::any::Any;
 
 /// Wraps an type implementing [App](../trait.App.html), and as a consequence also [Render](../trait.Render.html)),
@@ -65,14 +65,14 @@ use std::any::Any;
 /// In case update() is called with an invalid type, which is not convertible to the actual
 /// message type of the underlying component.
 pub struct AnyApp {
-    inner: Box<dyn App<Message = AnyMsg> + Send>,
+    inner: Box<dyn App<Msg = AnyMsg> + Send>,
 }
 
 impl AnyApp {
     /// Construct an `AnyApp` object, consuming the underlying component.
     pub fn new<T, M>(app: T) -> AnyApp
     where
-        T: 'static + App<Message = M> + Send,
+        T: 'static + App<Msg = M> + Send,
         M: Any + Send + 'static,
     {
         AnyApp {
@@ -92,7 +92,9 @@ impl Render for AnyApp {
     }
 }
 
-impl App for AnyApp {
+impl Update for AnyApp {
+    type Message = AnyMsg;
+
     fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated {
         self.inner.update(msg, ctx)
     }
@@ -114,7 +116,9 @@ impl<T: App<Message = M>, M: Any + Send + 'static> Render for AnyAppConverter<T,
     }
 }
 
-impl<T: App<Message = M>, M: Any + Send + 'static> App for AnyAppConverter<T, M> {
+impl<T: Update<Message = M>, M: Any + Send + 'static> Update for AnyAppConverter<T, M> {
+    type Message = AnyMsg;
+
     fn update(&mut self, msg: Self::Message, ctx: Context<Self::Message>) -> Updated {
         let new_msg = *msg.downcast().unwrap();
         self.inner.update(

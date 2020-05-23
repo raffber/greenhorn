@@ -35,10 +35,10 @@ impl<A: App> Frame<A> {
 /// This allows matching messages arriving from the frontend
 /// to their respective backend handlers
 pub(crate) struct RenderedState<A: App> {
-    subscriptions: HashMap<Id, Subscription<A::Message>>,
-    listeners: HashMap<ListenerKey, Listener<A::Message>>,
+    subscriptions: HashMap<Id, Subscription<A::Msg>>,
+    listeners: HashMap<ListenerKey, Listener<A::Msg>>,
     translations: HashMap<Id, Id>, // old -> new
-    rpcs: HashMap<Id, Rpc<A::Message>>,
+    rpcs: HashMap<Id, Rpc<A::Msg>>,
 }
 
 impl<A: App> RenderedState<A> {
@@ -51,18 +51,18 @@ impl<A: App> RenderedState<A> {
         }
     }
 
-    pub(crate) fn get_rpc(&self, target: Id) -> Option<&Rpc<A::Message>> {
+    pub(crate) fn get_rpc(&self, target: Id) -> Option<&Rpc<A::Msg>> {
         let target = self.translations.get(&target).unwrap_or(&target);
         self.rpcs.get(&target)
     }
 
-    pub(crate) fn get_listener(&self, target: Id, name: &str) -> Option<&Listener<A::Message>> {
+    pub(crate) fn get_listener(&self, target: Id, name: &str) -> Option<&Listener<A::Msg>> {
         let target = self.translations.get(&target).unwrap_or(&target);
         let key = ListenerKey::from_raw(*target, &name);
         self.listeners.get(&key)
     }
 
-    pub(crate) fn get_subscription(&self, event_id: Id) -> Option<&Subscription<A::Message>> {
+    pub(crate) fn get_subscription(&self, event_id: Id) -> Option<&Subscription<A::Msg>> {
         self.subscriptions.get(&event_id)
     }
 

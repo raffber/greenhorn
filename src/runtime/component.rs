@@ -12,7 +12,7 @@ use crate::{App, Id};
 /// maintains a list of all non-DOM elements created by the
 /// components render operation.
 pub(crate) struct RenderedComponent<A: App> {
-    component: ComponentContainer<A::Message>,
+    component: ComponentContainer<A::Msg>,
     vdom: VNode,
     listeners: Vec<ListenerKey>,
     subscriptions: Vec<Id>,

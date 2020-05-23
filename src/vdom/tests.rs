@@ -3,13 +3,15 @@ use super::*;
 use crate::context::Context;
 use crate::node::Node;
 use crate::runtime::{Frame, RenderResult};
-use crate::{App, Render, Updated};
+use crate::{App, Render, Updated, Update};
 use std::collections::HashSet;
 use std::fs;
 
 struct DummyApp;
 
-impl App for DummyApp {
+impl Update for DummyApp {
+    type Message = ();
+
     fn update(&mut self, _msg: Self::Message, _ctx: Context<Self::Message>) -> Updated {
         unimplemented!()
     }

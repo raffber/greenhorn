@@ -55,10 +55,10 @@ impl<A: App> RuntimeControl<A> {
 /// Message passed to the runtime from different actors (and/or threads) to modify its state
 enum RuntimeMsg<A: App> {
     Quit,
-    Update(A::Message),
+    Update(A::Msg),
     ApplyNextFrame(Frame<A>, Duration),
     NextFrameRendering(Frame<A>, Duration),
-    AsyncMsg(A::Message),
+    AsyncMsg(A::Msg),
 }
 
 /// The `Runtime` object manages the main application life-cycle as well as event distribution.
@@ -126,7 +126,7 @@ pub struct Runtime<A: 'static + App, P: 'static + Pipe> {
     rendered: RenderedState<A>,
     current_frame: Option<Frame<A>>,
     next_frame: Option<Frame<A>>,
-    services: ServiceCollection<A::Message>,
+    services: ServiceCollection<A::Msg>,
     render_tx: UnboundedSender<()>,
     render_rx: UnboundedReceiver<()>,
     invalidated_components: Option<HashSet<Id>>,
@@ -134,7 +134,7 @@ pub struct Runtime<A: 'static + App, P: 'static + Pipe> {
     not_applied_counter: i32,
     dirty: bool,
     metrics: Metrics,
-    dialogs: VecDeque<DialogBinding<A::Message>>,
+    dialogs: VecDeque<DialogBinding<A::Msg>>,
 }
 
 impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
