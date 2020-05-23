@@ -53,18 +53,19 @@ fn handle_msgbox(value: JsonValue) -> JsonValue {
 
 fn handle_file_save(value: JsonValue) -> JsonValue {
     let dialog: FileSaveDialog = serde_json::from_value(value).unwrap();
-    let ret = match dialog.filter {
-        None => match save_file_dialog(&dialog.title, &dialog.path) {
+    let ret = if dialog.filter.len() == 0 {
+        match save_file_dialog(&dialog.title, &dialog.path) {
             None => FileSaveMsg::Cancel,
             Some(path) => FileSaveMsg::SaveTo(path),
-        },
-        Some(filter) => {
-            let filters: Vec<&str> = filter.filters.iter().map(|x| x.as_ref()).collect();
-            let desc = &filter.description;
-            match save_file_dialog_with_filter(&dialog.title, &dialog.path, &filters, desc) {
-                None => FileSaveMsg::Cancel,
-                Some(path) => FileSaveMsg::SaveTo(path),
-            }
+        }
+    } else {
+        let filters: Vec<&str> = dialog.filter.iter()
+            .flat_map(|x| x.extensions.iter().map(|x| &x as &str))
+            .collect();
+        let desc = &dialog.filter[0].name;
+        match save_file_dialog_with_filter(&dialog.title, &dialog.path, &filters, desc) {
+            None => FileSaveMsg::Cancel,
+            Some(path) => FileSaveMsg::SaveTo(path),
         }
     };
     serde_json::to_value(&ret).unwrap()
@@ -73,15 +74,16 @@ fn handle_file_save(value: JsonValue) -> JsonValue {
 fn handle_file_open(value: JsonValue) -> JsonValue {
     let dialog: FileOpenDialog = serde_json::from_value(value).unwrap();
     let mut filters: Vec<&str> = Vec::new();
-    let filter: Option<(&[&str], &str)> = if let Some(filter) = dialog.filter.as_ref() {
-        for x in &filter.extensions {
-            filters.push(x);
+    let filter: Option<(&[&str], &str)> = if dialog.filter.len() > 0 {
+        for filter in &dialog.filter {
+            for ext in &filter.extensions {
+                filters.push(&ext);
+            }
         }
-        Some((&filters, &filter.description))
+        Some((&filters, &dialog.filter[0].name))
     } else {
         None
     };
-
     let ret = match dialog.multiple {
         true => match open_file_dialog_multi(&dialog.title, &dialog.path, filter) {
             None => FileOpenMsg::Canceled,
