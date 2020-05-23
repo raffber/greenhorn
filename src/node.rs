@@ -183,10 +183,7 @@ impl<T: 'static + Send> Node<T> {
             NodeItems::Component(_) => panic!(),
             NodeItems::Text(x) => Node(NodeItems::Text(x)),
             NodeItems::Element(elem) => {
-                if !elem.listeners.unwrap().is_empty() {
-                    panic!();
-                }
-                if elem.rpc.is_some() {
+                if !elem.listeners.unwrap().is_empty() || elem.rpc.is_some() {
                     panic!();
                 }
                 let children = elem

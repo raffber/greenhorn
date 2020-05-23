@@ -6,13 +6,13 @@
 use crate::service::{RxServiceMessage, ServiceSubscription, TxServiceMessage};
 use crate::Id;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
-use futures::select;
 use futures::task::{Context, Poll};
-use futures::{FutureExt, Stream, StreamExt};
+use futures::{Stream, StreamExt};
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::pin::Pin;
+use futures::stream;
 
 pub(crate) enum ServiceMessage<Msg> {
     Update(Msg),
@@ -113,56 +113,37 @@ pub struct ServiceRunner<Msg: 'static + Send> {
     service: ServiceSubscription<Msg>,
 }
 
+enum ServiceRunnerMsg<Msg: Send> {
+    Tx(TxServiceMessage),
+    Msg(Msg),
+}
+
 impl<Msg: Send> ServiceRunner<Msg> {
     pub(crate) fn run(self) {
         let runner = self;
         crate::platform::spawn(async {
             let id = runner.service.id();
             let mut service = runner.service;
-            let mut txmailbox_rx = service.txmailbox_rx.take().unwrap();
-            let mut close = false;
-            loop {
-                select! {
-                    tx_msg = txmailbox_rx.next().fuse() => {
-                        if let Some(tx_msg) = tx_msg {
-                            if runner.tx.unbounded_send(ServiceMessage::Tx(id, tx_msg)).is_err() {
-                                // runtime closed receiving end. Terminate service.
-                                close = true;
-                                break
-                            }
-                        } else {
-                            // don't close yet, only the sender was dropped (possibly unused).
-                            break;
-                        }
-                    },
-                    next_value = service.next().fuse() => {
-                        if let Some(x) = next_value {
-                            if runner.tx.unbounded_send(ServiceMessage::Update(x)).is_err() {
-                                // runtime closed receiving end. Terminate service.
-                                close = true;
-                                break
-                            }
-                        } else {
-                            // service completed.
-                            close = true;
+            let txmailbox_rx = service.txmailbox_rx.take().unwrap();
+            let mut stream = stream::select(
+                txmailbox_rx.map(ServiceRunnerMsg::Tx),
+                StreamExt::map(&mut service, ServiceRunnerMsg::Msg));
+            while let Some(msg) = stream.next().await {
+                match msg {
+                    ServiceRunnerMsg::Tx(tx_msg) => {
+                        if runner.tx.unbounded_send(ServiceMessage::Tx(id, tx_msg)).is_err() {
+                            // runtime closed receiving end. Terminate service.
                             break
                         }
                     },
-                };
-            }
-            if !close {
-                while let Some(msg) = service.next().await {
-                    if runner
-                        .tx
-                        .unbounded_send(ServiceMessage::Update(msg))
-                        .is_err()
-                    {
-                        break;
+                    ServiceRunnerMsg::Msg(msg) => {
+                        if runner.tx.unbounded_send(ServiceMessage::Update(msg)).is_err() {
+                            // runtime closed receiving end. Terminate service.
+                            break
+                        }
                     }
                 }
             }
-            // ignore send errors, might happen in case service collection closed the stream
-            // and stopped all services
             let _ = runner.tx.unbounded_send(ServiceMessage::Stopped(id));
         });
     }
@@ -231,7 +212,6 @@ mod tests {
                     tx.unbounded_send(k).unwrap();
                 }
                 mailbox.run_js("foo");
-                // mailbox.close();
             });
             rx
         }
