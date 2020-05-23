@@ -17,7 +17,8 @@ const DEFAULT_PATH_CAPACITY: usize = 64;
 
 /// Represents a path in the DOM.
 ///
-/// The path is simply a list of indices which recursively define the index of the child elements.
+/// The path is a list of indices which recursively define the index
+/// of the child node relative to the parent node.
 #[derive(Debug, Clone)]
 pub(crate) struct Path {
     inner: Vec<usize>,

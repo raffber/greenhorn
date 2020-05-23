@@ -5,6 +5,12 @@ use crate::runtime::render::{render_component, ResultItem};
 use crate::vdom::{Path, VNode};
 use crate::{App, Id};
 
+/// Captures the rendered state of a component.
+///
+/// This object keeps a shared reference to the component.
+/// At the same time it owns the VDom of the component and
+/// maintains a list of all non-DOM elements created by the
+/// components render operation.
 pub(crate) struct RenderedComponent<A: App> {
     component: ComponentContainer<A::Message>,
     vdom: VNode,

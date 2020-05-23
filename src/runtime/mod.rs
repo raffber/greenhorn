@@ -230,7 +230,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                     .await
                     .unwrap();
             }
-            ServiceMessage::Stopped() => {}
+            ServiceMessage::Stopped(_) => {}
         }
     }
 

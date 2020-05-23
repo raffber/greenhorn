@@ -1,3 +1,14 @@
+//! This module implements facilities to render components to a VDOM.
+//!
+//! Specifically, it converts [Node<T>](../../node/struct.Node.html) to a VDOM, which is
+//! a recursive data structure of [VNode](../enum.VNode.html) objects, and a list of
+//! non-DOM items as represented by the [ResultItem](enum.ResultItem.html) enum.
+//! Two "modes" are available:
+//!  * The VDOM is rendered from scratch without a previous render
+//!  * The VDOM is rendered based on a previous render and only a limited set of marked components
+//!     are re-rendered. The remaining components are transferred to the newly created VDOM.
+//!
+
 use crate::blob::Blob;
 use crate::component::{ComponentContainer, ComponentMap};
 use crate::element::ElementMap;
@@ -17,6 +28,7 @@ use std::sync::Arc;
 // since we store the event_id as the key to find a single subscription
 // however, we should use a subscription list as value
 
+/// Renders a component from scratch and emit a set of `ResultItem`s.
 pub(crate) fn render_component<A: App>(
     dom: Node<A::Message>,
     result: &mut Vec<ResultItem<A>>,
@@ -26,7 +38,7 @@ pub(crate) fn render_component<A: App>(
 }
 
 /// Recursively renders an arbitrary node.
-/// Non-tree elements will be pushed into `result`.
+/// Non-DOM elements will be pushed into `result`.
 fn render_recursive<A: App>(
     dom: Node<A::Message>,
     result: &mut Vec<ResultItem<A>>,
@@ -88,6 +100,7 @@ fn render_element<A: App>(
     }))
 }
 
+/// Non-DOM items which are emitted from rendering a `Node<T>` data structure.
 pub(crate) enum ResultItem<A: App> {
     Listener(Listener<A::Message>),
     Subscription(Id, Subscription<A::Message>),
@@ -96,6 +109,10 @@ pub(crate) enum ResultItem<A: App> {
     Rpc(Rpc<A::Message>),
 }
 
+/// Collects the result of a render operation.
+///
+/// This is a collection of Non-DOM items, such as DOM-event listeners or event subscriptions,
+/// a root-VDOM and a list of rendered components.
 pub(crate) struct RenderResult<A: App> {
     pub(crate) listeners: HashMap<ListenerKey, Listener<A::Message>>,
     pub(crate) subscriptions: HashMap<Id, Subscription<A::Message>>,
@@ -174,7 +191,7 @@ impl<A: App> RenderResult<A> {
     }
 
     /// Create a new RenderResult based on an old frame and a set of changed components
-    /// that require rerendering.
+    /// that require re-rendering.
     ///
     /// **Precondition**: The root component must still be valid and not require a re-render
     pub(crate) fn new_from_frame(
@@ -237,7 +254,7 @@ impl<A: App> RenderResult<A> {
         }
     }
 
-    /// Renders a component which was not changed, thus re-using all of it's VDom.
+    /// Renders a component which was not changed, thus re-using all of its VDom and state.
     fn render_unchanged_component(
         &mut self,
         old: &RenderResult<A>,
@@ -245,6 +262,7 @@ impl<A: App> RenderResult<A> {
         changes: &HashSet<Id>,
         metrics: &mut Metrics,
     ) {
+        // transfer all child items of this component to the new result.
         let id = comp.id();
         let old_render = old.components.get(&id).unwrap();
         for (child, _) in old_render.children() {
