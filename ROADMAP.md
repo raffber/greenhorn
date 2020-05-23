@@ -1,12 +1,11 @@
 # TODOs / Fixes
 
- * Re-think service API
  * comments, documentation
  * more tests...
  * development speed convenience features
    - script for reload with cargo watch
  * client: more event propagation
- * desktop notifications
+ * library for async desktop notifications
 
 
 # Performance Optimizations - TODO
@@ -54,7 +53,7 @@
    * or indeed electron due to all the other nice features?!
 
 
-# Ideas
+# Notes
 
 cargo test --no-run --message-format=json | jq -r "select(.profile.test == true) | .filenames[]"
 

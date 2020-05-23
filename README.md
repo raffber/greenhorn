@@ -27,7 +27,7 @@ services and simplifies application development considerably.
 
 ## Example
 
-```
+```rust
 use greenhorn::prelude::*;
 use greenhorn::html;
 
