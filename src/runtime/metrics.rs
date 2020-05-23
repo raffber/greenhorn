@@ -1,6 +1,7 @@
 use crate::Id;
 use hdrhistogram::Histogram as HdrHistogram;
 use hdrhistogram::{CreationError, RecordError};
+use instant::Instant;
 use serde::{Serialize, Serializer};
 use serde_json::json;
 use std::cmp::max;
@@ -8,7 +9,6 @@ use std::collections::HashMap;
 use std::io;
 use std::result::Result as StdResult;
 use std::time::Duration;
-use instant::Instant;
 
 // newtype for histogram to impl Serialize
 struct Histogram(HdrHistogram<u64>);

@@ -1,15 +1,15 @@
 use crate::pipe::{Pipe, RxMsg, TxMsg};
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
-use js_sys::Uint8Array;
-use wasm_bindgen::prelude::*;
+use futures::task::Poll;
 use futures::Sink;
+use futures::StreamExt;
+use js_sys::Uint8Array;
+use lazy_static::lazy_static;
 use std::error::Error;
 use std::pin::Pin;
-use futures::task::Poll;
-use std::task::Context;
-use futures::StreamExt;
 use std::sync::Mutex;
-use lazy_static::lazy_static;
+use std::task::Context;
+use wasm_bindgen::prelude::*;
 use web_sys::console::log_1;
 
 /// A [Pipe](../pipe/trait.Pipe.html) implementation to run an application with WebAssembly
@@ -53,7 +53,7 @@ impl Pipe for WasmPipe {
                 match msg {
                     TxMsg::Patch(data) => {
                         greenhorn_push_binary(vec_to_array(data));
-                    },
+                    }
                     rest => {
                         let msg = serde_json::to_string(&rest).unwrap();
                         greenhorn_push_string(msg);
@@ -75,7 +75,6 @@ impl WasmPipe {
 struct PipeJsEndpoint {
     rxmsg_tx: UnboundedSender<RxMsg>,
 }
-
 
 #[derive(Clone)]
 pub struct WasmSender(pub UnboundedSender<TxMsg>);
@@ -108,7 +107,7 @@ impl Sink<TxMsg> for WasmSender {
     }
 }
 
-lazy_static!{
+lazy_static! {
     static ref PIPE: Mutex<Option<PipeJsEndpoint>> = Mutex::new(None);
 }
 

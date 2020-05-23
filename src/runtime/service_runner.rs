@@ -10,9 +10,9 @@ use futures::select;
 use futures::task::{Context, Poll};
 use futures::{FutureExt, Stream, StreamExt};
 use std::collections::HashMap;
-use std::pin::Pin;
-use std::fmt::{Formatter, Debug};
 use std::fmt;
+use std::fmt::{Debug, Formatter};
+use std::pin::Pin;
 
 pub(crate) enum ServiceMessage<Msg> {
     Update(Msg),
@@ -25,13 +25,13 @@ impl<Msg: Debug> Debug for ServiceMessage<Msg> {
         match self {
             ServiceMessage::Update(msg) => {
                 f.write_fmt(format_args!("ServiceMessage::Update({:?})", msg))
-            },
+            }
             ServiceMessage::Tx(id, msg) => {
                 f.write_fmt(format_args!("ServiceMessage::Tx({:?}, {:?})", id, msg))
-            },
+            }
             ServiceMessage::Stopped(id) => {
                 f.write_fmt(format_args!("ServiceMessage::Stopped({:?})", id))
-            },
+            }
         }
     }
 }
@@ -51,8 +51,8 @@ impl<Msg> Stream for ServiceCollection<Msg> {
             Poll::Ready(Some(ServiceMessage::Stopped(id))) => {
                 self.services.remove(&id);
                 Poll::Ready(Some(ServiceMessage::Stopped(id)))
-            },
-            x => x
+            }
+            x => x,
         }
     }
 
@@ -152,8 +152,12 @@ impl<Msg: Send> ServiceRunner<Msg> {
             }
             if !close {
                 while let Some(msg) = service.next().await {
-                    if runner.tx.unbounded_send(ServiceMessage::Update(msg)).is_err() {
-                        break
+                    if runner
+                        .tx
+                        .unbounded_send(ServiceMessage::Update(msg))
+                        .is_err()
+                    {
+                        break;
                     }
                 }
             }
@@ -167,9 +171,9 @@ impl<Msg: Send> ServiceRunner<Msg> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::service::{Service, Mailbox};
-    use async_std::task;
+    use crate::service::{Mailbox, Service};
     use assert_matches::assert_matches;
+    use async_std::task;
 
     struct DummyService;
 
@@ -178,7 +182,7 @@ mod tests {
         type DataStream = UnboundedReceiver<i32>;
 
         fn start(self, _mailbox: Mailbox) -> Self::DataStream {
-            let (tx,rx) = unbounded();
+            let (tx, rx) = unbounded();
             task::spawn(async move {
                 for k in 0..4_i32 {
                     tx.unbounded_send(k).unwrap();
@@ -212,7 +216,6 @@ mod tests {
         });
     }
 
-
     struct IoService;
 
     impl Service for IoService {
@@ -220,7 +223,7 @@ mod tests {
         type DataStream = UnboundedReceiver<i32>;
 
         fn start(self, mailbox: Mailbox) -> Self::DataStream {
-            let (tx,rx) = unbounded();
+            let (tx, rx) = unbounded();
             task::spawn(async move {
                 mailbox.run_js("foo");
                 for k in 0..4_i32 {
@@ -236,16 +239,14 @@ mod tests {
 
     fn check_js_msg(msg: Option<ServiceMessage<i32>>, id: Id) {
         match msg {
-            Some(ServiceMessage::Tx(msg_id, msg)) => {
-                match msg {
-                    TxServiceMessage::RunJs(msg) => {
-                        assert_eq!(msg_id, id);
-                        assert_eq!(msg, "foo");
-                    },
-                    _ => panic!()
+            Some(ServiceMessage::Tx(msg_id, msg)) => match msg {
+                TxServiceMessage::RunJs(msg) => {
+                    assert_eq!(msg_id, id);
+                    assert_eq!(msg, "foo");
                 }
+                _ => panic!(),
             },
-            _ => panic!()
+            _ => panic!(),
         }
     }
 
@@ -266,17 +267,17 @@ mod tests {
                             panic!();
                         }
                         expected_msg += 1;
-                    },
+                    }
                     ServiceMessage::Tx(id, TxServiceMessage::RunJs(x)) => {
                         assert_eq!(x, "foo");
                         assert_eq!(id, subs_id);
                         js_count += 1;
-                    },
+                    }
                     ServiceMessage::Stopped(id) => {
                         assert_eq!(id, subs_id);
                         break;
-                    },
-                    _ => panic!()
+                    }
+                    _ => panic!(),
                 }
             }
             assert_eq!(expected_msg, 4);

@@ -13,9 +13,9 @@ use crate::{App, Id};
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::SinkExt;
 use futures::{select, FutureExt, StreamExt};
+use instant::Instant;
 use std::collections::{HashSet, VecDeque};
 use std::time::Duration;
-use instant::Instant;
 
 mod component;
 mod metrics;
@@ -327,9 +327,12 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             return;
         }
         let render_tx = self.render_tx.clone();
-        crate::platform::set_timeout(move || {
-            let _ = render_tx.unbounded_send(());
-        }, wait_time);
+        crate::platform::set_timeout(
+            move || {
+                let _ = render_tx.unbounded_send(());
+            },
+            wait_time,
+        );
         self.dirty = true;
     }
 

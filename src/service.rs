@@ -70,7 +70,6 @@ pub trait Service {
     fn start(self, mailbox: Mailbox) -> Self::DataStream;
 }
 
-
 /// A wrapper for a polymorphic stream
 ///
 /// This is a bit redundant with `futures::BoxStream`
@@ -97,7 +96,6 @@ impl<T: 'static + Send> Stream for BoxedStream<T> {
         Pin::new(&self.inner).size_hint()
     }
 }
-
 
 /// Holds a started service, its meta-data and channels to control it
 pub(crate) struct ServiceSubscription<T: 'static + Send> {

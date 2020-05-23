@@ -1,10 +1,14 @@
-
+use crate::dialog::{
+    FileOpenDialog, FileSaveDialog, MessageBox, MessageBoxResult, MsgBoxIcon, MsgBoxType,
+};
+use crate::dialog::{FileOpenMsg, FileSaveMsg};
 use serde_json::Value as JsonValue;
-use tinyfiledialogs::{message_box_ok, MessageBoxIcon, message_box_ok_cancel, OkCancel, message_box_yes_no, YesNo};
-use tinyfiledialogs::{open_file_dialog, open_file_dialog_multi, save_file_dialog, save_file_dialog_with_filter};
-use crate::dialog::{MessageBox, MsgBoxIcon, MsgBoxType, MessageBoxResult, FileSaveDialog, FileOpenDialog};
-use crate::dialog::{FileSaveMsg, FileOpenMsg};
-
+use tinyfiledialogs::{
+    message_box_ok, message_box_ok_cancel, message_box_yes_no, MessageBoxIcon, OkCancel, YesNo,
+};
+use tinyfiledialogs::{
+    open_file_dialog, open_file_dialog_multi, save_file_dialog, save_file_dialog_with_filter,
+};
 
 fn handle_msgbox(value: JsonValue) -> JsonValue {
     let msgbox: MessageBox = serde_json::from_value(value).unwrap();
@@ -18,19 +22,20 @@ fn handle_msgbox(value: JsonValue) -> JsonValue {
         MsgBoxType::Ok => {
             message_box_ok(&msgbox.title, &msgbox.message, icon);
             serde_json::to_value(&MessageBoxResult::Ok).unwrap()
-        },
+        }
         MsgBoxType::OkCancel => {
             let default = match msgbox.default {
                 MessageBoxResult::Ok => OkCancel::Ok,
                 MessageBoxResult::Cancel => OkCancel::Cancel,
                 _ => panic!(),
             };
-            let result = match message_box_ok_cancel(&msgbox.title, &msgbox.message, icon, default) {
+            let result = match message_box_ok_cancel(&msgbox.title, &msgbox.message, icon, default)
+            {
                 OkCancel::Cancel => MessageBoxResult::Ok,
                 OkCancel::Ok => MessageBoxResult::Cancel,
             };
             serde_json::to_value(&result).unwrap()
-        },
+        }
         MsgBoxType::YesNo => {
             let default = match msgbox.default {
                 MessageBoxResult::Yes => YesNo::Yes,
@@ -42,18 +47,16 @@ fn handle_msgbox(value: JsonValue) -> JsonValue {
                 YesNo::No => MessageBoxResult::No,
             };
             serde_json::to_value(&result).unwrap()
-        },
+        }
     }
 }
 
 fn handle_file_save(value: JsonValue) -> JsonValue {
     let dialog: FileSaveDialog = serde_json::from_value(value).unwrap();
     let ret = match dialog.filter {
-        None => {
-            match save_file_dialog(&dialog.title, &dialog.path) {
-                None => FileSaveMsg::Cancel,
-                Some(path) => FileSaveMsg::SaveTo(path),
-            }
+        None => match save_file_dialog(&dialog.title, &dialog.path) {
+            None => FileSaveMsg::Cancel,
+            Some(path) => FileSaveMsg::SaveTo(path),
         },
         Some(filter) => {
             let filters: Vec<&str> = filter.filters.iter().map(|x| x.as_ref()).collect();
@@ -62,8 +65,7 @@ fn handle_file_save(value: JsonValue) -> JsonValue {
                 None => FileSaveMsg::Cancel,
                 Some(path) => FileSaveMsg::SaveTo(path),
             }
-
-        },
+        }
     };
     serde_json::to_value(&ret).unwrap()
 }
@@ -75,24 +77,20 @@ fn handle_file_open(value: JsonValue) -> JsonValue {
         for x in &filter.extensions {
             filters.push(x);
         }
-        Some( (&filters, &filter.description) )
+        Some((&filters, &filter.description))
     } else {
         None
     };
 
     let ret = match dialog.multiple {
-        true => {
-            match open_file_dialog_multi(&dialog.title, &dialog.path, filter) {
-                None => FileOpenMsg::Canceled,
-                Some(files) => FileOpenMsg::SelectedMultiple(files),
-            }
+        true => match open_file_dialog_multi(&dialog.title, &dialog.path, filter) {
+            None => FileOpenMsg::Canceled,
+            Some(files) => FileOpenMsg::SelectedMultiple(files),
         },
-        false => {
-            match open_file_dialog(&dialog.title, &dialog.path, filter) {
-                None => FileOpenMsg::Canceled,
-                Some(file) => FileOpenMsg::Selected(file),
-            }
-        }
+        false => match open_file_dialog(&dialog.title, &dialog.path, filter) {
+            None => FileOpenMsg::Canceled,
+            Some(file) => FileOpenMsg::Selected(file),
+        },
     };
     serde_json::to_value(&ret).unwrap()
 }
@@ -105,6 +103,6 @@ pub fn show_dialog(value: JsonValue) -> JsonValue {
         "MessageBox" => handle_msgbox(value),
         "FileSaveDialog" => handle_file_save(value),
         "FileOpenDialog" => handle_file_open(value),
-        _ => panic!()
+        _ => panic!(),
     }
 }

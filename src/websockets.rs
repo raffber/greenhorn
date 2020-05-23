@@ -256,9 +256,10 @@ impl Stream for WebSocketReceiver {
         match ret {
             Poll::Ready(Some(msg)) => match msg {
                 Message::Text(data) => {
-                    let data = serde_json::from_str(&data).expect("Invalid message received from frontend");
+                    let data = serde_json::from_str(&data)
+                        .expect("Invalid message received from frontend");
                     Poll::Ready(Some(data))
-                },
+                }
                 Message::Binary(_) => Poll::Pending,
                 Message::Ping(_) => Poll::Pending,
                 Message::Pong(_) => Poll::Pending,

@@ -3,10 +3,10 @@ use cfg_if::cfg_if;
 #[cfg(target_arch = "wasm32")]
 mod wasm {
     use futures::Future;
-    use wasm_bindgen_futures::spawn_local;
-    use wasm_bindgen::closure::Closure;
     use std::convert::TryInto;
+    use wasm_bindgen::closure::Closure;
     use wasm_bindgen::prelude::*;
+    use wasm_bindgen_futures::spawn_local;
 
     #[wasm_bindgen]
     extern "C" {
@@ -41,8 +41,8 @@ mod wasm {
 #[cfg(not(target_arch = "wasm32"))]
 mod default {
     use async_std::task;
-    use futures::Future;
     use async_timer::Interval;
+    use futures::Future;
 
     pub fn spawn<F, T>(future: F)
     where
