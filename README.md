@@ -14,6 +14,10 @@
         <a href="https://raffber.github.io/greenhorn/greenhorn/index.html">
         API Docs
         </a>
+        <span> | </span>
+        <a href="https://raffber.github.io/greenhorn/book/intro.html">
+        Book
+        </a>
     </h3>
 </div>
 <br />
