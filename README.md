@@ -1,8 +1,24 @@
-# Greenhorn
+<h1 align="center">Greenhorn</h1>
+<div align="center">
+ <strong>
+   Write desktop and web applications in pure server-side rust
+ </strong>
+</div>
+<div align="center">
+    <h3>
+        <a href="https://github.com/raffber/greenhorn/actions">
+            <img src="https://github.com/raffber/greenhorn/workflows/Tests/badge.svg"
+            alt="CI Status" />
+        </a>
+        <span> | </span>
+        <a href="https://raffber.github.io/greenhorn/greenhorn/index.html">
+        API Docs
+        </a>
+    </h3>
+</div>
+<br />
 
-![Tests](https://github.com/raffber/greenhorn/workflows/Tests/badge.svg)
-
-Greenhorn is a rust library for building desktop applications with web technologies in (almost)
+Greenhorn is a rust library for building desktop and web applications with web technologies in (almost)
 pure rust.
 
 This is accomplished by separating the application into a server-side process
