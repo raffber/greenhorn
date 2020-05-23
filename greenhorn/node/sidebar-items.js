@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Node","Represents a DOM node which might emit a message of type `T`."]]});

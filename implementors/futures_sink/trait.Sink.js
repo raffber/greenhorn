@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["greenhorn"] = [{"text":"impl <a class=\"trait\" href=\"https://docs.rs/futures-sink/0.3.0/futures_sink/trait.Sink.html\" title=\"trait futures_sink::Sink\">Sink</a>&lt;<a class=\"enum\" href=\"greenhorn/pipe/enum.TxMsg.html\" title=\"enum greenhorn::pipe::TxMsg\">TxMsg</a>&gt; for <a class=\"struct\" href=\"greenhorn/websockets/struct.WebSocketSender.html\" title=\"struct greenhorn::websockets::WebSocketSender\">WebSocketSender</a>","synthetic":false,"types":["greenhorn::websockets::WebSocketSender"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

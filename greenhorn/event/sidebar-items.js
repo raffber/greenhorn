@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Emission","This type is created if a Event is `emit()`-ed."],["Event","Events allow connecting different components with each other."],["Subscription","Represents the result of an `Event.subscribe()` call."]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Blob","`Blob`s allow transferring binary data from backend to frontend."]]});

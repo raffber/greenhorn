@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["WebSocketPipe","The `WebSocketPipe` type implements a Pipe on top of WebSockets."],["WebSocketReceiver","The `WebSocketReceiver` type is a `Stream` which allows receiving `RxMsg` messages from the frontend."],["WebSocketSender","The `WebSocketSender` type is a `Sink` which allows sending `TxMsg` messages from backend to frontend."]]});

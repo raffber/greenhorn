@@ -1,0 +1,103 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `greenhorn` crate."><meta name="keywords" content="rust, rustlang, rust-lang, greenhorn"><title>greenhorn - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../dark.css"><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script src="../storage.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="shortcut icon" href="../favicon.ico"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../greenhorn/index.html'><div class='logo-container'><img src='../rust-logo.png' alt='logo'></div></a><p class='location'>Crate greenhorn</p><div class="sidebar-elems"><a id='all-types' href='all.html'><p>See all greenhorn's items</p></a><div class="block items"><ul><li><a href="#reexports">Re-exports</a></li><li><a href="#modules">Modules</a></li><li><a href="#macros">Macros</a></li><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li></ul></div><p class='location'></p><script>window.sidebarCurrent = {name: 'greenhorn', ty: 'mod', relpath: '../'};</script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../src/greenhorn/lib.rs.html#1-421' title='goto source code'>[src]</a></span><span class='in-band'>Crate <a class="mod" href=''>greenhorn</a></span></h1><div class='docblock'><h1 id="greenhorn---api-documentation" class="section-header"><a href="#greenhorn---api-documentation">Greenhorn - API Documentation</a></h1>
+<p>Greenhorn is a rust library for building desktop applications with web technologies in (almost)
+pure rust.</p>
+<p>This is accomplished by separating the application into a server-side process
+(the backend) and web view implemented in javascript (the frontend).
+While most HTML-based desktop applications leave state synchronization up to the
+application logic, this library synchronizes its state at DOM-level.
+Thus, the user may implement the application logic purely in the backend using rust.
+This facilitates the integration of a desktop GUI with system
+services and simplifies application development considerably.</p>
+<h2 id="features" class="section-header"><a href="#features">Features</a></h2>
+<ul>
+<li>Elm-like architecture but also supports components</li>
+<li>Components support fine-grained update/render cycle</li>
+<li>Components are owned by the application state and may interact with each other using events</li>
+<li>Macros to write SVG and HTML in-line with Rust code</li>
+<li>Most tasks can be accomplished using pure-rust. If required, injecting and calling js is supported.</li>
+<li>Built-in performance metrics</li>
+<li>Spawning system dialogs</li>
+<li>This crate does not itself implement a frontend. A frontend is implemented in <code>greenhorn_web_view</code>.
+It makes use of <a href="https://github.com/Boscop/web-view">web_view</a> and <a href="https://github.com/jdm/tinyfiledialogs-rs">tinyfiledialogs-rs</a>.</li>
+</ul>
+<h2 id="example" class="section-header"><a href="#example">Example</a></h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered">
+<span class="kw">use</span> <span class="ident">greenhorn</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">greenhorn</span>::<span class="ident">html</span>;
+
+<span class="kw">struct</span> <span class="ident">MyApp</span> {
+    <span class="ident">text</span>: <span class="ident">String</span>,
+}
+
+<span class="kw">enum</span> <span class="ident">MyMsg</span> {
+    <span class="ident">Clicked</span>(<span class="ident">DomEvent</span>),
+    <span class="ident">KeyDown</span>(<span class="ident">DomEvent</span>),
+}
+
+<span class="kw">impl</span> <span class="ident">Render</span> <span class="kw">for</span> <span class="ident">MyApp</span> {
+    <span class="kw">type</span> <span class="ident">Message</span> <span class="op">=</span> <span class="ident">MyMsg</span>;
+
+    <span class="kw">fn</span> <span class="ident">render</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Node</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Message</span><span class="op">&gt;</span> {
+        <span class="macro">html</span><span class="macro">!</span>(
+            <span class="op">&lt;</span><span class="ident">div</span> #<span class="ident">my</span><span class="op">-</span><span class="ident">app</span><span class="op">&gt;</span>
+                <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span>
+                        @<span class="ident">keydown</span><span class="op">=</span>{<span class="ident">MyMsg</span>::<span class="ident">KeyDown</span>}
+                        @<span class="ident">mousedown</span><span class="op">=</span>{<span class="ident">MyMsg</span>::<span class="ident">Clicked</span>}<span class="op">&gt;</span>
+                    {<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">text</span>}
+                <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+            <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+        ).<span class="ident">into</span>()
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">App</span> <span class="kw">for</span> <span class="ident">MyApp</span> {
+    <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,<span class="ident">msg</span>: <span class="self">Self</span>::<span class="ident">Message</span>,<span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Message</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Updated</span> {
+        <span class="kw">match</span> <span class="ident">msg</span> {
+            <span class="ident">MyMsg</span>::<span class="ident">Clicked</span>(<span class="ident">evt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">text</span> <span class="op">=</span> <span class="string">&quot;Button clicked!&quot;</span>.<span class="ident">into</span>(),
+            <span class="ident">MyMsg</span>::<span class="ident">KeyDown</span>(<span class="ident">evt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">text</span> <span class="op">=</span> <span class="string">&quot;Button keypress!&quot;</span>.<span class="ident">into</span>()
+        }
+        <span class="ident">Updated</span>::<span class="ident">yes</span>()
+    }
+
+}</pre></div>
+<h1 id="acknowledgments" class="section-header"><a href="#acknowledgments">Acknowledgments</a></h1>
+<p>The concpet of this library is not at all new. It was already implemented before at least by the
+<a href="https://github.com/HeinrichApfelmus/threepenny-gui">Threepenny-GUI library</a>.
+The API was inspired by the many great rust frontend libraries:</p>
+<ul>
+<li><a href="https://github.com/yewstack/yew">Yew</a></li>
+<li><a href="https://github.com/seed-rs/seed">Seed-rs</a></li>
+</ul>
+</div><h2 id='reexports' class='section-header'><a href="#reexports">Re-exports</a></h2>
+<table><tr><td><code>pub use crate::component::<a class="struct" href="../greenhorn/component/struct.Component.html" title="struct greenhorn::component::Component">Component</a>;</code></td></tr><tr><td><code>pub use crate::component::<a class="struct" href="../greenhorn/component/struct.Updated.html" title="struct greenhorn::component::Updated">Updated</a>;</code></td></tr><tr><td><code>pub use crate::runtime::<a class="struct" href="../greenhorn/runtime/struct.Runtime.html" title="struct greenhorn::runtime::Runtime">Runtime</a>;</code></td></tr><tr><td><code>pub use crate::runtime::<a class="struct" href="../greenhorn/runtime/struct.RuntimeControl.html" title="struct greenhorn::runtime::RuntimeControl">RuntimeControl</a>;</code></td></tr><tr><td><code>pub use crate::websockets::<a class="struct" href="../greenhorn/websockets/struct.WebSocketPipe.html" title="struct greenhorn::websockets::WebSocketPipe">WebSocketPipe</a>;</code></td></tr></table><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
+<table><tr class='module-item'><td><a class="mod" href="any/index.html" title='greenhorn::any mod'>any</a></td><td class='docblock-short'><p>This module provides the <a href="struct.AnyApp.html">AnyApp</a> wrapper which allows dynamically exchanging
+components with different message types.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="blob/index.html" title='greenhorn::blob mod'>blob</a></td><td class='docblock-short'><p>Supports syncing binary data from backend to frontend. Useful for images, media files, ...</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="component/index.html" title='greenhorn::component mod'>component</a></td><td class='docblock-short'><p>This module defines components, which support a fine-grained <code>render()</code> cycle.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="components/index.html" title='greenhorn::components mod'>components</a></td><td class='docblock-short'><p>Provides a set of built-in and commonly used components</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="context/index.html" title='greenhorn::context mod'>context</a></td><td class='docblock-short'><p>The context module exports the <code>Context</code> type, which allows the <code>update()</code> cycle of the application
+to interface with system services.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="dialog/index.html" title='greenhorn::dialog mod'>dialog</a></td><td class='docblock-short'><p>Allows spawning native dialogs such as file-open dialogs and retrieving their results.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="dom/index.html" title='greenhorn::dom mod'>dom</a></td><td class='docblock-short'><p>This module exposes the <a href="struct.DomEvent.html">DomEvent</a> data type which is used to communicate
+DOM events from the frontend to the backend.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="event/index.html" title='greenhorn::event mod'>event</a></td><td class='docblock-short'><p>This module defines the <a href="struct.Event.html">Event</a> type which facilitates communication
+between components.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="node/index.html" title='greenhorn::node mod'>node</a></td><td class='docblock-short'><p>Defines <code>Node&lt;T&gt;</code> type for building DOMs in pure rust</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="node_builder/index.html" title='greenhorn::node_builder mod'>node_builder</a></td><td class='docblock-short'><p>Rust API for building DOM nodes. Alternative to the <code>html!()</code> and <code>svg!()</code> macros</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="pipe/index.html" title='greenhorn::pipe mod'>pipe</a></td><td class='docblock-short'><p>This modules defines an interface for the communication interface between
+frontend and backend.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="platform/index.html" title='greenhorn::platform mod'>platform</a></td><td class='docblock-short'></td></tr><tr class='module-item'><td><a class="mod" href="prelude/index.html" title='greenhorn::prelude mod'>prelude</a></td><td class='docblock-short'><p>Prelude, <code>use greehorn::prelude::*</code> imports the most important symbols for quick access</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="runtime/index.html" title='greenhorn::runtime mod'>runtime</a></td><td class='docblock-short'><p>Implments the <code>Runtime</code> type, which executes the render/update cycle of the application</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="service/index.html" title='greenhorn::service mod'>service</a></td><td class='docblock-short'><p>Supports spawning tasks running on the frontend. Experimental, might be removed in the future.
+This module exposes the <a href="trait.Service.html">Service</a> trait, which allows writing custom agents
+communicating with the frontend.</p>
+</td></tr><tr class='module-item'><td><a class="mod" href="websockets/index.html" title='greenhorn::websockets mod'>websockets</a></td><td class='docblock-short'><p>This modules adds a <a href="../pipe/trait.Pipe.html">Pipe</a> implementation based on WebSockets.</p>
+</td></tr></table><h2 id='macros' class='section-header'><a href="#macros">Macros</a></h2>
+<table><tr class='module-item'><td><a class="macro" href="macro.html.html" title='greenhorn::html macro'>html</a></td><td class='docblock-short'><p>Proc macro to generate HTML <a href="struct.Node.html">Nodes</a> implementing a JSX like syntax.</p>
+</td></tr><tr class='module-item'><td><a class="macro" href="macro.svg.html" title='greenhorn::svg macro'>svg</a></td><td class='docblock-short'><p>Proc macro to generate SVG <a href="struct.Node.html">Nodes</a> implementing a JSX like syntax.</p>
+</td></tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table><tr class='module-item'><td><a class="struct" href="struct.Id.html" title='greenhorn::Id struct'>Id</a></td><td class='docblock-short'><p>Type to produce unique IDs within the process.</p>
+</td></tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table><tr class='module-item'><td><a class="trait" href="trait.App.html" title='greenhorn::App trait'>App</a></td><td class='docblock-short'><p>Marks a type as render-able as well as update-able</p>
+</td></tr><tr class='module-item'><td><a class="trait" href="trait.Render.html" title='greenhorn::Render trait'>Render</a></td><td class='docblock-short'><p>Marks a type as render-able to the DOM.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../";window.currentCrate = "greenhorn";</script><script src="../aliases.js"></script><script src="../main.js"></script><script defer src="../search-index.js"></script></body></html>

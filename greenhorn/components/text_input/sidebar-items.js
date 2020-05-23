@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["TextInputMsg",""]],"struct":[["SubscribedEvent",""],["TextInput",""],["TextInputRender",""],["TextInputSubscription",""]]});
