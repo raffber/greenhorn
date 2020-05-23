@@ -43,7 +43,7 @@ impl<A: App> RenderedComponent<A> {
                     listeners.push(key)
                 }
                 ResultItem::Subscription(id, _) => {
-                    subs.push(id.clone());
+                    subs.push(*id);
                 }
                 ResultItem::Component(comp, path) => children.push((comp.id(), path.clone())),
                 ResultItem::Blob(blob) => {

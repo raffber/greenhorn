@@ -145,8 +145,8 @@ impl<T: 'static + Send> Node<T> {
     /// }
     /// ```
     pub fn map<U: 'static + Send, F: 'static + Send + Fn(T) -> U>(self, fun: F) -> Node<U> {
-        let fun: Arc<Mutex<Box<dyn 'static + Send + Fn(T) -> U>>> =
-            Arc::new(Mutex::new(Box::new(fun)));
+        let fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>> =
+            Arc::new(Mutex::new(fun));
         self.map_shared(fun)
     }
 

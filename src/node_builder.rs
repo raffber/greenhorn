@@ -157,7 +157,7 @@ impl<T: 'static + Send> ElementBuilder<T> {
         ListenerBuilder {
             parent: self,
             name: name.into(),
-            fun: Arc::new(Mutex::new(Box::new(fun))),
+            fun: Arc::new(Mutex::new(fun)),
             prevent_default: false,
             no_propagate: false,
         }
@@ -251,7 +251,7 @@ impl<T: 'static + Send> ElementBuilder<T> {
 pub struct ListenerBuilder<T: 'static + Send> {
     parent: ElementBuilder<T>,
     name: String,
-    fun: Arc<Mutex<Box<dyn Send + Fn(DomEvent) -> T>>>,
+    fun: Arc<Mutex<dyn Send + Fn(DomEvent) -> T>>,
     prevent_default: bool,
     no_propagate: bool,
 }
