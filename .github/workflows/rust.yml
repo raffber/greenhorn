@@ -22,5 +22,6 @@ jobs:
     - name: Compile docs
       run: cargo doc --no-deps
     - name: Upload to GHP
-      run: cargo ghp-upload -vv --token $GHP_TOKEN
-    
+      env:
+        GH_TOKEN: ${{ secrets.GHP_TOKEN }}
+      run: cargo ghp-upload -vv
