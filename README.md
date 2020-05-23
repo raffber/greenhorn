@@ -1,6 +1,6 @@
 # Greenhorn
 
-![](https://github.com/raffber/greenhorn/workflows/Rust/badge.svg)
+![Tests](https://github.com/raffber/greenhorn/workflows/Tests/badge.svg)
 
 Greenhorn is a rust library for building desktop applications with web technologies in (almost)
 pure rust.
