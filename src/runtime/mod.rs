@@ -18,7 +18,7 @@ use std::collections::{HashSet, VecDeque};
 use std::time::Duration;
 
 mod component;
-mod metrics;
+pub mod metrics;
 mod render;
 mod service_runner;
 mod state;
@@ -64,11 +64,18 @@ enum RuntimeMsg<A: App> {
 /// The `Runtime` object manages the main application life-cycle as well as event distribution.
 /// It is the central object executing the backend portion of an application.
 ///
-/// A `Runtime` owns a type implementing `Pipe` which allows it to communicate with the frontend
+/// A `Runtime` owns a type implementing [`Pipe`](../pipe/trait.Pipe.html) which allows it to communicate with the frontend
 /// part of the application.
 /// Paired to a runtime, there is a set of `Clone`-able and `Send`-able
 /// [`RuntimeControl`](struct.RuntimeControl.html) objects.
 /// They are used to update the `App` underlying the `Runtime` or to affect its lifecycle.
+///
+/// To execute the backend, the `Runtime` object features two methods:
+///  * the async `run` function
+///  * and the `run_blocking` function
+/// 
+/// Both functions resolve to a [`Metrics`](metrics/struct.Metrics.html) object which provides performance
+/// data of the executed application.
 ///
 /// # Example
 ///
@@ -107,14 +114,11 @@ enum RuntimeMsg<A: App> {
 /// }
 ///
 ///let app = MyApp { my_app_state: 123 };
-///let pipe =  WebSocketPipe::listen_to_addr(SocketAddr::from_str("127.0.0.1:1234").unwrap());
+///let addr = SocketAddr::from_str("127.0.0.1:1234").unwrap();
+///let pipe =  WebSocketPipe::listen_to_addr(addr);
 ///let (runtime, control) = Runtime::new(app, pipe);
 ///runtime.run_blocking();
 /// ```
-///
-/// To execute the runtime, it features to methods, the async `run` function and the `run_blocking`
-/// function. Both return a [`Metrics`](struct.Metrics.html) object which provides performance
-/// data of the executed application.
 ///
 pub struct Runtime<A: 'static + App, P: 'static + Pipe> {
     tx: UnboundedSender<RuntimeMsg<A>>,
@@ -138,9 +142,9 @@ pub struct Runtime<A: 'static + App, P: 'static + Pipe> {
 }
 
 impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
-    /// Create a new `Runtime`, which allows executing a given Application.
-    /// Also returns an associated control object, which allows controlling the runtime and changing
-    /// the state of the application.
+    /// Create a new `Runtime`, which allows executing the backend of the given application.
+    /// Also returns an associated control object, which allows changing
+    /// the state or to send messages to the application.
     pub fn new(app: A, pipe: P) -> (Runtime<A, P>, RuntimeControl<A>) {
         let (tx, rx) = unbounded();
         let (sender, receiver) = pipe.split();
@@ -173,7 +177,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     /// performance metrics upon completion.
     pub async fn run(mut self) -> Metrics {
         // schedule a first render, but wait a few milliseconds in case some
-        // startup services decide to update the application state immediately
+        // startup services decide to update the application state immediately.
         self.schedule_render(DEFAULT_RENDER_INTERVAL_MS);
         let (ctx, receiver) = Context::<A::Message>::new();
         self.app.mount(ctx);
@@ -213,8 +217,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     }
 
     /// Execute the application. This function blocks until the application exits.
-    ///
-    /// Returns: The performance metrics collected during exeuction of the application
+    /// Returns the performance metrics collected during exeuction of the application.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn run_blocking(self) -> Metrics {
         async_std::task::block_on(self.run())

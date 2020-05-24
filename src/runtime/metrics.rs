@@ -1,10 +1,10 @@
-//! This modules allows collecting runtime information about a greenhorn application
+//! This modules allows collecting runtime information about a greenhorn application.
 //!
 //! The [Metrics](struct.Metrics.html) object collects performance information during runtime.
 //! The [Runtime](../struct.Runtime.html) objects maintains such a `Metrics` objects and returns
 //! it after running the application to completion.
 //!
-//! The performance data is collected in a histogram. Refer to the [Histogram](struct.Histogram.html)
+//! The performance data is collected in histograms. Refer to the [Histogram](struct.Histogram.html)
 //! object for details.
 //!
 
@@ -25,7 +25,7 @@ use std::time::Duration;
 /// This is just a new-type for `HdrHistogram` to implement a custom
 /// `serde::Serialize`.
 /// Refer to [HdrHistogram](https://docs.rs/hdrhistogram/7.1.0/hdrhistogram/struct.Histogram.html).
-struct Histogram(HdrHistogram<u64>);
+pub struct Histogram(HdrHistogram<u64>);
 
 impl Histogram {
     /// Refer to [HdrHistogram::new_with_bounds](https://docs.rs/hdrhistogram/7.1.0/hdrhistogram/struct.Histogram.html#method.new_with_bounds).
@@ -185,7 +185,7 @@ impl Default for ResponseTime {
     }
 }
 
-/// Collects `render()` performance information about a [Component](../struct.Component.html).
+/// Collects `render()` performance information about a [Component](../../component/struct.Component.html).
 ///
 /// Records how often the a function of a `Component` is called and records the time
 /// each call requires to complete.
@@ -208,7 +208,7 @@ impl ComponentMetric {
     }
 }
 
-/// Aggregation of metrics collected during execution of a [Runtime](struct.Runtime.html) object.
+/// Aggregation of metrics collected during execution of a [Runtime](../struct.Runtime.html) object.
 #[derive(Serialize, Default)]
 pub struct Metrics {
     /// `render()` performance and hit count for each component

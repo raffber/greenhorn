@@ -2,13 +2,13 @@
 //!
 //! Types which are [Render](../trait.Render.html) or [App](../trait.App.html) can we wrapped into
 //! a [`Component<_>`](struct.Component.html) to support fine-grained `render()` cycles.
-//! During the `update()` components signal the runtime (using [Updated](struct.Updated.html))
+//! During the `update()` cycle components inform the runtime (using [Updated](struct.Updated.html))
 //! whether re-rendering of their associated DOMs is required.
-//! The runtime tracks all components and selectively calls their `render()` functions, thus
-//! reducing the size of the DOM that needs to be diffed in each cycle.
+//! The runtime tracks all components and, if required, calls their `render()` functions. This
+//! reduces the size of the DOM to be diffed.
 //!
-//! Note that `Component<_>` instances also require their contents to be `Send` to support parallel
-//! rendering.
+//! Note that [`Component<_>`](struct.Component.html) instances also require their
+//! contents to be `Send` to support parallel rendering.
 //!
 //! # Example
 //!
@@ -143,7 +143,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 /// of the DOM requires re-rendering.
 ///
 /// Usually components return either `Updated::yes()` or `Updated::no()`.
-/// If a component has child components, it should must use either `Updated::merge()` or
+/// If a component has more than one child component, it must either call `Updated::merge()` or
 /// `Update::combine()` to combine multiple `Updated` objects.
 pub struct Updated {
     pub(crate) should_render: bool,
@@ -160,14 +160,14 @@ impl Updated {
         }
     }
 
-    /// Creates a new `Updated` object which signal that a re-render is *required*.
+    /// Creates a new `Updated` object which signals that a re-render is **required**.
     pub fn yes() -> Updated {
         Updated {
             should_render: true,
             components_render: None,
         }
     }
-    /// Creates a new `Updated` object which signal that *no* re-render is required.
+    /// Creates a new `Updated` object which signals that **no** re-render is required.
     pub fn no() -> Updated {
         Updated {
             should_render: false,
@@ -251,12 +251,14 @@ impl From<Id> for Updated {
     }
 }
 
-/// A `Component` wraps a `Render` or `App` type to allow the runtime for fine-grained `render()`
-/// calls. This avoids re-rendering the whole DOM in each cycle.
+/// A `Component` wraps a [`Render`](../trait.Render.html) or [`App`](../trait.App.html) type.
+/// A `Component` is mounted into a DOM and is tracked by the [`Runtime`](../runtime/struct.Runtime.html).
+/// This  allows the runtime to call `render()` only if re-render is requird.
+/// This avoids re-rendering the whole DOM in each cycle and reduces the size of the DOM to be diffed.
 ///
 /// Components can be mounted to a DOM using the `Component::mount()` function.
 /// Each component has an assigned `id()` which allows it to be identified by the runtime.
-/// Invalidated components are recorded with their `id()` in the `Updated` type.
+/// Components that require re-rendering are recorded with their `id()` in the `Updated` type.
 ///
 /// The underlying data type can be accessed using the `lock()`, `map()` or `transmute()` functions.
 ///
@@ -299,9 +301,8 @@ impl<T: 'static + Render + Send> Component<T> {
     /// Returns the unique `Id` associated with this component
     ///
     /// The `id()` is used to identify this component in the DOM hierarchy.
-    /// THe executing runtime understands, based on the result of the `update()` cycle,
-    /// which yields and [Updated](struct.Updated.html) object, which components require
-    /// re-rendering.
+    /// The executing runtime understands, based on the result of the `update()` cycle,
+    /// which components require re-rendering.
     pub fn id(&self) -> Id {
         self.id
     }
@@ -378,11 +379,10 @@ impl<T: 'static + Render + Send> Component<T> {
         Node(NodeItems::Component(ComponentContainer::new(self)))
     }
 }
-/// If the underlying type is also `App` the `Component` also provides access to the
-/// `App::update()` and `App::mount()` function.
+/// If the underlying type is [`App`](../trait.App.html) the `Component` also provides access to the
+/// `App::update()` and the `App::mount()` functions.
 impl<T: 'static + App + Send> Component<T> {
-    /// If the underlying type is also `App`, this function provides direct access
-    /// to the `update()` function of the underlying component.
+    /// Call the `update()` function of the underlying object
     pub fn update(&mut self, msg: T::Message, ctx: Context<T::Message>) -> Updated {
         let mut borrow = self.lock();
         let data = borrow.deref_mut();
@@ -395,8 +395,7 @@ impl<T: 'static + App + Send> Component<T> {
         ret
     }
 
-    /// If the underlying type is also `App`, this function provides direct access
-    /// to the `mount()` function of the underlying component.
+    /// Call the `mount()` function of the underlying object
     pub fn on_mount(&mut self, ctx: Context<T::Message>) {
         let mut borrow = self.lock();
         let data = borrow.deref_mut();
@@ -404,7 +403,7 @@ impl<T: 'static + App + Send> Component<T> {
     }
 }
 
-/// wraps a shared `ComponentMap` trait object to improve the internal API
+/// Wraps a shared `ComponentMap` trait object to improve the internal API
 pub(crate) struct ComponentContainer<T: 'static + Send> {
     pub(crate) inner: Arc<Mutex<dyn ComponentMap<T>>>,
 }
