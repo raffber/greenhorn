@@ -252,13 +252,13 @@
 <span id="252">252</span>
 <span id="253">253</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="doccomment">//! This modules allows collecting runtime information about a greenhorn application</span>
+<span class="doccomment">//! This modules allows collecting runtime information about a greenhorn application.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! The [Metrics](struct.Metrics.html) object collects performance information during runtime.</span>
 <span class="doccomment">//! The [Runtime](../struct.Runtime.html) objects maintains such a `Metrics` objects and returns</span>
 <span class="doccomment">//! it after running the application to completion.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! The performance data is collected in a histogram. Refer to the [Histogram](struct.Histogram.html)</span>
+<span class="doccomment">//! The performance data is collected in histograms. Refer to the [Histogram](struct.Histogram.html)</span>
 <span class="doccomment">//! object for details.</span>
 <span class="doccomment">//!</span>
 
@@ -279,7 +279,7 @@
 <span class="doccomment">/// This is just a new-type for `HdrHistogram` to implement a custom</span>
 <span class="doccomment">/// `serde::Serialize`.</span>
 <span class="doccomment">/// Refer to [HdrHistogram](https://docs.rs/hdrhistogram/7.1.0/hdrhistogram/struct.Histogram.html).</span>
-<span class="kw">struct</span> <span class="ident">Histogram</span>(<span class="ident">HdrHistogram</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Histogram</span>(<span class="ident">HdrHistogram</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">Histogram</span> {
     <span class="doccomment">/// Refer to [HdrHistogram::new_with_bounds](https://docs.rs/hdrhistogram/7.1.0/hdrhistogram/struct.Histogram.html#method.new_with_bounds).</span>
@@ -439,7 +439,7 @@
     }
 }
 
-<span class="doccomment">/// Collects `render()` performance information about a [Component](../struct.Component.html).</span>
+<span class="doccomment">/// Collects `render()` performance information about a [Component](../../component/struct.Component.html).</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Records how often the a function of a `Component` is called and records the time</span>
 <span class="doccomment">/// each call requires to complete.</span>
@@ -462,7 +462,7 @@
     }
 }
 
-<span class="doccomment">/// Aggregation of metrics collected during execution of a [Runtime](struct.Runtime.html) object.</span>
+<span class="doccomment">/// Aggregation of metrics collected during execution of a [Runtime](../struct.Runtime.html) object.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Metrics</span> {
     <span class="doccomment">/// `render()` performance and hit count for each component</span>

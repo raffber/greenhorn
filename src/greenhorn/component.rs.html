@@ -507,19 +507,18 @@
 <span id="507">507</span>
 <span id="508">508</span>
 <span id="509">509</span>
-<span id="510">510</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module defines components, which support a fine-grained `render()` cycle.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Types which are [Render](../trait.Render.html) or [App](../trait.App.html) can we wrapped into</span>
 <span class="doccomment">//! a [`Component&lt;_&gt;`](struct.Component.html) to support fine-grained `render()` cycles.</span>
-<span class="doccomment">//! During the `update()` components signal the runtime (using [Updated](struct.Updated.html))</span>
+<span class="doccomment">//! During the `update()` cycle components inform the runtime (using [Updated](struct.Updated.html))</span>
 <span class="doccomment">//! whether re-rendering of their associated DOMs is required.</span>
-<span class="doccomment">//! The runtime tracks all components and selectively calls their `render()` functions, thus</span>
-<span class="doccomment">//! reducing the size of the DOM that needs to be diffed in each cycle.</span>
+<span class="doccomment">//! The runtime tracks all components and, if required, calls their `render()` functions. This</span>
+<span class="doccomment">//! reduces the size of the DOM to be diffed.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! Note that `Component&lt;_&gt;` instances also require their contents to be `Send` to support parallel</span>
-<span class="doccomment">//! rendering.</span>
+<span class="doccomment">//! Note that [`Component&lt;_&gt;`](struct.Component.html) instances also require their</span>
+<span class="doccomment">//! contents to be `Send` to support parallel rendering.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Example</span>
 <span class="doccomment">//!</span>
@@ -654,7 +653,7 @@
 <span class="doccomment">/// of the DOM requires re-rendering.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Usually components return either `Updated::yes()` or `Updated::no()`.</span>
-<span class="doccomment">/// If a component has child components, it should must use either `Updated::merge()` or</span>
+<span class="doccomment">/// If a component has more than one child component, it must either call `Updated::merge()` or</span>
 <span class="doccomment">/// `Update::combine()` to combine multiple `Updated` objects.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Updated</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">should_render</span>: <span class="ident">bool</span>,
@@ -671,14 +670,14 @@
         }
     }
 
-    <span class="doccomment">/// Creates a new `Updated` object which signal that a re-render is *required*.</span>
+    <span class="doccomment">/// Creates a new `Updated` object which signals that a re-render is **required**.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">yes</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Updated</span> {
         <span class="ident">Updated</span> {
             <span class="ident">should_render</span>: <span class="bool-val">true</span>,
             <span class="ident">components_render</span>: <span class="prelude-val">None</span>,
         }
     }
-    <span class="doccomment">/// Creates a new `Updated` object which signal that *no* re-render is required.</span>
+    <span class="doccomment">/// Creates a new `Updated` object which signals that **no** re-render is required.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">no</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Updated</span> {
         <span class="ident">Updated</span> {
             <span class="ident">should_render</span>: <span class="bool-val">false</span>,
@@ -762,12 +761,14 @@
     }
 }
 
-<span class="doccomment">/// A `Component` wraps a `Render` or `App` type to allow the runtime for fine-grained `render()`</span>
-<span class="doccomment">/// calls. This avoids re-rendering the whole DOM in each cycle.</span>
+<span class="doccomment">/// A `Component` wraps a [`Render`](../trait.Render.html) or [`App`](../trait.App.html) type.</span>
+<span class="doccomment">/// A `Component` is mounted into a DOM and is tracked by the [`Runtime`](../runtime/struct.Runtime.html).</span>
+<span class="doccomment">/// This  allows the runtime to call `render()` only if re-render is requird.</span>
+<span class="doccomment">/// This avoids re-rendering the whole DOM in each cycle and reduces the size of the DOM to be diffed.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Components can be mounted to a DOM using the `Component::mount()` function.</span>
 <span class="doccomment">/// Each component has an assigned `id()` which allows it to be identified by the runtime.</span>
-<span class="doccomment">/// Invalidated components are recorded with their `id()` in the `Updated` type.</span>
+<span class="doccomment">/// Components that require re-rendering are recorded with their `id()` in the `Updated` type.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// The underlying data type can be accessed using the `lock()`, `map()` or `transmute()` functions.</span>
 <span class="doccomment">///</span>
@@ -810,9 +811,8 @@
     <span class="doccomment">/// Returns the unique `Id` associated with this component</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The `id()` is used to identify this component in the DOM hierarchy.</span>
-    <span class="doccomment">/// THe executing runtime understands, based on the result of the `update()` cycle,</span>
-    <span class="doccomment">/// which yields and [Updated](struct.Updated.html) object, which components require</span>
-    <span class="doccomment">/// re-rendering.</span>
+    <span class="doccomment">/// The executing runtime understands, based on the result of the `update()` cycle,</span>
+    <span class="doccomment">/// which components require re-rendering.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Id</span> {
         <span class="self">self</span>.<span class="ident">id</span>
     }
@@ -889,11 +889,10 @@
         <span class="ident">Node</span>(<span class="ident">NodeItems</span>::<span class="ident">Component</span>(<span class="ident">ComponentContainer</span>::<span class="ident">new</span>(<span class="self">self</span>)))
     }
 }
-<span class="doccomment">/// If the underlying type is also `App` the `Component` also provides access to the</span>
-<span class="doccomment">/// `App::update()` and `App::mount()` function.</span>
+<span class="doccomment">/// If the underlying type is [`App`](../trait.App.html) the `Component` also provides access to the</span>
+<span class="doccomment">/// `App::update()` and the `App::mount()` functions.</span>
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">App</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span> <span class="ident">Component</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// If the underlying type is also `App`, this function provides direct access</span>
-    <span class="doccomment">/// to the `update()` function of the underlying component.</span>
+    <span class="doccomment">/// Call the `update()` function of the underlying object</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident">T</span>::<span class="ident">Message</span>, <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="ident">T</span>::<span class="ident">Message</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Updated</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">borrow</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">lock</span>();
         <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">borrow</span>.<span class="ident">deref_mut</span>();
@@ -906,8 +905,7 @@
         <span class="ident">ret</span>
     }
 
-    <span class="doccomment">/// If the underlying type is also `App`, this function provides direct access</span>
-    <span class="doccomment">/// to the `mount()` function of the underlying component.</span>
+    <span class="doccomment">/// Call the `mount()` function of the underlying object</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_mount</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="ident">T</span>::<span class="ident">Message</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">borrow</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">lock</span>();
         <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">borrow</span>.<span class="ident">deref_mut</span>();
@@ -915,7 +913,7 @@
     }
 }
 
-<span class="doccomment">/// wraps a shared `ComponentMap` trait object to improve the internal API</span>
+<span class="doccomment">/// Wraps a shared `ComponentMap` trait object to improve the internal API</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ComponentContainer</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">inner</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ComponentMap</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }

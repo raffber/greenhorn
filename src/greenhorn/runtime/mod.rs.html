@@ -615,6 +615,9 @@
 <span id="615">615</span>
 <span id="616">616</span>
 <span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">context</span>::{<span class="ident">Context</span>, <span class="ident">ContextMsg</span>, <span class="ident">ContextReceiver</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">dialog</span>::<span class="ident">DialogBinding</span>;
@@ -636,7 +639,7 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>;
 
 <span class="kw">mod</span> <span class="ident">component</span>;
-<span class="kw">mod</span> <span class="ident">metrics</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">metrics</span>;
 <span class="kw">mod</span> <span class="ident">render</span>;
 <span class="kw">mod</span> <span class="ident">service_runner</span>;
 <span class="kw">mod</span> <span class="ident">state</span>;
@@ -682,11 +685,18 @@
 <span class="doccomment">/// The `Runtime` object manages the main application life-cycle as well as event distribution.</span>
 <span class="doccomment">/// It is the central object executing the backend portion of an application.</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// A `Runtime` owns a type implementing `Pipe` which allows it to communicate with the frontend</span>
+<span class="doccomment">/// A `Runtime` owns a type implementing [`Pipe`](../pipe/trait.Pipe.html) which allows it to communicate with the frontend</span>
 <span class="doccomment">/// part of the application.</span>
 <span class="doccomment">/// Paired to a runtime, there is a set of `Clone`-able and `Send`-able</span>
 <span class="doccomment">/// [`RuntimeControl`](struct.RuntimeControl.html) objects.</span>
 <span class="doccomment">/// They are used to update the `App` underlying the `Runtime` or to affect its lifecycle.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// To execute the backend, the `Runtime` object features two methods:</span>
+<span class="doccomment">///  * the async `run` function</span>
+<span class="doccomment">///  * and the `run_blocking` function</span>
+<span class="doccomment">/// </span>
+<span class="doccomment">/// Both functions resolve to a [`Metrics`](metrics/struct.Metrics.html) object which provides performance</span>
+<span class="doccomment">/// data of the executed application.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Example</span>
 <span class="doccomment">///</span>
@@ -725,14 +735,11 @@
 <span class="doccomment">/// }</span>
 <span class="doccomment">///</span>
 <span class="doccomment">///let app = MyApp { my_app_state: 123 };</span>
-<span class="doccomment">///let pipe =  WebSocketPipe::listen_to_addr(SocketAddr::from_str(&quot;127.0.0.1:1234&quot;).unwrap());</span>
+<span class="doccomment">///let addr = SocketAddr::from_str(&quot;127.0.0.1:1234&quot;).unwrap();</span>
+<span class="doccomment">///let pipe =  WebSocketPipe::listen_to_addr(addr);</span>
 <span class="doccomment">///let (runtime, control) = Runtime::new(app, pipe);</span>
 <span class="doccomment">///runtime.run_blocking();</span>
 <span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// To execute the runtime, it features to methods, the async `run` function and the `run_blocking`</span>
-<span class="doccomment">/// function. Both return a [`Metrics`](struct.Metrics.html) object which provides performance</span>
-<span class="doccomment">/// data of the executed application.</span>
 <span class="doccomment">///</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Runtime</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">App</span>, <span class="ident">P</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Pipe</span><span class="op">&gt;</span> {
     <span class="ident">tx</span>: <span class="ident">UnboundedSender</span><span class="op">&lt;</span><span class="ident">RuntimeMsg</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -756,9 +763,9 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">App</span>, <span class="ident">P</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Pipe</span><span class="op">&gt;</span> <span class="ident">Runtime</span><span class="op">&lt;</span><span class="ident">A</span>, <span class="ident">P</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Create a new `Runtime`, which allows executing a given Application.</span>
-    <span class="doccomment">/// Also returns an associated control object, which allows controlling the runtime and changing</span>
-    <span class="doccomment">/// the state of the application.</span>
+    <span class="doccomment">/// Create a new `Runtime`, which allows executing the backend of the given application.</span>
+    <span class="doccomment">/// Also returns an associated control object, which allows changing</span>
+    <span class="doccomment">/// the state or to send messages to the application.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">app</span>: <span class="ident">A</span>, <span class="ident">pipe</span>: <span class="ident">P</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Runtime</span><span class="op">&lt;</span><span class="ident">A</span>, <span class="ident">P</span><span class="op">&gt;</span>, <span class="ident">RuntimeControl</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> (<span class="ident">tx</span>, <span class="ident">rx</span>) <span class="op">=</span> <span class="ident">unbounded</span>();
         <span class="kw">let</span> (<span class="ident">sender</span>, <span class="ident">receiver</span>) <span class="op">=</span> <span class="ident">pipe</span>.<span class="ident">split</span>();
@@ -791,7 +798,7 @@
     <span class="doccomment">/// performance metrics upon completion.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(<span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Metrics</span> {
         <span class="comment">// schedule a first render, but wait a few milliseconds in case some</span>
-        <span class="comment">// startup services decide to update the application state immediately</span>
+        <span class="comment">// startup services decide to update the application state immediately.</span>
         <span class="self">self</span>.<span class="ident">schedule_render</span>(<span class="ident">DEFAULT_RENDER_INTERVAL_MS</span>);
         <span class="kw">let</span> (<span class="ident">ctx</span>, <span class="ident">receiver</span>) <span class="op">=</span> <span class="ident">Context</span>::<span class="op">&lt;</span><span class="ident">A</span>::<span class="ident">Message</span><span class="op">&gt;</span>::<span class="ident">new</span>();
         <span class="self">self</span>.<span class="ident">app</span>.<span class="ident">mount</span>(<span class="ident">ctx</span>);
@@ -831,8 +838,7 @@
     }
 
     <span class="doccomment">/// Execute the application. This function blocks until the application exits.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns: The performance metrics collected during exeuction of the application</span>
+    <span class="doccomment">/// Returns the performance metrics collected during exeuction of the application.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">target_arch</span> <span class="op">=</span> <span class="string">&quot;wasm32&quot;</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_blocking</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Metrics</span> {
         <span class="ident">async_std</span>::<span class="ident">task</span>::<span class="ident">block_on</span>(<span class="self">self</span>.<span class="ident">run</span>())
