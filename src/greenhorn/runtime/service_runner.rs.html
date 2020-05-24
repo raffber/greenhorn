@@ -266,6 +266,23 @@
 <span id="266">266</span>
 <span id="267">267</span>
 <span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module implements an executor for [Service](../trait.Service.html) objects.</span>
 <span class="doccomment">//!</span>
@@ -283,6 +300,7 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">pin</span>::<span class="ident">Pin</span>;
 <span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">stream</span>;
 
+<span class="doccomment">/// Message type used to communicate between ServiceRunner and ServiceCollection.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ServiceMessage</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span> {
     <span class="ident">Update</span>(<span class="ident">Msg</span>),
     <span class="ident">Tx</span>(<span class="ident">Id</span>, <span class="ident">TxServiceMessage</span>),
@@ -305,6 +323,10 @@
     }
 }
 
+<span class="doccomment">/// A registry of services that are being executed</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// Note that this type is also a `Stream`. All messages</span>
+<span class="doccomment">/// from spawned services are agregated in this stream.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ServiceCollection</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span> {
     <span class="ident">services</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Id</span>, <span class="ident">ServiceControl</span><span class="op">&gt;</span>,
     <span class="ident">msg_receiver</span>: <span class="ident">UnboundedReceiver</span><span class="op">&lt;</span><span class="ident">ServiceMessage</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -340,6 +362,7 @@
         }
     }
 
+    <span class="doccomment">/// Start executing a new service on this `ServiceCollection`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">spawn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">subs</span>: <span class="ident">ServiceSubscription</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">subs</span>.<span class="ident">id</span>();
         <span class="kw">let</span> <span class="ident">mailbox_tx</span> <span class="op">=</span> <span class="ident">subs</span>.<span class="ident">rxmailbox_tx</span>.<span class="ident">clone</span>();
@@ -352,11 +375,13 @@
         <span class="self">self</span>.<span class="ident">services</span>.<span class="ident">insert</span>(<span class="ident">id</span>, <span class="ident">control</span>);
     }
 
+    <span class="doccomment">/// Stop all running services</span>
     <span class="kw">fn</span> <span class="ident">stop_all</span>(<span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="self">self</span>.<span class="ident">services</span>.<span class="ident">drain</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="number">1</span>.<span class="ident">stop</span>());
         <span class="self">self</span>.<span class="ident">msg_receiver</span>.<span class="ident">close</span>();
     }
 
+    <span class="doccomment">/// Send a message to a service identified by `id`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">send</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="ident">Id</span>, <span class="ident">msg</span>: <span class="ident">RxServiceMessage</span>) {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">services</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>) {
             <span class="kw">if</span> <span class="ident">x</span>.<span class="ident">mailbox_tx</span>.<span class="ident">unbounded_send</span>(<span class="ident">msg</span>).<span class="ident">is_err</span>() {
@@ -367,27 +392,33 @@
     }
 }
 
+<span class="doccomment">/// Control handle for a running service</span>
 <span class="kw">struct</span> <span class="ident">ServiceControl</span> {
     <span class="ident">mailbox_tx</span>: <span class="ident">UnboundedSender</span><span class="op">&lt;</span><span class="ident">RxServiceMessage</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">ServiceControl</span> {
+    <span class="doccomment">/// Send a stop message to the service.</span>
     <span class="kw">fn</span> <span class="ident">stop</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mailbox_tx</span>.<span class="ident">unbounded_send</span>(<span class="ident">RxServiceMessage</span>::<span class="ident">Stop</span>);
     }
 }
 
+<span class="doccomment">/// An executor of a single service.</span>
+<span class="doccomment">/// It manages the lifecycle of the stream.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ServiceRunner</span><span class="op">&lt;</span><span class="ident">Msg</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span> {
     <span class="ident">tx</span>: <span class="ident">UnboundedSender</span><span class="op">&lt;</span><span class="ident">ServiceMessage</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">service</span>: <span class="ident">ServiceSubscription</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span>,
 }
 
+<span class="doccomment">/// Used to merge streams</span>
 <span class="kw">enum</span> <span class="ident">ServiceRunnerMsg</span><span class="op">&lt;</span><span class="ident">Msg</span>: <span class="ident">Send</span><span class="op">&gt;</span> {
     <span class="ident">Tx</span>(<span class="ident">TxServiceMessage</span>),
     <span class="ident">Msg</span>(<span class="ident">Msg</span>),
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Msg</span>: <span class="ident">Send</span><span class="op">&gt;</span> <span class="ident">ServiceRunner</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Spawn a new task and run the contained service in it.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">run</span>(<span class="self">self</span>) {
         <span class="kw">let</span> <span class="ident">runner</span> <span class="op">=</span> <span class="self">self</span>;
         <span class="kw">crate</span>::<span class="ident">platform</span>::<span class="ident">spawn</span>(<span class="kw">async</span> {
@@ -413,6 +444,9 @@
                     }
                 }
             }
+            <span class="comment">// notify the world that the service has stopped.</span>
+            <span class="comment">// if the channel is already broken, the receiving ends have probably hung up</span>
+            <span class="comment">// this is no big deal, we can just ignore this condition.</span>
             <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">runner</span>.<span class="ident">tx</span>.<span class="ident">unbounded_send</span>(<span class="ident">ServiceMessage</span>::<span class="ident">Stopped</span>(<span class="ident">id</span>));
         });
     }
