@@ -14,6 +14,7 @@ use std::fmt::{Debug, Formatter};
 use std::pin::Pin;
 use futures::stream;
 
+/// Message type used to communicate between ServiceRunner and ServiceCollection.
 pub(crate) enum ServiceMessage<Msg> {
     Update(Msg),
     Tx(Id, TxServiceMessage),
@@ -36,6 +37,10 @@ impl<Msg: Debug> Debug for ServiceMessage<Msg> {
     }
 }
 
+/// A registry of services that are being executed
+///
+/// Note that this type is also a `Stream`. All messages
+/// from spawned services are agregated in this stream.
 pub(crate) struct ServiceCollection<Msg> {
     services: HashMap<Id, ServiceControl>,
     msg_receiver: UnboundedReceiver<ServiceMessage<Msg>>,
@@ -71,6 +76,7 @@ impl<Msg: Send> ServiceCollection<Msg> {
         }
     }
 
+    /// Start executing a new service on this `ServiceCollection`.
     pub(crate) fn spawn(&mut self, subs: ServiceSubscription<Msg>) {
         let id = subs.id();
         let mailbox_tx = subs.rxmailbox_tx.clone();
@@ -83,11 +89,13 @@ impl<Msg: Send> ServiceCollection<Msg> {
         self.services.insert(id, control);
     }
 
+    /// Stop all running services
     fn stop_all(mut self) {
         self.services.drain().for_each(|x| x.1.stop());
         self.msg_receiver.close();
     }
 
+    /// Send a message to a service identified by `id`.
     pub(crate) fn send(&mut self, id: Id, msg: RxServiceMessage) {
         if let Some(x) = self.services.get(&id) {
             if x.mailbox_tx.unbounded_send(msg).is_err() {
@@ -98,27 +106,33 @@ impl<Msg: Send> ServiceCollection<Msg> {
     }
 }
 
+/// Control handle for a running service
 struct ServiceControl {
     mailbox_tx: UnboundedSender<RxServiceMessage>,
 }
 
 impl ServiceControl {
+    /// Send a stop message to the service.
     fn stop(&self) {
         let _ = self.mailbox_tx.unbounded_send(RxServiceMessage::Stop);
     }
 }
 
+/// An executor of a single service.
+/// It manages the lifecycle of the stream.
 pub struct ServiceRunner<Msg: 'static + Send> {
     tx: UnboundedSender<ServiceMessage<Msg>>,
     service: ServiceSubscription<Msg>,
 }
 
+/// Used to merge streams
 enum ServiceRunnerMsg<Msg: Send> {
     Tx(TxServiceMessage),
     Msg(Msg),
 }
 
 impl<Msg: Send> ServiceRunner<Msg> {
+    /// Spawn a new task and run the contained service in it.
     pub(crate) fn run(self) {
         let runner = self;
         crate::platform::spawn(async {
@@ -144,6 +158,9 @@ impl<Msg: Send> ServiceRunner<Msg> {
                     }
                 }
             }
+            // notify the world that the service has stopped.
+            // if the channel is already broken, the receiving ends have probably hung up
+            // this is no big deal, we can just ignore this condition.
             let _ = runner.tx.unbounded_send(ServiceMessage::Stopped(id));
         });
     }
