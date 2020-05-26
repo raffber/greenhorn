@@ -144,7 +144,38 @@
 <span id="144">144</span>
 <span id="145">145</span>
 <span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
 </pre><div class="example-wrap"><pre class="rust ">
+<span class="doccomment">//! This module implements a set of built-in system dialogs which </span>
+<span class="doccomment">//! can be shown using [`Context::dialog()`](../context/struct.Context.html#method.dialog).</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! This module supports spawning:</span>
+<span class="doccomment">//! * [`FileSaveDialog`](struct.FileSaveDialog.html)</span>
+<span class="doccomment">//! * [`FileOpenDialog`](struct.FileOpenDialog.html)</span>
+<span class="doccomment">//! * [`MessageBox`](struct.MessageBox.html)</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! This module just provides a common interface for these dialogs.</span>
+<span class="doccomment">//! However, the dialogs actually need to be implemented by a frontend implementation.</span>
+<span class="doccomment">//! This library provides the feature flag `native-dialog` which</span>
+<span class="doccomment">//! makes use of the [tinyfiledialogs-rs](https://github.com/jdm/tinyfiledialogs-rs)</span>
+<span class="doccomment">//! library to show native system dialogs.</span>
+<span class="comment">// This implementation is is available in the [`native_dialog`](native_dialog/index.html) module.</span>
+
 <span class="kw">use</span> <span class="ident">serde</span>::<span class="ident">de</span>::<span class="ident">DeserializeOwned</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::<span class="ident">Serialize</span>;
 <span class="kw">use</span> <span class="ident">serde_json</span>::<span class="ident">Value</span> <span class="kw">as</span> <span class="ident">JsonValue</span>;
@@ -160,9 +191,7 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">file_dialogs</span>::{<span class="ident">FileFilter</span>, <span class="ident">FileOpenDialog</span>, <span class="ident">FileOpenMsg</span>, <span class="ident">FileSaveDialog</span>, <span class="ident">FileSaveMsg</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">msg_box</span>::{<span class="ident">MessageBox</span>, <span class="ident">MessageBoxResult</span>, <span class="ident">MsgBoxIcon</span>, <span class="ident">MsgBoxType</span>};
 
-<span class="comment">// ensure that external crates cannot implement Dialog</span>
-<span class="comment">// otherwise this would allow them to inject unknown data</span>
-<span class="comment">// using `Mailbox::dialog()`.</span>
+<span class="comment">// ensure that external crates cannot implement [`Dialog`](trait.Dialog.html)</span>
 <span class="kw">mod</span> <span class="ident">private</span> {
     <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">dialog</span>::<span class="ident">file_dialogs</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">dialog</span>::<span class="ident">msg_box</span>::<span class="kw-2">*</span>;
@@ -174,12 +203,15 @@
     <span class="kw">impl</span> <span class="ident">Sealed</span> <span class="kw">for</span> <span class="ident">MessageBox</span> {}
 }
 
-<span class="doccomment">/// Interface for modal dialogs. A dialog may be spawned using the `Mailbox::dialog()` function.</span>
+<span class="doccomment">/// Interface for modal dialogs. A dialog may be spawned using</span>
+<span class="doccomment">/// the [`Context::dialog()`](../context/struct.Context.html#method.dialog) function.</span>
 <span class="doccomment">/// Once a dialog closes it resolves to a result captured using the `Msg` type.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Dialog</span>: <span class="ident">private</span>::<span class="ident">Sealed</span> <span class="op">+</span> <span class="ident">Serialize</span> <span class="op">+</span> <span class="ident">DeserializeOwned</span> <span class="op">+</span> <span class="ident">std</span>::<span class="ident">marker</span>::<span class="ident">Sized</span> {
+
+    <span class="doccomment">/// Message type to which the dialog resolves to.</span>
     <span class="kw">type</span> <span class="ident">Msg</span>: <span class="ident">DeserializeOwned</span>;
 
-    <span class="doccomment">/// Must return a type name uniquely identifying this type within all Dialog types.</span>
+    <span class="doccomment">/// Must return a type name uniquely identifying this type of dialog.</span>
     <span class="doccomment">/// This allows the resulting json to be associated to a type upon deserialization.</span>
     <span class="kw">fn</span> <span class="ident">type_name</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>;
 
