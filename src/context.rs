@@ -249,6 +249,7 @@ impl<T: Send + 'static> Context<T> {
     ///
     /// Once the dialog resolves, the `fun` function maps the dialog message type to the
     /// message type of the application.
+    /// Refer to the [`dialog` module](../dialog/index.html) for builtin dialogs.
     pub fn dialog<D: 'static + Dialog, F: 'static + Fn(D::Msg) -> T>(&self, dialog: D, fun: F) {
         let binding = DialogBinding::new(dialog, fun);
         self.tx.send(ContextMsg::Dialog(binding));

@@ -97,6 +97,9 @@ fn handle_file_open(value: JsonValue) -> JsonValue {
     serde_json::to_value(&ret).unwrap()
 }
 
+/// Shows a JSON serialized dialog and returns the serialized result.
+///
+/// This function is blocking and needs to be called in the main thread.
 pub fn show_dialog(value: JsonValue) -> JsonValue {
     let obj = value.as_object().unwrap();
     let tp = obj.get("__type__").unwrap();

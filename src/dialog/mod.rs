@@ -1,3 +1,18 @@
+//! This module implements a set of built-in system dialogs which 
+//! can be shown using [`Context::dialog()`](../context/struct.Context.html#method.dialog).
+//!
+//! This module supports spawning:
+//! * [`FileSaveDialog`](struct.FileSaveDialog.html)
+//! * [`FileOpenDialog`](struct.FileOpenDialog.html)
+//! * [`MessageBox`](struct.MessageBox.html)
+//! 
+//! This module just provides a common interface for these dialogs.
+//! However, the dialogs actually need to be implemented by a frontend implementation.
+//! This library provides the feature flag `native-dialog` which
+//! makes use of the [tinyfiledialogs-rs](https://github.com/jdm/tinyfiledialogs-rs)
+//! library to show native system dialogs.
+// This implementation is is available in the [`native_dialog`](native_dialog/index.html) module.
+
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value as JsonValue;
@@ -13,9 +28,7 @@ pub mod native_dialogs;
 pub use file_dialogs::{FileFilter, FileOpenDialog, FileOpenMsg, FileSaveDialog, FileSaveMsg};
 pub use msg_box::{MessageBox, MessageBoxResult, MsgBoxIcon, MsgBoxType};
 
-// ensure that external crates cannot implement Dialog
-// otherwise this would allow them to inject unknown data
-// using `Mailbox::dialog()`.
+// ensure that external crates cannot implement [`Dialog`](trait.Dialog.html)
 mod private {
     use crate::dialog::file_dialogs::*;
     use crate::dialog::msg_box::*;
@@ -27,12 +40,15 @@ mod private {
     impl Sealed for MessageBox {}
 }
 
-/// Interface for modal dialogs. A dialog may be spawned using the `Mailbox::dialog()` function.
+/// Interface for modal dialogs. A dialog may be spawned using
+/// the [`Context::dialog()`](../context/struct.Context.html#method.dialog) function.
 /// Once a dialog closes it resolves to a result captured using the `Msg` type.
 pub trait Dialog: private::Sealed + Serialize + DeserializeOwned + std::marker::Sized {
+
+    /// Message type to which the dialog resolves to.
     type Msg: DeserializeOwned;
 
-    /// Must return a type name uniquely identifying this type within all Dialog types.
+    /// Must return a type name uniquely identifying this type of dialog.
     /// This allows the resulting json to be associated to a type upon deserialization.
     fn type_name() -> &'static str;
 
