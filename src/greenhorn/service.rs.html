@@ -221,6 +221,57 @@
 <span id="221">221</span>
 <span id="222">222</span>
 <span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module exposes the [Service](trait.Service.html) trait, which allows writing custom agents</span>
 <span class="doccomment">//! communicating with the frontend.</span>
@@ -238,11 +289,11 @@
 <span class="doccomment">/// The `Service` trait allows a type to act as an agent, which communicates over custom messages</span>
 <span class="doccomment">/// with the frontend and injects messages back into the `update()` cycle of the application.</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// After calling the `start()` method, a services produces `Data` items which are injected back</span>
+<span class="doccomment">/// After the `start()` method has been called, a service produces `Data` items which are injected back</span>
 <span class="doccomment">/// into the `update()` cycle of the application.</span>
 <span class="doccomment">/// The service itself can send and receive messages from the frontend</span>
-<span class="doccomment">/// with the [Mailbox](struct.Mailbox.html)</span>
-<span class="doccomment">/// object it has received with the `start()` call.</span>
+<span class="doccomment">/// using the [Mailbox](struct.Mailbox.html)</span>
+<span class="doccomment">/// object it has obtained from the invocation of `start()`.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Example</span>
 <span class="doccomment">///</span>
@@ -386,17 +437,19 @@
     }
 }
 
-<span class="doccomment">/// TxServiceMessage objects a service may send to the frontend</span>
+<span class="doccomment">/// A backend service may send `TxServiceMessage` objects to the frontend.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Messages can be sent using the [Mailbox](struct.Mailbox.html) type.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TxServiceMessage</span> {
-    <span class="ident">Frontend</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
     <span class="ident">RunJs</span>(<span class="ident">String</span>),
     <span class="ident">LoadCss</span>(<span class="ident">String</span>),
 }
 
-<span class="doccomment">/// TxServiceMessage objects a service receives from the frontend</span>
+<span class="doccomment">/// `RxServiceMessage` objects are sent by the frontend and received by the backend.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// Messages may be received using the [Mailbox](struct.Mailbox.html) struct, which</span>
+<span class="doccomment">/// implements `Stream` with `Item = RxServiceMessage`.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RxServiceMessage</span> {
     <span class="ident">Frontend</span>(<span class="ident">String</span>),
@@ -407,23 +460,72 @@
 <span class="doccomment">/// custom messages.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Note that this type implements `Stream` with `Item = RxServiceMessage`.</span>
+<span class="doccomment">/// The frontend may communicate with the service by sending strings to the service.</span>
+<span class="doccomment">/// These messages are emitted as `RxServiceMessage::Frontend(String)`.</span>
+<span class="doccomment">/// In case the application shuts down, it will send the service `RxServiceMessage::Stop`.</span>
+<span class="doccomment">/// This should usually lead to termination of the `Service`.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// Refer to to [`Mailbox::run_js()`](struct.Mailbox.html#method.run_js) for detail on the</span>
+<span class="doccomment">/// javascript API and how to send messages from the frontend to the backend.</span>
+<span class="doccomment">///</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Mailbox</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">rx</span>: <span class="ident">UnboundedReceiver</span><span class="op">&lt;</span><span class="ident">RxServiceMessage</span><span class="op">&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">tx</span>: <span class="ident">UnboundedSender</span><span class="op">&lt;</span><span class="ident">TxServiceMessage</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Mailbox</span> {
-    <span class="doccomment">/// Run a piece of js code on the frontend</span>
+    <span class="doccomment">/// Run a piece of js code on the frontend.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// TODO: document ctx js object</span>
-    <span class="doccomment">/// TODO: add an example</span>
+    <span class="doccomment">/// The javascript code has access to a `Context` object under the</span>
+    <span class="doccomment">/// variable name `ctx`. This object has a `send(msg: String)` function</span>
+    <span class="doccomment">/// which allows sending string from frontend to backend.</span>
+    <span class="doccomment">/// The data can be received by handling messages emitted by the</span>
+    <span class="doccomment">/// `Mailbox` object.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Example</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// # use greenhorn::service::{Service, Mailbox, RxServiceMessage};</span>
+    <span class="doccomment">/// # use std::str::FromStr;</span>
+    <span class="doccomment">/// use futures::{channel::mpsc, StreamExt};</span>
+    <span class="doccomment">/// use greenhorn::platform;</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// struct MyService {}</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// // the javascript code has access to the `ctx` object</span>
+    <span class="doccomment">/// // which has a `send()` function to pass data from the</span>
+    <span class="doccomment">/// // frontend to the backend</span>
+    <span class="doccomment">/// const JS: &amp;str = r#&quot;</span>
+    <span class="doccomment">/// setInterval(function() {</span>
+    <span class="doccomment">///     ctx.send(&#39;123&#39;);</span>
+    <span class="doccomment">/// }</span>
+    <span class="doccomment">/// &quot;#;</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// impl Service for MyService {</span>
+    <span class="doccomment">///     type Data = i32;</span>
+    <span class="doccomment">///     type DataStream = mpsc::UnboundedReceiver&lt;i32&gt;;</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">///     fn start(self, mut mailbox: Mailbox) -&gt; Self::DataStream {</span>
+    <span class="doccomment">///         mailbox.run_js(JS);</span>
+    <span class="doccomment">///         let (tx, rx) = mpsc::unbounded();</span>
+    <span class="doccomment">///         platform::spawn(async move {</span>
+    <span class="doccomment">///             loop {</span>
+    <span class="doccomment">///                 match mailbox.next().await {</span>
+    <span class="doccomment">///                     Some(RxServiceMessage::Frontend(data)) =&gt; {</span>
+    <span class="doccomment">///                         assert_eq!(data, &quot;123&quot;);</span>
+    <span class="doccomment">///                         tx.unbounded_send(123).unwrap();</span>
+    <span class="doccomment">///                     },</span>
+    <span class="doccomment">///                     Some(RxServiceMessage::Stop) =&gt; break,</span>
+    <span class="doccomment">///                     None =&gt; break,</span>
+    <span class="doccomment">///                 }</span>
+    <span class="doccomment">///             }</span>
+    <span class="doccomment">///         });</span>
+    <span class="doccomment">///         rx</span>
+    <span class="doccomment">///     }</span>
+    <span class="doccomment">/// }</span>
+    <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_js</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">code</span>: <span class="ident">T</span>) {
         <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tx</span>.<span class="ident">unbounded_send</span>(<span class="ident">TxServiceMessage</span>::<span class="ident">RunJs</span>(<span class="ident">code</span>.<span class="ident">into</span>()));
-    }
-
-    <span class="doccomment">/// Send data to the service on the frontend</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tx</span>.<span class="ident">unbounded_send</span>(<span class="ident">TxServiceMessage</span>::<span class="ident">Frontend</span>(<span class="ident">data</span>));
     }
 
     <span class="doccomment">/// Load CSS on the frontend</span>

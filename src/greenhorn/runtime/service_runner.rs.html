@@ -326,7 +326,7 @@
 <span class="doccomment">/// A registry of services that are being executed</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Note that this type is also a `Stream`. All messages</span>
-<span class="doccomment">/// from spawned services are agregated in this stream.</span>
+<span class="doccomment">/// from spawned services are merged in this stream.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ServiceCollection</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span> {
     <span class="ident">services</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Id</span>, <span class="ident">ServiceControl</span><span class="op">&gt;</span>,
     <span class="ident">msg_receiver</span>: <span class="ident">UnboundedReceiver</span><span class="op">&lt;</span><span class="ident">ServiceMessage</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span><span class="op">&gt;</span>,

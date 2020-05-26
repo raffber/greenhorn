@@ -188,14 +188,14 @@
 <span id="188">188</span>
 <span id="189">189</span>
 <span id="190">190</span>
+<span id="191">191</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">node_builder</span>::<span class="ident">BlobBuilder</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Id</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>::{<span class="ident">Debug</span>, <span class="ident">Error</span>, <span class="ident">Formatter</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
 
-<span class="doccomment">/// keeps track of all the blob data. `BlobData` objects are</span>
-<span class="doccomment">/// shared between serveral blobs.</span>
+<span class="doccomment">/// Keeps track of all the blob data. `BlobData` objects are shared between several blobs.</span>
 <span class="doccomment">/// Since they are wrapped in `Arc&lt;...&gt;`, blobs are immutable.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">BlobData</span> {
     <span class="ident">hash</span>: <span class="ident">u64</span>,
@@ -206,7 +206,6 @@
     <span class="ident">on_add</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
 }
 
-<span class="doccomment">///</span>
 <span class="doccomment">/// `Blob`s allow transferring binary data from backend to frontend.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// `Blob` objects have an assoociated `id` and `hash` fields to make them comparable and identifiable.</span>
@@ -214,16 +213,18 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// The `id` field is supposed to identify the purpose of the `Blob` within the application.</span>
 <span class="doccomment">/// For example, it might be used to point to an image in the frontend.</span>
-<span class="doccomment">///</span>
 <span class="doccomment">/// The `hash` field should reflect the content of the `Blob`.</span>
 <span class="doccomment">/// It might also be considered the version of the underlying data.</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// Associated to the `Blob` a MIME-type can be provided. This is useful meta information for</span>
-<span class="doccomment">/// media files or similar.</span>
+<span class="doccomment">/// A MIME-type may be associated with a `Blob` object. For example, this is allows</span>
+<span class="doccomment">/// providing meta information for media files or similar.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Blobs require manual javascript interaction on the frontend side. Two hooks are provided:</span>
 <span class="doccomment">///  * `on_change()`: Called whenever the `hash` of a Blob changes, but the `id` remains the same</span>
 <span class="doccomment">///  * `on_add()`: Called when at least the `id` changes</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// Blobs are created using [`BlobBuilder`](../node_builder/struct.BlobBuilder.html) objects,</span>
+<span class="doccomment">/// which are obtained by calling `Blob::build()`.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// ## Example</span>
 <span class="doccomment">///</span>
@@ -231,7 +232,7 @@
 <span class="doccomment">/// # use greenhorn::blob::Blob;</span>
 <span class="doccomment">/// # use greenhorn::Render;</span>
 <span class="doccomment">/// # use greenhorn::node::Node;</span>
-<span class="doccomment">///</span>
+<span class="doccomment">/// #</span>
 <span class="doccomment">/// struct MyImage {</span>
 <span class="doccomment">///     blob: Blob,</span>
 <span class="doccomment">/// }</span>
@@ -270,6 +271,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Blob</span> {
+    <span class="doccomment">/// Start building a `Blob` object.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="ident">hash</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BlobBuilder</span> {
         <span class="ident">BlobBuilder</span> {
             <span class="ident">id</span>: <span class="prelude-val">None</span>,
@@ -284,7 +286,7 @@
     <span class="doccomment">/// Returns the id associated with this blob.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Note that the id and the hash define a unique key to the `Blob`.</span>
-    <span class="doccomment">/// The `id` should define the blob within the application data-flow and is usually</span>
+    <span class="doccomment">/// The `id` should identifies the blob within the applications data-flow and is usually</span>
     <span class="doccomment">/// auto-generated.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Id</span> {
         <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">id</span>
@@ -300,7 +302,7 @@
         <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">hash</span>
     }
 
-    <span class="doccomment">/// Returns the data underlying the Blob</span>
+    <span class="doccomment">/// Returns a reference to the data underlying this `Blob`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">data</span>
     }
@@ -308,6 +310,12 @@
     <span class="doccomment">/// Returns the mime-type of the data</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mime_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">mime_type</span>
+    }
+
+    <span class="doccomment">/// Returns the registered javascript function which is called when the `Blob` is</span>
+    <span class="doccomment">/// added to the frontend.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_add</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">on_add</span>.<span class="ident">as_deref</span>()
     }
 
     <span class="doccomment">/// Returns the registered javascript function which is called if the content of</span>
@@ -319,7 +327,7 @@
     <span class="doccomment">/// # use greenhorn::node::Node;</span>
     <span class="doccomment">/// # use greenhorn::Id;</span>
     <span class="doccomment">/// # use greenhorn::blob::Blob;</span>
-    <span class="doccomment">///</span>
+    <span class="doccomment">/// #</span>
     <span class="doccomment">/// fn render_blob() -&gt; Blob {</span>
     <span class="doccomment">///     let blob_id = Id::new();</span>
     <span class="doccomment">///     let js = format!(&quot;{{</span>
@@ -339,12 +347,6 @@
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_change</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">on_change</span>.<span class="ident">as_deref</span>()
-    }
-
-    <span class="doccomment">/// Returns the registered javascript function which is called when the `Blob` is</span>
-    <span class="doccomment">/// added to the frontend.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_add</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">on_add</span>.<span class="ident">as_deref</span>()
     }
 }
 

@@ -4,11 +4,11 @@
     fn <a href='#tymethod.start' class='fnname'>start</a>(self, mailbox: <a class="struct" href="../../greenhorn/service/struct.Mailbox.html" title="struct greenhorn::service::Mailbox">Mailbox</a>) -&gt; Self::<a class="type" href="../../greenhorn/service/trait.Service.html#associatedtype.DataStream" title="type greenhorn::service::Service::DataStream">DataStream</a>;
 }</pre></div><div class='docblock'><p>The <code>Service</code> trait allows a type to act as an agent, which communicates over custom messages
 with the frontend and injects messages back into the <code>update()</code> cycle of the application.</p>
-<p>After calling the <code>start()</code> method, a services produces <code>Data</code> items which are injected back
+<p>After the <code>start()</code> method has been called, a service produces <code>Data</code> items which are injected back
 into the <code>update()</code> cycle of the application.
 The service itself can send and receive messages from the frontend
-with the <a href="struct.Mailbox.html">Mailbox</a>
-object it has received with the <code>start()</code> call.</p>
+using the <a href="struct.Mailbox.html">Mailbox</a>
+object it has obtained from the invocation of <code>start()</code>.</p>
 <h1 id="example" class="section-header"><a href="#example">Example</a></h1>
 <div class="example-wrap"><pre class="rust rust-example-rendered">
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">channel</span>::<span class="ident">mpsc</span>, <span class="ident">StreamExt</span>};

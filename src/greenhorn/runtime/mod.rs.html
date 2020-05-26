@@ -652,15 +652,15 @@
 <span class="doccomment">/// but a render is scheduled in the runtime</span>
 <span class="kw">const</span> <span class="ident">RENDER_RETRY_INTERVAL_MS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
 
-<span class="doccomment">/// `RuntimeControl` objects are used to control a `Runtime`, which in turn manages a user-defined</span>
-<span class="doccomment">/// application (implementing [`App`](../component/trait.App.html)).</span>
+<span class="doccomment">/// `RuntimeControl` objects are used to control a [`Runtime`](struct.Runtime.html),</span>
+<span class="doccomment">/// which in turn manages a user-defined application (implementing [`App`](../trait.App.html)).</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RuntimeControl</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">App</span><span class="op">&gt;</span> {
     <span class="ident">tx</span>: <span class="ident">UnboundedSender</span><span class="op">&lt;</span><span class="ident">RuntimeMsg</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">App</span><span class="op">&gt;</span> <span class="ident">RuntimeControl</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Quits the event loop of the `Runtime`.</span>
+    <span class="doccomment">/// Quits the event loop of the [`Runtime`](struct.Runtime.html).</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// As a result, the `Runtime::run()` future resolves and the `Runtime::run_blocking()` returns.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">quit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
@@ -692,8 +692,8 @@
 <span class="doccomment">/// They are used to update the `App` underlying the `Runtime` or to affect its lifecycle.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// To execute the backend, the `Runtime` object features two methods:</span>
-<span class="doccomment">///  * the async `run` function</span>
-<span class="doccomment">///  * and the `run_blocking` function</span>
+<span class="doccomment">///  * the async `run()` function</span>
+<span class="doccomment">///  * and the `run_blocking()` function</span>
 <span class="doccomment">/// </span>
 <span class="doccomment">/// Both functions resolve to a [`Metrics`](metrics/struct.Metrics.html) object which provides performance</span>
 <span class="doccomment">/// data of the executed application.</span>
