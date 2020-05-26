@@ -1,15 +1,16 @@
-//! The context module exports the `Context` type, which allows the `update()` cycle of the application
-//! to interface with system services.
+//! The context module exports the [`Context`](struct.Context.html) type,
+//! which is passed into each `update()` cycle and allows interfacing with system services.
 //!
-//! [Context](struct.Context.html) objects support the following features
-//! * Emitting Events - Events trigger a new `update()` cycle
+//! [`Context`](struct.Context.html) objects support the following features:
+//! * Emitting events - This may trigger a new `update()` cycle if an [`Event`](../event/struct.Event.html)
+//!     was subscribed to.
 //! * Loading CSS or JS on the frontend
-//! * spawning futures or streams - the results of either trigger a new `update()` cycle.
-//! * Propagating events to the frontend
-//! * Showing dialogs
+//! * Spawning futures or streams - the results of either trigger a new `update()` cycle.
+//! * Propagating or invoking DOM events on the frontend
+//! * Showing system dialogs
 //! * Quitting the application
 //!
-//! For more details, refer to the [Context](struct.Context.html) type.
+//! For more details, refer to the [`Context`](struct.Context.html) type.
 //!
 
 use crate::dialog::{Dialog, DialogBinding};
@@ -90,7 +91,7 @@ impl<T: 'static, U: 'static, Mapper: 'static + Fn(U) -> T> MappedSender<U>
     }
 }
 
-/// Messages sent from the `Context` to communicate with the `Runtime`
+/// Messages sent from the `Context` to communicate with the `Runtime`.
 pub(crate) enum ContextMsg<T: 'static + Send> {
     Emission(Emission),
     LoadCss(String),
@@ -163,8 +164,8 @@ impl<T: Send + 'static> Context<T> {
     /// Emits an event from the current component.
     ///
     /// This will result in an `update()` call for all components subscribed to this event.
-    /// Emitting [Events](../struct.Event.html) triggers new `update()` cycles of the application
-    /// and allows interchanging messages between components.
+    /// Emitting [Events](../event/struct.Event.html) triggers new `update()` cycles of the application
+    /// and thus allows interchanging messages between components.
     pub fn emit<D: Any>(&self, event: &Event<D>, data: D) {
         let emission = event.emit(data);
         self.tx.send(ContextMsg::Emission(emission));
@@ -175,12 +176,12 @@ impl<T: Send + 'static> Context<T> {
         self.tx.send(ContextMsg::LoadCss(css.into()));
     }
 
-    /// Runs a piece of js code on the frontend
+    /// Runs a piece of javascript code on the frontend
     pub fn run_js<Js: Into<String>>(&self, js: Js) {
         self.tx.send(ContextMsg::RunJs(js.into()));
     }
 
-    /// Spawn a [Service](../service/trait.Service.html) using a mapping function to map
+    /// Spawn a [`Service`](../service/trait.Service.html) using a mapping function to map
     /// the services data items to the current message type
     pub fn run_service<S, F>(&self, service: S, fun: F)
     where
@@ -196,12 +197,13 @@ impl<T: Send + 'static> Context<T> {
         self.tx.send(ContextMsg::Future(Box::pin(fut), false));
     }
 
-    /// Spawns a future which is blocking
+    /// Spawns a future which contains blocking operations. This future might be spawned on
+    /// a different thread-pool to avoid stalling non-blocking futures.
     pub fn spawn_blocking<Fut: 'static + Send + Future<Output = T>>(&self, fut: Fut) {
         self.tx.send(ContextMsg::Future(Box::pin(fut), true));
     }
 
-    /// Subscribe to a stream. Each item the screen issues will be used to `udpate()` the application.
+    /// Subscribe to a stream. Each item the stream issues will be used to `udpate()` the application.
     pub fn subscribe<S: 'static + Send + Stream<Item = T>>(&self, stream: S) {
         self.tx.send(ContextMsg::Stream(Box::pin(stream)));
     }
@@ -217,7 +219,7 @@ impl<T: Send + 'static> Context<T> {
         Context { tx: mapped }
     }
 
-    /// Propagates a previously intercepted js event to the frontend
+    /// Propagates a previously intercepted DOM event to the frontend.
     pub fn propagate(&self, e: DomEvent) {
         self.tx.send(ContextMsg::Propagate(EventPropagate {
             event: e,
@@ -226,7 +228,11 @@ impl<T: Send + 'static> Context<T> {
         }));
     }
 
-    /// Propagates a js event to the frontend executing the default action
+    /// Propagates a DOM event to the frontend executing the default action.
+    ///
+    /// This is useful in case a DOM event handler was registered with
+    /// [`prevent_default()`](../node_builder/struct.ListenerBuilder.html#method.prevent_default).
+    /// and the application has determined that the default action should be executed anyway.
     pub fn default_action(&self, e: DomEvent) {
         self.tx.send(ContextMsg::Propagate(EventPropagate {
             event: e,
@@ -236,7 +242,7 @@ impl<T: Send + 'static> Context<T> {
     }
 
     /// Propagates a previously intercepted js event to the frontend and execute the default
-    /// action
+    /// action.
     pub fn propagate_and_default(&self, e: DomEvent) {
         self.tx.send(ContextMsg::Propagate(EventPropagate {
             event: e,
@@ -250,12 +256,14 @@ impl<T: Send + 'static> Context<T> {
     /// Once the dialog resolves, the `fun` function maps the dialog message type to the
     /// message type of the application.
     /// Refer to the [`dialog` module](../dialog/index.html) for builtin dialogs.
+    /// Note that only one dialog is shown at the same time, since dialogs are usully modal.
+    /// However, multiple dialogs may be enqueued, which will then be shown one after the next.
     pub fn dialog<D: 'static + Dialog, F: 'static + Fn(D::Msg) -> T>(&self, dialog: D, fun: F) {
         let binding = DialogBinding::new(dialog, fun);
         self.tx.send(ContextMsg::Dialog(binding));
     }
 
-    /// Quits the currently running application
+    /// Quits the currently running application and shuts down all associated services.
     pub fn quit(&self) {
         self.tx.send(ContextMsg::Quit);
     }

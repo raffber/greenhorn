@@ -31,15 +31,15 @@ const DEFAULT_RENDER_INTERVAL_MS: u64 = 30;
 /// but a render is scheduled in the runtime
 const RENDER_RETRY_INTERVAL_MS: u64 = 10;
 
-/// `RuntimeControl` objects are used to control a `Runtime`, which in turn manages a user-defined
-/// application (implementing [`App`](../component/trait.App.html)).
+/// `RuntimeControl` objects are used to control a [`Runtime`](struct.Runtime.html),
+/// which in turn manages a user-defined application (implementing [`App`](../trait.App.html)).
 #[derive(Clone)]
 pub struct RuntimeControl<A: App> {
     tx: UnboundedSender<RuntimeMsg<A>>,
 }
 
 impl<A: App> RuntimeControl<A> {
-    /// Quits the event loop of the `Runtime`.
+    /// Quits the event loop of the [`Runtime`](struct.Runtime.html).
     ///
     /// As a result, the `Runtime::run()` future resolves and the `Runtime::run_blocking()` returns.
     pub fn quit(&self) {
@@ -71,8 +71,8 @@ enum RuntimeMsg<A: App> {
 /// They are used to update the `App` underlying the `Runtime` or to affect its lifecycle.
 ///
 /// To execute the backend, the `Runtime` object features two methods:
-///  * the async `run` function
-///  * and the `run_blocking` function
+///  * the async `run()` function
+///  * and the `run_blocking()` function
 /// 
 /// Both functions resolve to a [`Metrics`](metrics/struct.Metrics.html) object which provides performance
 /// data of the executed application.

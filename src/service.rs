@@ -14,11 +14,11 @@ use std::sync::Arc;
 /// The `Service` trait allows a type to act as an agent, which communicates over custom messages
 /// with the frontend and injects messages back into the `update()` cycle of the application.
 ///
-/// After calling the `start()` method, a services produces `Data` items which are injected back
+/// After the `start()` method has been called, a service produces `Data` items which are injected back
 /// into the `update()` cycle of the application.
 /// The service itself can send and receive messages from the frontend
-/// with the [Mailbox](struct.Mailbox.html)
-/// object it has received with the `start()` call.
+/// using the [Mailbox](struct.Mailbox.html)
+/// object it has obtained from the invocation of `start()`.
 ///
 /// # Example
 ///
@@ -162,17 +162,19 @@ impl<T: 'static + Send> Stream for ServiceSubscription<T> {
     }
 }
 
-/// TxServiceMessage objects a service may send to the frontend
+/// A backend service may send `TxServiceMessage` objects to the frontend.
 ///
 /// Messages can be sent using the [Mailbox](struct.Mailbox.html) type.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum TxServiceMessage {
-    Frontend(Vec<u8>),
     RunJs(String),
     LoadCss(String),
 }
 
-/// TxServiceMessage objects a service receives from the frontend
+/// `RxServiceMessage` objects are sent by the frontend and received by the backend.
+///
+/// Messages may be received using the [Mailbox](struct.Mailbox.html) struct, which
+/// implements `Stream` with `Item = RxServiceMessage`.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum RxServiceMessage {
     Frontend(String),
@@ -183,23 +185,72 @@ pub enum RxServiceMessage {
 /// custom messages.
 ///
 /// Note that this type implements `Stream` with `Item = RxServiceMessage`.
+/// The frontend may communicate with the service by sending strings to the service.
+/// These messages are emitted as `RxServiceMessage::Frontend(String)`.
+/// In case the application shuts down, it will send the service `RxServiceMessage::Stop`.
+/// This should usually lead to termination of the `Service`.
+///
+/// Refer to to [`Mailbox::run_js()`](struct.Mailbox.html#method.run_js) for detail on the
+/// javascript API and how to send messages from the frontend to the backend.
+///
 pub struct Mailbox {
     pub(crate) rx: UnboundedReceiver<RxServiceMessage>,
     pub(crate) tx: UnboundedSender<TxServiceMessage>,
 }
 
 impl Mailbox {
-    /// Run a piece of js code on the frontend
+    /// Run a piece of js code on the frontend.
     ///
-    /// TODO: document ctx js object
-    /// TODO: add an example
+    /// The javascript code has access to a `Context` object under the
+    /// variable name `ctx`. This object has a `send(msg: String)` function
+    /// which allows sending string from frontend to backend.
+    /// The data can be received by handling messages emitted by the
+    /// `Mailbox` object.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use greenhorn::service::{Service, Mailbox, RxServiceMessage};
+    /// # use std::str::FromStr;
+    /// use futures::{channel::mpsc, StreamExt};
+    /// use greenhorn::platform;
+    ///
+    /// struct MyService {}
+    ///
+    /// // the javascript code has access to the `ctx` object
+    /// // which has a `send()` function to pass data from the
+    /// // frontend to the backend
+    /// const JS: &str = r#"
+    /// setInterval(function() {
+    ///     ctx.send('123');
+    /// }
+    /// "#;
+    ///
+    /// impl Service for MyService {
+    ///     type Data = i32;
+    ///     type DataStream = mpsc::UnboundedReceiver<i32>;
+    ///
+    ///     fn start(self, mut mailbox: Mailbox) -> Self::DataStream {
+    ///         mailbox.run_js(JS);
+    ///         let (tx, rx) = mpsc::unbounded();
+    ///         platform::spawn(async move {
+    ///             loop {
+    ///                 match mailbox.next().await {
+    ///                     Some(RxServiceMessage::Frontend(data)) => {
+    ///                         assert_eq!(data, "123");
+    ///                         tx.unbounded_send(123).unwrap();
+    ///                     },
+    ///                     Some(RxServiceMessage::Stop) => break,
+    ///                     None => break,
+    ///                 }
+    ///             }
+    ///         });
+    ///         rx
+    ///     }
+    /// }
+    /// ```
     pub fn run_js<T: Into<String>>(&self, code: T) {
         let _ = self.tx.unbounded_send(TxServiceMessage::RunJs(code.into()));
-    }
-
-    /// Send data to the service on the frontend
-    pub fn send_data(&self, data: Vec<u8>) {
-        let _ = self.tx.unbounded_send(TxServiceMessage::Frontend(data));
     }
 
     /// Load CSS on the frontend

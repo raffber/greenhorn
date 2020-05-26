@@ -1,10 +1,10 @@
 //! This modules allows collecting runtime information about a greenhorn application.
 //!
-//! The [Metrics](struct.Metrics.html) object collects performance information during runtime.
-//! The [Runtime](../struct.Runtime.html) objects maintains such a `Metrics` objects and returns
-//! it after running the application to completion.
+//! The [`Metrics`](struct.Metrics.html) object collects performance information during runtime.
+//! The [`Runtime`](../struct.Runtime.html) objects maintains such a [`Metrics`](struct.Metrics.html)
+//! objects and returns it after running the application to completion.
 //!
-//! The performance data is collected in histograms. Refer to the [Histogram](struct.Histogram.html)
+//! The performance data is collected in histograms. Refer to the [`Histogram`](struct.Histogram.html)
 //! object for details.
 //!
 
@@ -24,21 +24,21 @@ use std::time::Duration;
 ///
 /// This is just a new-type for `HdrHistogram` to implement a custom
 /// `serde::Serialize`.
-/// Refer to [HdrHistogram](https://docs.rs/hdrhistogram/7.1.0/hdrhistogram/struct.Histogram.html).
+/// Refer to [`HdrHistogram`](https://docs.rs/hdrhistogram/7.1.0/hdrhistogram/struct.Histogram.html).
 pub struct Histogram(HdrHistogram<u64>);
 
 impl Histogram {
-    /// Refer to [HdrHistogram::new_with_bounds](https://docs.rs/hdrhistogram/7.1.0/hdrhistogram/struct.Histogram.html#method.new_with_bounds).
+    /// Refer to [`HdrHistogram::new_with_bounds()`](https://docs.rs/hdrhistogram/7.1.0/hdrhistogram/struct.Histogram.html#method.new_with_bounds).
     pub fn new_with_bounds(low: u64, high: u64, sigfig: u8) -> Result<Self, CreationError> {
         HdrHistogram::new_with_bounds(low, high, sigfig).map(Histogram)
     }
 
-    /// Refer to [HdrHistogram::record_n](https://docs.rs/hdrhistogram/7.1.0/hdrhistogram/struct.Histogram.html#method.record_n).
+    /// Refer to [`HdrHistogram::record_n()`](https://docs.rs/hdrhistogram/7.1.0/hdrhistogram/struct.Histogram.html#method.record_n).
     pub fn record_n(&mut self, value: u64, count: u64) -> Result<(), RecordError> {
         self.0.record_n(value, count)
     }
 
-    /// Refer to [HdrHistogram::record](https://docs.rs/hdrhistogram/7.1.0/hdrhistogram/struct.Histogram.html#method.record).
+    /// Refer to [`HdrHistogram::record()`](https://docs.rs/hdrhistogram/7.1.0/hdrhistogram/struct.Histogram.html#method.record).
     pub fn record(&mut self, value: u64) -> Result<(), RecordError> {
         self.0.record(value)
     }
@@ -76,15 +76,15 @@ impl Serialize for Histogram {
     }
 }
 
-/// Marks a serializeable type which supplies a [Histogram](struct.Histogram.html)
+/// Marks a type which is `Serialize` and supplies a [`Histogram`](struct.Histogram.html)
 trait Metric: Serialize {
     fn histogram(&self) -> &Histogram;
 }
 
-/// Allows measuring hit count per second of a function.
+/// Allows measuring hit count per second of an action.
 ///
 /// Data is collected in hits per second. The measurement
-/// range is from 1 to 1000 hits per second.
+/// range is from 1 to 1000000 hits per second.
 #[derive(Serialize)]
 pub struct Throughput {
     hist: Histogram,
@@ -100,7 +100,7 @@ impl Throughput {
     /// Create a new `Throughput` object.
     pub fn new() -> Self {
         Self {
-            hist: Histogram::new_with_bounds(1, 1000, 3).unwrap(),
+            hist: Histogram::new_with_bounds(1, 1000000, 3).unwrap(),
             last_update: None,
             last_count: 0,
         }
@@ -147,8 +147,8 @@ impl Metric for Throughput {
 
 /// Allows measures execution time of a function.
 ///
-/// Data is collected in us. The supported execution time range is from
-/// 1us to 1s.
+/// The execution time is measured in microseconds.
+/// The supported execution time ranges from 1us to 1s.
 #[derive(Serialize)]
 pub struct ResponseTime {
     hist: Histogram,
@@ -185,7 +185,7 @@ impl Default for ResponseTime {
     }
 }
 
-/// Collects `render()` performance information about a [Component](../../component/struct.Component.html).
+/// Collects `render()` performance information about a [`Component`](../../component/struct.Component.html).
 ///
 /// Records how often the a function of a `Component` is called and records the time
 /// each call requires to complete.
@@ -208,7 +208,7 @@ impl ComponentMetric {
     }
 }
 
-/// Aggregation of metrics collected during execution of a [Runtime](../struct.Runtime.html) object.
+/// Aggregation of metrics collected during execution of a [`Runtime`](../struct.Runtime.html) object.
 #[derive(Serialize, Default)]
 pub struct Metrics {
     /// `render()` performance and hit count for each component
@@ -223,7 +223,7 @@ pub struct Metrics {
     /// Collects the time required to diff the VDom which resulted in an empty patch
     ///
     /// This condition might be avoided by correctly reporting whether a component should
-    /// re-render using an [Updated](struct.Updated.html) object.
+    /// re-render using an [`Updated`](../../component/struct.Updated.html) object.
     pub empty_patch: ResponseTime,
 }
 

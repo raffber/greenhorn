@@ -1,14 +1,14 @@
-//! This module provides the [AnyApp](struct.AnyApp.html) wrapper which allows dynamically exchanging
+//! This module provides the [`AnyApp`](struct.AnyApp.html) wrapper which allows dynamically exchanging
 //! components with different message types.
 //!
 //! ## Motivating Example
 //!
 //! Given a property pane which shows the user different properties based on his selection.
-//! In a scene, any objects could be selected and upon changing the selection, the property view
+//! In a scene, any object could be selected and upon changing the selection, the property view
 //! is exchanged.
 //!
-//! In this case, the [AnyApp](struct.AnyApp.html) can be used to dynamically switch between the
-//! property views, without wrapping each possible message type into an enum.
+//! In this case, the [`AnyApp`](struct.AnyApp.html) may be used to dynamically switch between the
+//! property views of different types, without wrapping each possible message type into an enum.
 //!
 //! ```
 //! # use greenhorn::any::AnyApp;
@@ -57,8 +57,8 @@ use crate::node::Node;
 use crate::{App, Render, Updated};
 use std::any::Any;
 
-/// Wraps an type implementing [App](../trait.App.html), and as a consequence also [Render](../trait.Render.html)),
-/// and exposes a new `App`/`Render` implementation with the dynamic [AnyMsg](type.AnyMsg.htm) type.
+/// Wraps a type implementing [`App`](../trait.App.html), and as a consequence also [`Render`](../trait.Render.html)),
+/// and exposes a new `App`/`Render` implementation with the dynamic [`AnyMsg`](type.AnyMsg.html) type.
 ///
 /// ## Panics
 ///
@@ -98,7 +98,7 @@ impl App for AnyApp {
     }
 }
 
-/// internal type for erasing the type of an App implementation.
+/// Internal type for erasing the type of an App implementation.
 /// Note that when receiving a wrong message type, the `update()` function panics.
 struct AnyAppConverter<T: App<Message = M>, M: Any + Send + 'static> {
     inner: T,

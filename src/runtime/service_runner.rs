@@ -40,7 +40,7 @@ impl<Msg: Debug> Debug for ServiceMessage<Msg> {
 /// A registry of services that are being executed
 ///
 /// Note that this type is also a `Stream`. All messages
-/// from spawned services are agregated in this stream.
+/// from spawned services are merged in this stream.
 pub(crate) struct ServiceCollection<Msg> {
     services: HashMap<Id, ServiceControl>,
     msg_receiver: UnboundedReceiver<ServiceMessage<Msg>>,

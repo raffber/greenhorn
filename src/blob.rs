@@ -3,8 +3,7 @@ use crate::Id;
 use std::fmt::{Debug, Error, Formatter};
 use std::sync::Arc;
 
-/// keeps track of all the blob data. `BlobData` objects are
-/// shared between serveral blobs.
+/// Keeps track of all the blob data. `BlobData` objects are shared between several blobs.
 /// Since they are wrapped in `Arc<...>`, blobs are immutable.
 pub(crate) struct BlobData {
     hash: u64,
@@ -15,7 +14,6 @@ pub(crate) struct BlobData {
     on_add: Option<String>,
 }
 
-///
 /// `Blob`s allow transferring binary data from backend to frontend.
 ///
 /// `Blob` objects have an assoociated `id` and `hash` fields to make them comparable and identifiable.
@@ -23,16 +21,18 @@ pub(crate) struct BlobData {
 ///
 /// The `id` field is supposed to identify the purpose of the `Blob` within the application.
 /// For example, it might be used to point to an image in the frontend.
-///
 /// The `hash` field should reflect the content of the `Blob`.
 /// It might also be considered the version of the underlying data.
 ///
-/// Associated to the `Blob` a MIME-type can be provided. This is useful meta information for
-/// media files or similar.
+/// A MIME-type may be associated with a `Blob` object. For example, this is allows
+/// providing meta information for media files or similar.
 ///
 /// Blobs require manual javascript interaction on the frontend side. Two hooks are provided:
 ///  * `on_change()`: Called whenever the `hash` of a Blob changes, but the `id` remains the same
 ///  * `on_add()`: Called when at least the `id` changes
+///
+/// Blobs are created using [`BlobBuilder`](../node_builder/struct.BlobBuilder.html) objects,
+/// which are obtained by calling `Blob::build()`.
 ///
 /// ## Example
 ///
@@ -40,7 +40,7 @@ pub(crate) struct BlobData {
 /// # use greenhorn::blob::Blob;
 /// # use greenhorn::Render;
 /// # use greenhorn::node::Node;
-///
+/// #
 /// struct MyImage {
 ///     blob: Blob,
 /// }
@@ -79,6 +79,7 @@ pub struct Blob {
 }
 
 impl Blob {
+    /// Start building a `Blob` object.
     pub fn build(hash: u64) -> BlobBuilder {
         BlobBuilder {
             id: None,
@@ -93,7 +94,7 @@ impl Blob {
     /// Returns the id associated with this blob.
     ///
     /// Note that the id and the hash define a unique key to the `Blob`.
-    /// The `id` should define the blob within the application data-flow and is usually
+    /// The `id` should identifies the blob within the applications data-flow and is usually
     /// auto-generated.
     pub fn id(&self) -> Id {
         self.inner.id
@@ -109,7 +110,7 @@ impl Blob {
         self.inner.hash
     }
 
-    /// Returns the data underlying the Blob
+    /// Returns a reference to the data underlying this `Blob`
     pub fn data(&self) -> &Vec<u8> {
         &self.inner.data
     }
@@ -117,6 +118,12 @@ impl Blob {
     /// Returns the mime-type of the data
     pub fn mime_type(&self) -> &str {
         &self.inner.mime_type
+    }
+
+    /// Returns the registered javascript function which is called when the `Blob` is
+    /// added to the frontend.
+    pub fn on_add(&self) -> Option<&str> {
+        self.inner.on_add.as_deref()
     }
 
     /// Returns the registered javascript function which is called if the content of
@@ -128,7 +135,7 @@ impl Blob {
     /// # use greenhorn::node::Node;
     /// # use greenhorn::Id;
     /// # use greenhorn::blob::Blob;
-    ///
+    /// #
     /// fn render_blob() -> Blob {
     ///     let blob_id = Id::new();
     ///     let js = format!("{{
@@ -148,12 +155,6 @@ impl Blob {
     /// ```
     pub fn on_change(&self) -> Option<&str> {
         self.inner.on_change.as_deref()
-    }
-
-    /// Returns the registered javascript function which is called when the `Blob` is
-    /// added to the frontend.
-    pub fn on_add(&self) -> Option<&str> {
-        self.inner.on_add.as_deref()
     }
 }
 
