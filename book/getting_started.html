@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Deploying with Webview - greenhorn</title>
+        <title>Getting Started - greenhorn</title>
         
 
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
@@ -81,7 +81,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="getting_started.html"><strong aria-hidden="true">2.</strong> Getting Started</a></li><li class="chapter-item expanded "><a href="js_interop.html"><strong aria-hidden="true">3.</strong> Interop with Javascript</a></li><li class="chapter-item expanded "><a href="deploy_webview.html" class="active"><strong aria-hidden="true">4.</strong> Deploying with Webview</a></li><li class="chapter-item expanded "><a href="deploy_wasm.html"><strong aria-hidden="true">5.</strong> Deploying in a Browser</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="getting_started.html" class="active"><strong aria-hidden="true">2.</strong> Getting Started</a></li><li class="chapter-item expanded "><a href="js_interop.html"><strong aria-hidden="true">3.</strong> Interop with Javascript</a></li><li class="chapter-item expanded "><a href="deploy_webview.html"><strong aria-hidden="true">4.</strong> Deploying with Webview</a></li><li class="chapter-item expanded "><a href="deploy_wasm.html"><strong aria-hidden="true">5.</strong> Deploying in a Browser</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -147,19 +147,47 @@
 
                 <div id="content" class="content">
                     <main>
-                        
+                        <h1><a class="header" href="#getting-started" id="getting-started">Getting Started</a></h1>
+<p>It is recommended to split the application and it's deployment into different crates.
+This has the advantage that the same application can be easily deployed with several different methods but the 
+structure of the repository can be kept clean.
+However to simplify the setup of this tutorial, we will skip this step.</p>
+<p>Futhermore, we will use <a href="https://www.electronjs.org/">electron</a> to deploy a desktop application.
+Currently, this is the recommended method to deploy <code>greenhorn</code> applications.
+To simplify the project setup, start by cloning the quickstart repository:</p>
+<pre><code class="language-bash">git clone https://github.com/raffber/greenhorn-electron-quickstart
+</code></pre>
+<p>This quickstart repo makes us of the following tools:</p>
+<ul>
+<li><a href="https://neon-bindings.com/">neon</a> to compile rust modules for nodejs</li>
+<li><a href="https://webpack.js.org/">webpack</a> to bundle JS and CSS assets</li>
+<li><a href="https://www.electronjs.org/">electron</a> as browser frontend</li>
+<li><a href="https://github.com/electron-userland/electron-builder">electron-builder</a> to package the app into an installer</li>
+</ul>
+<p>Then, setup the nodejs environment (make sure you have <code>nodejs</code> and <code>npm</code> installed):</p>
+<pre><code class="language-bash">npm install
+</code></pre>
+<p>Compiling and running the application can be achieved using <code>npm</code>:</p>
+<pre><code class="language-bash">npm run start
+</code></pre>
+<p>This will compile the application in debug mode and run electron.
+Finally, if you want to package the application, use:</p>
+<pre><code class="language-bash">npm run package
+</code></pre>
+<p>That's it for the project setup. You are now ready to start developping you app.</p>
+
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="js_interop.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="intro.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="deploy_wasm.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="js_interop.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -171,13 +199,13 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a rel="prev" href="js_interop.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="intro.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a rel="next" href="deploy_wasm.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="js_interop.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

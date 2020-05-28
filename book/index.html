@@ -81,7 +81,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="js_interop.html"><strong aria-hidden="true">2.</strong> Interop with Javascript</a></li><li class="chapter-item expanded "><a href="deploy_webview.html"><strong aria-hidden="true">3.</strong> Deploying with Webview</a></li><li class="chapter-item expanded "><a href="deploy_wasm.html"><strong aria-hidden="true">4.</strong> Deploying in a Browser</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="getting_started.html"><strong aria-hidden="true">2.</strong> Getting Started</a></li><li class="chapter-item expanded "><a href="js_interop.html"><strong aria-hidden="true">3.</strong> Interop with Javascript</a></li><li class="chapter-item expanded "><a href="deploy_webview.html"><strong aria-hidden="true">4.</strong> Deploying with Webview</a></li><li class="chapter-item expanded "><a href="deploy_wasm.html"><strong aria-hidden="true">5.</strong> Deploying in a Browser</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -165,20 +165,24 @@ The <code>greenhorn_web_view</code> crates serves as an adapter for it. This is 
 Refer to this <a href="./deploy_webview.html">page for details</a>.</p>
 </li>
 <li>
-<p>greenhorn application may be deployed in a webbrowser. Refer to <a href="./deploy_wasm.m">this page for details</a>
+<p>greenhorn application may be deployed in a webbrowser. Refer to <a href="./deploy_wasm.html">this page for details</a>
 and check out <a href="https://github.com/raffber/greenhorn/tree/master/examples/todomvc/wasm">this example</a>.</p>
 </li>
 <li>
-<p>Desktop applications may also be deployed with electron. An example is still pending.</p>
+<p>Desktop applications may also be deployed with electron. <strong>Currently, this the recommended and best tested method</strong>.</p>
 </li>
 </ul>
 <h2><a class="header" href="#examples" id="examples">Examples</a></h2>
 <p>A <code>todomvc</code> example is presented in the repository at <code>examples/todomvc</code>:</p>
 <ul>
-<li>The core applications logic is located in the <code>lib</code> crate.</li>
-<li>A deployment example for <a href="https://github.com/Boscop/web-view">WebView</a> is given in the <code>webview</code> crate.</li>
-<li>An example of how to deploy with <code>electron</code> is planned.</li>
+<li>The core application logic is located in the <code>lib</code> crate</li>
+<li>A deployment example for <a href="https://github.com/Boscop/web-view">WebView</a> is given in the <code>webview</code> crate</li>
+<li>An example of how to deploy with <a href="https://www.electronjs.org/">Electron</a> in the <code>electron</code> directory</li>
+<li>A browser version of the application in the <code>wasm</code> directory</li>
 </ul>
+<h2><a class="header" href="#quickstart" id="quickstart">Quickstart</a></h2>
+<p>Use the following repository to quick-start development of an electron based application:
+<a href="https://github.com/raffber/greenhorn-electron-quickstart">https://github.com/raffber/greenhorn-electron-quickstart</a></p>
 
                     </main>
 
@@ -187,7 +191,7 @@ and check out <a href="https://github.com/raffber/greenhorn/tree/master/examples
                         
 
                         
-                            <a rel="next" href="js_interop.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="getting_started.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -201,7 +205,7 @@ and check out <a href="https://github.com/raffber/greenhorn/tree/master/examples
                 
 
                 
-                    <a rel="next" href="js_interop.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="getting_started.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

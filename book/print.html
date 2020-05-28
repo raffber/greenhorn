@@ -83,7 +83,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="js_interop.html"><strong aria-hidden="true">2.</strong> Interop with Javascript</a></li><li class="chapter-item expanded "><a href="deploy_webview.html"><strong aria-hidden="true">3.</strong> Deploying with Webview</a></li><li class="chapter-item expanded "><a href="deploy_wasm.html"><strong aria-hidden="true">4.</strong> Deploying in a Browser</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="getting_started.html"><strong aria-hidden="true">2.</strong> Getting Started</a></li><li class="chapter-item expanded "><a href="js_interop.html"><strong aria-hidden="true">3.</strong> Interop with Javascript</a></li><li class="chapter-item expanded "><a href="deploy_webview.html"><strong aria-hidden="true">4.</strong> Deploying with Webview</a></li><li class="chapter-item expanded "><a href="deploy_wasm.html"><strong aria-hidden="true">5.</strong> Deploying in a Browser</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -167,20 +167,52 @@ The <code>greenhorn_web_view</code> crates serves as an adapter for it. This is 
 Refer to this <a href="./deploy_webview.html">page for details</a>.</p>
 </li>
 <li>
-<p>greenhorn application may be deployed in a webbrowser. Refer to <a href="./deploy_wasm.m">this page for details</a>
+<p>greenhorn application may be deployed in a webbrowser. Refer to <a href="./deploy_wasm.html">this page for details</a>
 and check out <a href="https://github.com/raffber/greenhorn/tree/master/examples/todomvc/wasm">this example</a>.</p>
 </li>
 <li>
-<p>Desktop applications may also be deployed with electron. An example is still pending.</p>
+<p>Desktop applications may also be deployed with electron. <strong>Currently, this the recommended and best tested method</strong>.</p>
 </li>
 </ul>
 <h2><a class="header" href="#examples" id="examples">Examples</a></h2>
 <p>A <code>todomvc</code> example is presented in the repository at <code>examples/todomvc</code>:</p>
 <ul>
-<li>The core applications logic is located in the <code>lib</code> crate.</li>
-<li>A deployment example for <a href="https://github.com/Boscop/web-view">WebView</a> is given in the <code>webview</code> crate.</li>
-<li>An example of how to deploy with <code>electron</code> is planned.</li>
+<li>The core application logic is located in the <code>lib</code> crate</li>
+<li>A deployment example for <a href="https://github.com/Boscop/web-view">WebView</a> is given in the <code>webview</code> crate</li>
+<li>An example of how to deploy with <a href="https://www.electronjs.org/">Electron</a> in the <code>electron</code> directory</li>
+<li>A browser version of the application in the <code>wasm</code> directory</li>
 </ul>
+<h2><a class="header" href="#quickstart" id="quickstart">Quickstart</a></h2>
+<p>Use the following repository to quick-start development of an electron based application:
+<a href="https://github.com/raffber/greenhorn-electron-quickstart">https://github.com/raffber/greenhorn-electron-quickstart</a></p>
+<h1><a class="header" href="#getting-started" id="getting-started">Getting Started</a></h1>
+<p>It is recommended to split the application and it's deployment into different crates.
+This has the advantage that the same application can be easily deployed with several different methods but the 
+structure of the repository can be kept clean.
+However to simplify the setup of this tutorial, we will skip this step.</p>
+<p>Futhermore, we will use <a href="https://www.electronjs.org/">electron</a> to deploy a desktop application.
+Currently, this is the recommended method to deploy <code>greenhorn</code> applications.
+To simplify the project setup, start by cloning the quickstart repository:</p>
+<pre><code class="language-bash">git clone https://github.com/raffber/greenhorn-electron-quickstart
+</code></pre>
+<p>This quickstart repo makes us of the following tools:</p>
+<ul>
+<li><a href="https://neon-bindings.com/">neon</a> to compile rust modules for nodejs</li>
+<li><a href="https://webpack.js.org/">webpack</a> to bundle JS and CSS assets</li>
+<li><a href="https://www.electronjs.org/">electron</a> as browser frontend</li>
+<li><a href="https://github.com/electron-userland/electron-builder">electron-builder</a> to package the app into an installer</li>
+</ul>
+<p>Then, setup the nodejs environment (make sure you have <code>nodejs</code> and <code>npm</code> installed):</p>
+<pre><code class="language-bash">npm install
+</code></pre>
+<p>Compiling and running the application can be achieved using <code>npm</code>:</p>
+<pre><code class="language-bash">npm run start
+</code></pre>
+<p>This will compile the application in debug mode and run electron.
+Finally, if you want to package the application, use:</p>
+<pre><code class="language-bash">npm run package
+</code></pre>
+<p>That's it for the project setup. You are now ready to start developping you app.</p>
 
                     </main>
 
