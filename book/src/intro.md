@@ -18,17 +18,22 @@ The greenhorn library is not opinionated on how to deploy applications. However,
 The `greenhorn_web_view` crates serves as an adapter for it. This is the easiest deployment method for desktop operating systems.
 Refer to this [page for details](./deploy_webview.md).
 
- * greenhorn application may be deployed in a webbrowser. Refer to [this page for details](./deploy_wasm.m)
+ * greenhorn application may be deployed in a webbrowser. Refer to [this page for details](./deploy_wasm.md)
  and check out [this example](https://github.com/raffber/greenhorn/tree/master/examples/todomvc/wasm).
 
- * Desktop applications may also be deployed with electron. An example is still pending.
+ * Desktop applications may also be deployed with electron. **Currently, this the recommended and best tested method**.
 
 ## Examples
 
 A `todomvc` example is presented in the repository at `examples/todomvc`:
 
- * The core applications logic is located in the `lib` crate.
- * A deployment example for [WebView](https://github.com/Boscop/web-view) is given in the `webview` crate.
- * An example of how to deploy with `electron` is planned.
+ * The core application logic is located in the `lib` crate
+ * A deployment example for [WebView](https://github.com/Boscop/web-view) is given in the `webview` crate
+ * An example of how to deploy with [Electron](https://www.electronjs.org/) in the `electron` directory
+ * A browser version of the application in the `wasm` directory
 
+## Quickstart
+
+Use the following repository to quick-start development of an electron based application:
+[https://github.com/raffber/greenhorn-electron-quickstart](https://github.com/raffber/greenhorn-electron-quickstart)
 
