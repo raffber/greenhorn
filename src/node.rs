@@ -96,6 +96,11 @@ impl<T: 'static + Send> Debug for Node<T> {
 }
 
 impl<T: 'static + Send> Node<T> {
+
+    pub fn new_from_iter<S: Iterator<Item=Node<T>>>(nodes: S) -> Self {
+        Node(NodeItems::FlatMap(nodes.collect()))
+    }
+
     /// Create a [NodeBuilder](../node_builder/struct.NodeBuilder.html) for HTML elements
     pub fn html() -> NodeBuilder<T> {
         NodeBuilder::new()
