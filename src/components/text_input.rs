@@ -28,6 +28,7 @@ pub struct TextInputSubscription<T: 'static + Send> {
 pub struct TextInput {
     text: String,
     version: u32,
+    change_event: Event<String>,
 }
 
 impl TextInput {
@@ -35,7 +36,12 @@ impl TextInput {
         Self {
             text: "".to_string(),
             version: 0,
+            change_event: Default::default()
         }
+    }
+
+    pub fn change_event(&self) -> &Event<String> {
+        &self.change_event
     }
 
     pub fn set<S: Into<String>>(&mut self, value: S) {
@@ -49,7 +55,10 @@ impl TextInput {
 
     pub fn update<T: 'static + Send>(&mut self, msg: TextInputMsg, ctx: &Context<T>) {
         match msg {
-            TextInputMsg::ValueChange(evt) => self.text = evt.target_value().get_text().unwrap(),
+            TextInputMsg::ValueChange(evt) => {
+                self.text = evt.target_value().get_text().unwrap();
+                ctx.emit(&self.change_event, self.text.clone());
+            },
             TextInputMsg::SubscribedEvent(subs) => {
                 ctx.emit(&subs.component_event, subs.evt);
             }
