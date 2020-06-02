@@ -32,7 +32,7 @@ use std::sync::Arc;
 pub(crate) fn render_component<A: App>(
     dom: Node<A::Message>,
     result: &mut Vec<ResultItem<A>>,
-) -> Option<VNode> {
+) -> Vec<VNode> {
     let mut path = Path::new();
     render_recursive(dom, result, &mut path)
 }
@@ -43,23 +43,40 @@ fn render_recursive<A: App>(
     dom: Node<A::Message>,
     result: &mut Vec<ResultItem<A>>,
     path: &mut Path,
-) -> Option<VNode> {
+) -> Vec<VNode> {
     match dom.0 {
-        NodeItems::ElementMap(mut elem) => render_element(&mut *elem.inner, result, path),
+        NodeItems::ElementMap(mut elem) => {
+            if let Some(x) = render_element(&mut *elem.inner, result, path) {
+                vec![x]
+            } else {
+                vec![]
+            }
+        }
         NodeItems::Component(comp) => {
             let id = comp.id();
             result.push(ResultItem::Component(comp, path.clone()));
-            Some(VNode::Placeholder(id, path.clone()))
+            vec![VNode::Placeholder(id, path.clone())]
         }
-        NodeItems::Text(text) => Some(VNode::text(text)),
-        NodeItems::Element(mut elem) => render_element(&mut elem, result, path),
+        NodeItems::Text(text) => vec![VNode::text(text)],
+        NodeItems::Element(mut elem) => {
+            if let Some(x) = render_element(&mut elem, result, path) {
+                vec![x]
+            } else {
+                vec![]
+            }
+        }
         NodeItems::EventSubscription(event_id, subs) => {
             result.push(ResultItem::Subscription(event_id, subs));
-            None
+            Vec::new()
         }
         NodeItems::Blob(blob) => {
             result.push(ResultItem::Blob(blob));
-            None
+            Vec::new()
+        }
+        NodeItems::FlatMap(mut nodes) => {
+            nodes.drain(..)
+                .flat_map(|x| render_recursive(x, result, path))
+                .collect()
         }
     }
 }
@@ -77,9 +94,7 @@ fn render_element<A: App>(
         path.pop();
         path.push(k);
         let child = render_component(child, result);
-        if let Some(child) = child {
-            children.push(child);
-        }
+        children.extend(child);
     }
     let mut events = Vec::new();
     for listener in elem.take_listeners().drain(..) {
@@ -154,8 +169,11 @@ impl<A: App> RenderResult<A> {
     /// Re-renders the whole component tree.
     pub(crate) fn new_from_root(root_rendered: Node<A::Message>, metrics: &mut Metrics) -> Self {
         let mut result = Vec::new();
-        let vdom =
-            render_component::<A>(root_rendered, &mut result).expect("Root produced an empty DOM");
+        let mut vdom = render_component::<A>(root_rendered, &mut result);
+        if vdom.len() != 1 {
+            panic!("The DOM of the root app must be represented by exactly one DOM node");
+        }
+        let vdom = vdom.drain(0..1).next().unwrap();
 
         let mut ret = Self {
             listeners: Default::default(),

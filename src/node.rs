@@ -76,6 +76,7 @@ pub(crate) enum NodeItems<T: 'static + Send> {
     Element(Element<T>),
     Blob(Blob),
     EventSubscription(Id, Subscription<T>),
+    FlatMap(Vec<Node<T>>),
 }
 
 impl<T: 'static + Send> Debug for Node<T> {
@@ -87,6 +88,9 @@ impl<T: 'static + Send> Debug for Node<T> {
             NodeItems::Element(elem) => elem.fmt(f),
             NodeItems::EventSubscription(_, subs) => subs.fmt(f),
             NodeItems::Blob(blob) => blob.fmt(f),
+            NodeItems::FlatMap(nodes) => {
+                nodes.iter().map(|x| x.fmt(f)).collect()
+            }
         }
     }
 }
@@ -167,6 +171,13 @@ impl<T: 'static + Send> Node<T> {
             NodeItems::Element(elem) => NodeItems::ElementMap(ElementMapDirect::new_box(fun, elem)),
             NodeItems::EventSubscription(id, evt) => NodeItems::EventSubscription(id, evt.map(fun)),
             NodeItems::Blob(blob) => NodeItems::Blob(blob),
+            NodeItems::FlatMap(mut nodes) => {
+                NodeItems::FlatMap(
+                    nodes.drain(..)
+                        .map(|x| x.map_shared(fun.clone()))
+                        .collect()
+                )
+            }
         };
         Node(ret)
     }
@@ -202,6 +213,9 @@ impl<T: 'static + Send> Node<T> {
             }
             NodeItems::EventSubscription(_, _) => panic!(),
             NodeItems::Blob(blob) => Node(NodeItems::Blob(blob)),
+            NodeItems::FlatMap(mut nodes) => {
+                Node(NodeItems::FlatMap(nodes.drain(..).map(|x| x.empty_map()).collect()))
+            }
         }
     }
 
