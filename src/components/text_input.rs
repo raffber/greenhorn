@@ -127,8 +127,8 @@ impl<T: 'static + Send> TextInputRender<T> {
     }
 
     pub fn render(self) -> Node<T> {
-        let mut parent = Node::html().elem("div");
         let mut input_node = self.input_node;
+        let mut subscriptions: Vec<Node<T>> = Vec::new();
         for (evt_name, subs) in &self.events {
             let event_cloned = subs.event.clone();
             let fun = move |evt| {
@@ -141,10 +141,11 @@ impl<T: 'static + Send> TextInputRender<T> {
             input_node = input_node.on(evt_name, fun);
             let fun = subs.mapper.clone();
             let subscription = subs.event.subscribe(move |evt| (*fun.lock().unwrap())(evt));
-            parent = parent.add(subscription);
+            subscriptions.push(subscription.into());
         }
-        parent = parent.add(input_node.build().map_shared(self.mapper));
-        parent.build()
+        let input_node = input_node.build().map_shared(self.mapper);
+        let iter = subscriptions.drain(..).chain(once(input_node));
+        Node::new_from_iter(iter)
     }
 }
 
