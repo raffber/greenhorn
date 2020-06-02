@@ -224,6 +224,20 @@
 <span id="224">224</span>
 <span id="225">225</span>
 <span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">blob</span>::<span class="ident">Blob</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">component</span>::{<span class="ident">ComponentContainer</span>, <span class="ident">MappedComponent</span>};
@@ -303,6 +317,7 @@
     <span class="ident">Element</span>(<span class="ident">Element</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>),
     <span class="ident">Blob</span>(<span class="ident">Blob</span>),
     <span class="ident">EventSubscription</span>(<span class="ident">Id</span>, <span class="ident">Subscription</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>),
+    <span class="ident">FlatMap</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span>),
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Node</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
@@ -314,6 +329,9 @@
             <span class="ident">NodeItems</span>::<span class="ident">Element</span>(<span class="ident">elem</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">elem</span>.<span class="ident">fmt</span>(<span class="ident">f</span>),
             <span class="ident">NodeItems</span>::<span class="ident">EventSubscription</span>(<span class="kw">_</span>, <span class="ident">subs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">subs</span>.<span class="ident">fmt</span>(<span class="ident">f</span>),
             <span class="ident">NodeItems</span>::<span class="ident">Blob</span>(<span class="ident">blob</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">blob</span>.<span class="ident">fmt</span>(<span class="ident">f</span>),
+            <span class="ident">NodeItems</span>::<span class="ident">FlatMap</span>(<span class="ident">nodes</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">nodes</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">fmt</span>(<span class="ident">f</span>)).<span class="ident">collect</span>()
+            }
         }
     }
 }
@@ -394,6 +412,13 @@
             <span class="ident">NodeItems</span>::<span class="ident">Element</span>(<span class="ident">elem</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">NodeItems</span>::<span class="ident">ElementMap</span>(<span class="ident">ElementMapDirect</span>::<span class="ident">new_box</span>(<span class="ident">fun</span>, <span class="ident">elem</span>)),
             <span class="ident">NodeItems</span>::<span class="ident">EventSubscription</span>(<span class="ident">id</span>, <span class="ident">evt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">NodeItems</span>::<span class="ident">EventSubscription</span>(<span class="ident">id</span>, <span class="ident">evt</span>.<span class="ident">map</span>(<span class="ident">fun</span>)),
             <span class="ident">NodeItems</span>::<span class="ident">Blob</span>(<span class="ident">blob</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">NodeItems</span>::<span class="ident">Blob</span>(<span class="ident">blob</span>),
+            <span class="ident">NodeItems</span>::<span class="ident">FlatMap</span>(<span class="kw-2">mut</span> <span class="ident">nodes</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">NodeItems</span>::<span class="ident">FlatMap</span>(
+                    <span class="ident">nodes</span>.<span class="ident">drain</span>(..)
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">map_shared</span>(<span class="ident">fun</span>.<span class="ident">clone</span>()))
+                        .<span class="ident">collect</span>()
+                )
+            }
         };
         <span class="ident">Node</span>(<span class="ident">ret</span>)
     }
@@ -429,6 +454,9 @@
             }
             <span class="ident">NodeItems</span>::<span class="ident">EventSubscription</span>(<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(),
             <span class="ident">NodeItems</span>::<span class="ident">Blob</span>(<span class="ident">blob</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Node</span>(<span class="ident">NodeItems</span>::<span class="ident">Blob</span>(<span class="ident">blob</span>)),
+            <span class="ident">NodeItems</span>::<span class="ident">FlatMap</span>(<span class="kw-2">mut</span> <span class="ident">nodes</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Node</span>(<span class="ident">NodeItems</span>::<span class="ident">FlatMap</span>(<span class="ident">nodes</span>.<span class="ident">drain</span>(..).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">empty_map</span>()).<span class="ident">collect</span>()))
+            }
         }
     }
 

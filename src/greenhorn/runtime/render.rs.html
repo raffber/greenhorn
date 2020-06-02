@@ -317,6 +317,24 @@
 <span id="317">317</span>
 <span id="318">318</span>
 <span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module implements facilities to render components to a VDOM.</span>
 <span class="doccomment">//!</span>
@@ -352,7 +370,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">render_component</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">App</span><span class="op">&gt;</span>(
     <span class="ident">dom</span>: <span class="ident">Node</span><span class="op">&lt;</span><span class="ident">A</span>::<span class="ident">Message</span><span class="op">&gt;</span>,
     <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ResultItem</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">VNode</span><span class="op">&gt;</span> {
+) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VNode</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">Path</span>::<span class="ident">new</span>();
     <span class="ident">render_recursive</span>(<span class="ident">dom</span>, <span class="ident">result</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">path</span>)
 }
@@ -363,23 +381,40 @@
     <span class="ident">dom</span>: <span class="ident">Node</span><span class="op">&lt;</span><span class="ident">A</span>::<span class="ident">Message</span><span class="op">&gt;</span>,
     <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ResultItem</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Path</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">VNode</span><span class="op">&gt;</span> {
+) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VNode</span><span class="op">&gt;</span> {
     <span class="kw">match</span> <span class="ident">dom</span>.<span class="number">0</span> {
-        <span class="ident">NodeItems</span>::<span class="ident">ElementMap</span>(<span class="kw-2">mut</span> <span class="ident">elem</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">render_element</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw-2">*</span><span class="ident">elem</span>.<span class="ident">inner</span>, <span class="ident">result</span>, <span class="ident">path</span>),
+        <span class="ident">NodeItems</span>::<span class="ident">ElementMap</span>(<span class="kw-2">mut</span> <span class="ident">elem</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=</span> <span class="ident">render_element</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw-2">*</span><span class="ident">elem</span>.<span class="ident">inner</span>, <span class="ident">result</span>, <span class="ident">path</span>) {
+                <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">x</span>]
+            } <span class="kw">else</span> {
+                <span class="macro">vec</span><span class="macro">!</span>[]
+            }
+        }
         <span class="ident">NodeItems</span>::<span class="ident">Component</span>(<span class="ident">comp</span>) <span class="op">=</span><span class="op">&gt;</span> {
             <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">comp</span>.<span class="ident">id</span>();
             <span class="ident">result</span>.<span class="ident">push</span>(<span class="ident">ResultItem</span>::<span class="ident">Component</span>(<span class="ident">comp</span>, <span class="ident">path</span>.<span class="ident">clone</span>()));
-            <span class="prelude-val">Some</span>(<span class="ident">VNode</span>::<span class="ident">Placeholder</span>(<span class="ident">id</span>, <span class="ident">path</span>.<span class="ident">clone</span>()))
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">VNode</span>::<span class="ident">Placeholder</span>(<span class="ident">id</span>, <span class="ident">path</span>.<span class="ident">clone</span>())]
         }
-        <span class="ident">NodeItems</span>::<span class="ident">Text</span>(<span class="ident">text</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">VNode</span>::<span class="ident">text</span>(<span class="ident">text</span>)),
-        <span class="ident">NodeItems</span>::<span class="ident">Element</span>(<span class="kw-2">mut</span> <span class="ident">elem</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">render_element</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">elem</span>, <span class="ident">result</span>, <span class="ident">path</span>),
+        <span class="ident">NodeItems</span>::<span class="ident">Text</span>(<span class="ident">text</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">VNode</span>::<span class="ident">text</span>(<span class="ident">text</span>)],
+        <span class="ident">NodeItems</span>::<span class="ident">Element</span>(<span class="kw-2">mut</span> <span class="ident">elem</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=</span> <span class="ident">render_element</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">elem</span>, <span class="ident">result</span>, <span class="ident">path</span>) {
+                <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">x</span>]
+            } <span class="kw">else</span> {
+                <span class="macro">vec</span><span class="macro">!</span>[]
+            }
+        }
         <span class="ident">NodeItems</span>::<span class="ident">EventSubscription</span>(<span class="ident">event_id</span>, <span class="ident">subs</span>) <span class="op">=</span><span class="op">&gt;</span> {
             <span class="ident">result</span>.<span class="ident">push</span>(<span class="ident">ResultItem</span>::<span class="ident">Subscription</span>(<span class="ident">event_id</span>, <span class="ident">subs</span>));
-            <span class="prelude-val">None</span>
+            <span class="ident">Vec</span>::<span class="ident">new</span>()
         }
         <span class="ident">NodeItems</span>::<span class="ident">Blob</span>(<span class="ident">blob</span>) <span class="op">=</span><span class="op">&gt;</span> {
             <span class="ident">result</span>.<span class="ident">push</span>(<span class="ident">ResultItem</span>::<span class="ident">Blob</span>(<span class="ident">blob</span>));
-            <span class="prelude-val">None</span>
+            <span class="ident">Vec</span>::<span class="ident">new</span>()
+        }
+        <span class="ident">NodeItems</span>::<span class="ident">FlatMap</span>(<span class="kw-2">mut</span> <span class="ident">nodes</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">nodes</span>.<span class="ident">drain</span>(..)
+                .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">render_recursive</span>(<span class="ident">x</span>, <span class="ident">result</span>, <span class="ident">path</span>))
+                .<span class="ident">collect</span>()
         }
     }
 }
@@ -397,9 +432,7 @@
         <span class="ident">path</span>.<span class="ident">pop</span>();
         <span class="ident">path</span>.<span class="ident">push</span>(<span class="ident">k</span>);
         <span class="kw">let</span> <span class="ident">child</span> <span class="op">=</span> <span class="ident">render_component</span>(<span class="ident">child</span>, <span class="ident">result</span>);
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">child</span>) <span class="op">=</span> <span class="ident">child</span> {
-            <span class="ident">children</span>.<span class="ident">push</span>(<span class="ident">child</span>);
-        }
+        <span class="ident">children</span>.<span class="ident">extend</span>(<span class="ident">child</span>);
     }
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">events</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
     <span class="kw">for</span> <span class="ident">listener</span> <span class="kw">in</span> <span class="ident">elem</span>.<span class="ident">take_listeners</span>().<span class="ident">drain</span>(..) {
@@ -474,8 +507,11 @@
     <span class="doccomment">/// Re-renders the whole component tree.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_from_root</span>(<span class="ident">root_rendered</span>: <span class="ident">Node</span><span class="op">&lt;</span><span class="ident">A</span>::<span class="ident">Message</span><span class="op">&gt;</span>, <span class="ident">metrics</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Metrics</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
-        <span class="kw">let</span> <span class="ident">vdom</span> <span class="op">=</span>
-            <span class="ident">render_component</span>::<span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>(<span class="ident">root_rendered</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">result</span>).<span class="ident">expect</span>(<span class="string">&quot;Root produced an empty DOM&quot;</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vdom</span> <span class="op">=</span> <span class="ident">render_component</span>::<span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>(<span class="ident">root_rendered</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">result</span>);
+        <span class="kw">if</span> <span class="ident">vdom</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">1</span> {
+            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;The DOM of the root app must be represented by exactly one DOM node&quot;</span>);
+        }
+        <span class="kw">let</span> <span class="ident">vdom</span> <span class="op">=</span> <span class="ident">vdom</span>.<span class="ident">drain</span>(<span class="number">0</span>..<span class="number">1</span>).<span class="ident">next</span>().<span class="ident">unwrap</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ret</span> <span class="op">=</span> <span class="self">Self</span> {
             <span class="ident">listeners</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
