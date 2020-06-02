@@ -55,7 +55,7 @@ fn handle_file_save(value: JsonValue) -> JsonValue {
     let dialog: FileSaveDialog = serde_json::from_value(value).unwrap();
     let ret = if dialog.filter.len() == 0 {
         match save_file_dialog(&dialog.title, &dialog.path) {
-            None => FileSaveMsg::Cancel,
+            None => FileSaveMsg::Canceled,
             Some(path) => FileSaveMsg::SaveTo(path),
         }
     } else {
@@ -64,7 +64,7 @@ fn handle_file_save(value: JsonValue) -> JsonValue {
             .collect();
         let desc = &dialog.filter[0].name;
         match save_file_dialog_with_filter(&dialog.title, &dialog.path, &filters, desc) {
-            None => FileSaveMsg::Cancel,
+            None => FileSaveMsg::Canceled,
             Some(path) => FileSaveMsg::SaveTo(path),
         }
     };
