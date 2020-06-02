@@ -86,7 +86,7 @@ function handleFileOpen(value, cb) {
             cb('Canceled');
             return;
         }
-        if (value.multiple) {
+        if (!value.multiple) {
             cb({'Selected': result.filePaths[0]})
         } else {
             cb({'SelectedMultiple': result.filePaths})
