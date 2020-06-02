@@ -238,6 +238,11 @@
 <span id="238">238</span>
 <span id="239">239</span>
 <span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">blob</span>::<span class="ident">Blob</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">component</span>::{<span class="ident">ComponentContainer</span>, <span class="ident">MappedComponent</span>};
@@ -337,6 +342,11 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span><span class="op">&gt;</span> <span class="ident">Node</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_from_iter</span><span class="op">&lt;</span><span class="ident">S</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="ident">Node</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">nodes</span>: <span class="ident">S</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">Node</span>(<span class="ident">NodeItems</span>::<span class="ident">FlatMap</span>(<span class="ident">nodes</span>.<span class="ident">collect</span>()))
+    }
+
     <span class="doccomment">/// Create a [NodeBuilder](../node_builder/struct.NodeBuilder.html) for HTML elements</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">html</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">NodeBuilder</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
         <span class="ident">NodeBuilder</span>::<span class="ident">new</span>()
