@@ -28,7 +28,11 @@ impl<A: App> RenderedComponent<A> {
     ) -> (Self, Vec<ResultItem<A>>) {
         let dom = metrics.run_comp(comp.id(), || comp.render());
         let mut result = Vec::new();
-        let vdom = render_component(dom, &mut result).expect("Expected an actual DOM to render.");
+        let mut vdom = render_component(dom, &mut result);
+        if vdom.len() != 1 {
+            panic!("The DOM of a component must be represented by exactly one DOM node");
+        }
+        let vdom = vdom.drain(0..1).next().unwrap();
 
         let mut subs = Vec::with_capacity(result.len());
         let mut listeners = Vec::with_capacity(result.len());
