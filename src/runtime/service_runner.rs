@@ -6,13 +6,13 @@
 use crate::service::{RxServiceMessage, ServiceSubscription, TxServiceMessage};
 use crate::Id;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
+use futures::stream;
 use futures::task::{Context, Poll};
 use futures::{Stream, StreamExt};
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::pin::Pin;
-use futures::stream;
 
 /// Message type used to communicate between ServiceRunner and ServiceCollection.
 pub(crate) enum ServiceMessage<Msg> {
@@ -141,19 +141,28 @@ impl<Msg: Send> ServiceRunner<Msg> {
             let txmailbox_rx = service.txmailbox_rx.take().unwrap();
             let mut stream = stream::select(
                 txmailbox_rx.map(ServiceRunnerMsg::Tx),
-                StreamExt::map(&mut service, ServiceRunnerMsg::Msg));
+                StreamExt::map(&mut service, ServiceRunnerMsg::Msg),
+            );
             while let Some(msg) = stream.next().await {
                 match msg {
                     ServiceRunnerMsg::Tx(tx_msg) => {
-                        if runner.tx.unbounded_send(ServiceMessage::Tx(id, tx_msg)).is_err() {
+                        if runner
+                            .tx
+                            .unbounded_send(ServiceMessage::Tx(id, tx_msg))
+                            .is_err()
+                        {
                             // runtime closed receiving end. Terminate service.
-                            break
+                            break;
                         }
-                    },
+                    }
                     ServiceRunnerMsg::Msg(msg) => {
-                        if runner.tx.unbounded_send(ServiceMessage::Update(msg)).is_err() {
+                        if runner
+                            .tx
+                            .unbounded_send(ServiceMessage::Update(msg))
+                            .is_err()
+                        {
                             // runtime closed receiving end. Terminate service.
-                            break
+                            break;
                         }
                     }
                 }

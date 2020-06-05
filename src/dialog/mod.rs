@@ -1,11 +1,11 @@
-//! This module implements a set of built-in system dialogs which 
+//! This module implements a set of built-in system dialogs which
 //! can be shown using [`Context::dialog()`](../context/struct.Context.html#method.dialog).
 //!
 //! This module supports spawning:
 //! * [`FileSaveDialog`](struct.FileSaveDialog.html)
 //! * [`FileOpenDialog`](struct.FileOpenDialog.html)
 //! * [`MessageBox`](struct.MessageBox.html)
-//! 
+//!
 //! This module just provides a common interface for these dialogs.
 //! However, the dialogs actually need to be implemented by a frontend implementation.
 //! This library provides the feature flag `native-dialog` which
@@ -44,7 +44,6 @@ mod private {
 /// the [`Context::dialog()`](../context/struct.Context.html#method.dialog) function.
 /// Once a dialog closes it resolves to a result captured using the `Msg` type.
 pub trait Dialog: private::Sealed + Serialize + DeserializeOwned + std::marker::Sized {
-
     /// Message type to which the dialog resolves to.
     type Msg: DeserializeOwned;
 

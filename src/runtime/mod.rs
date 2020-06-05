@@ -73,7 +73,7 @@ enum RuntimeMsg<A: App> {
 /// To execute the backend, the `Runtime` object features two methods:
 ///  * the async `run()` function
 ///  * and the `run_blocking()` function
-/// 
+///
 /// Both functions resolve to a [`Metrics`](metrics/struct.Metrics.html) object which provides performance
 /// data of the executed application.
 ///

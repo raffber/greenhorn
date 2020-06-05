@@ -144,7 +144,6 @@ impl Metric for Throughput {
     }
 }
 
-
 /// Allows measures execution time of a function.
 ///
 /// The execution time is measured in microseconds.

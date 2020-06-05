@@ -59,7 +59,9 @@ fn handle_file_save(value: JsonValue) -> JsonValue {
             Some(path) => FileSaveMsg::SaveTo(path),
         }
     } else {
-        let filters: Vec<&str> = dialog.filter.iter()
+        let filters: Vec<&str> = dialog
+            .filter
+            .iter()
             .flat_map(|x| x.extensions.iter().map(|x| &x as &str))
             .collect();
         let desc = &dialog.filter[0].name;

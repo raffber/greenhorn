@@ -36,7 +36,7 @@ impl TextInput {
         Self {
             text: "".to_string(),
             version: 0,
-            change_event: Default::default()
+            change_event: Default::default(),
         }
     }
 
@@ -58,7 +58,7 @@ impl TextInput {
             TextInputMsg::ValueChange(evt) => {
                 self.text = evt.target_value().get_text().unwrap();
                 ctx.emit(&self.change_event, self.text.clone());
-            },
+            }
             TextInputMsg::SubscribedEvent(subs) => {
                 ctx.emit(&subs.component_event, subs.evt);
             }

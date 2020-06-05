@@ -88,16 +88,13 @@ impl<T: 'static + Send> Debug for Node<T> {
             NodeItems::Element(elem) => elem.fmt(f),
             NodeItems::EventSubscription(_, subs) => subs.fmt(f),
             NodeItems::Blob(blob) => blob.fmt(f),
-            NodeItems::FlatMap(nodes) => {
-                nodes.iter().map(|x| x.fmt(f)).collect()
-            }
+            NodeItems::FlatMap(nodes) => nodes.iter().map(|x| x.fmt(f)).collect(),
         }
     }
 }
 
 impl<T: 'static + Send> Node<T> {
-
-    pub fn new_from_iter<S: Iterator<Item=Node<T>>>(nodes: S) -> Self {
+    pub fn new_from_iter<S: Iterator<Item = Node<T>>>(nodes: S) -> Self {
         Node(NodeItems::FlatMap(nodes.collect()))
     }
 
@@ -154,8 +151,7 @@ impl<T: 'static + Send> Node<T> {
     /// }
     /// ```
     pub fn map<U: 'static + Send, F: 'static + Send + Fn(T) -> U>(self, fun: F) -> Node<U> {
-        let fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>> =
-            Arc::new(Mutex::new(fun));
+        let fun: Arc<Mutex<dyn 'static + Send + Fn(T) -> U>> = Arc::new(Mutex::new(fun));
         self.map_shared(fun)
     }
 
@@ -177,11 +173,7 @@ impl<T: 'static + Send> Node<T> {
             NodeItems::EventSubscription(id, evt) => NodeItems::EventSubscription(id, evt.map(fun)),
             NodeItems::Blob(blob) => NodeItems::Blob(blob),
             NodeItems::FlatMap(mut nodes) => {
-                NodeItems::FlatMap(
-                    nodes.drain(..)
-                        .map(|x| x.map_shared(fun.clone()))
-                        .collect()
-                )
+                NodeItems::FlatMap(nodes.drain(..).map(|x| x.map_shared(fun.clone())).collect())
             }
         };
         Node(ret)
@@ -218,9 +210,9 @@ impl<T: 'static + Send> Node<T> {
             }
             NodeItems::EventSubscription(_, _) => panic!(),
             NodeItems::Blob(blob) => Node(NodeItems::Blob(blob)),
-            NodeItems::FlatMap(mut nodes) => {
-                Node(NodeItems::FlatMap(nodes.drain(..).map(|x| x.empty_map()).collect()))
-            }
+            NodeItems::FlatMap(mut nodes) => Node(NodeItems::FlatMap(
+                nodes.drain(..).map(|x| x.empty_map()).collect(),
+            )),
         }
     }
 

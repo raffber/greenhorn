@@ -71,7 +71,6 @@ pub struct MessageBox {
 }
 
 impl MessageBox {
-
     /// Create a new dialog with a "Yes" and "No" button
     pub fn new_yes_no(title: &str, message: &str) -> Self {
         Self {

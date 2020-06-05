@@ -123,7 +123,7 @@ impl<T: Send + 'static> ContextMsg<T> {
             ContextMsg::LoadCss(x) => ContextMsg::LoadCss(x),
             ContextMsg::RunJs(x) => ContextMsg::RunJs(x),
             ContextMsg::Propagate(x) => ContextMsg::Propagate(x),
-            ContextMsg::Quit => ContextMsg::Quit
+            ContextMsg::Quit => ContextMsg::Quit,
         }
     }
 }

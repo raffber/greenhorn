@@ -73,11 +73,10 @@ fn render_recursive<A: App>(
             result.push(ResultItem::Blob(blob));
             Vec::new()
         }
-        NodeItems::FlatMap(mut nodes) => {
-            nodes.drain(..)
-                .flat_map(|x| render_recursive(x, result, path))
-                .collect()
-        }
+        NodeItems::FlatMap(mut nodes) => nodes
+            .drain(..)
+            .flat_map(|x| render_recursive(x, result, path))
+            .collect(),
     }
 }
 

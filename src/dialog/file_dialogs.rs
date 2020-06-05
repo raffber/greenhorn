@@ -127,7 +127,6 @@ pub enum FileSaveMsg {
     Canceled,
 }
 
-
 /// Represents a system dialog for saving a file.
 /// Once the dialog is closed it resolves to a [`FileSaveMsg`](enum.FileSaveMsg.html).
 ///
