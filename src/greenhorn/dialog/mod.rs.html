@@ -159,16 +159,15 @@
 <span id="159">159</span>
 <span id="160">160</span>
 <span id="161">161</span>
-<span id="162">162</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="doccomment">//! This module implements a set of built-in system dialogs which </span>
+<span class="doccomment">//! This module implements a set of built-in system dialogs which</span>
 <span class="doccomment">//! can be shown using [`Context::dialog()`](../context/struct.Context.html#method.dialog).</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module supports spawning:</span>
 <span class="doccomment">//! * [`FileSaveDialog`](struct.FileSaveDialog.html)</span>
 <span class="doccomment">//! * [`FileOpenDialog`](struct.FileOpenDialog.html)</span>
 <span class="doccomment">//! * [`MessageBox`](struct.MessageBox.html)</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! This module just provides a common interface for these dialogs.</span>
 <span class="doccomment">//! However, the dialogs actually need to be implemented by a frontend implementation.</span>
 <span class="doccomment">//! This library provides the feature flag `native-dialog` which</span>
@@ -207,7 +206,6 @@
 <span class="doccomment">/// the [`Context::dialog()`](../context/struct.Context.html#method.dialog) function.</span>
 <span class="doccomment">/// Once a dialog closes it resolves to a result captured using the `Msg` type.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Dialog</span>: <span class="ident">private</span>::<span class="ident">Sealed</span> <span class="op">+</span> <span class="ident">Serialize</span> <span class="op">+</span> <span class="ident">DeserializeOwned</span> <span class="op">+</span> <span class="ident">std</span>::<span class="ident">marker</span>::<span class="ident">Sized</span> {
-
     <span class="doccomment">/// Message type to which the dialog resolves to.</span>
     <span class="kw">type</span> <span class="ident">Msg</span>: <span class="ident">DeserializeOwned</span>;
 

@@ -334,7 +334,6 @@
 <span id="334">334</span>
 <span id="335">335</span>
 <span id="336">336</span>
-<span id="337">337</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module implements facilities to render components to a VDOM.</span>
 <span class="doccomment">//!</span>
@@ -411,11 +410,10 @@
             <span class="ident">result</span>.<span class="ident">push</span>(<span class="ident">ResultItem</span>::<span class="ident">Blob</span>(<span class="ident">blob</span>));
             <span class="ident">Vec</span>::<span class="ident">new</span>()
         }
-        <span class="ident">NodeItems</span>::<span class="ident">FlatMap</span>(<span class="kw-2">mut</span> <span class="ident">nodes</span>) <span class="op">=</span><span class="op">&gt;</span> {
-            <span class="ident">nodes</span>.<span class="ident">drain</span>(..)
-                .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">render_recursive</span>(<span class="ident">x</span>, <span class="ident">result</span>, <span class="ident">path</span>))
-                .<span class="ident">collect</span>()
-        }
+        <span class="ident">NodeItems</span>::<span class="ident">FlatMap</span>(<span class="kw-2">mut</span> <span class="ident">nodes</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">nodes</span>
+            .<span class="ident">drain</span>(..)
+            .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">render_recursive</span>(<span class="ident">x</span>, <span class="ident">result</span>, <span class="ident">path</span>))
+            .<span class="ident">collect</span>(),
     }
 }
 

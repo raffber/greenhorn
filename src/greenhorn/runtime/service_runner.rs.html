@@ -283,6 +283,15 @@
 <span id="283">283</span>
 <span id="284">284</span>
 <span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module implements an executor for [Service](../trait.Service.html) objects.</span>
 <span class="doccomment">//!</span>
@@ -292,13 +301,13 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">service</span>::{<span class="ident">RxServiceMessage</span>, <span class="ident">ServiceSubscription</span>, <span class="ident">TxServiceMessage</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">Id</span>;
 <span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">channel</span>::<span class="ident">mpsc</span>::{<span class="ident">unbounded</span>, <span class="ident">UnboundedReceiver</span>, <span class="ident">UnboundedSender</span>};
+<span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">stream</span>;
 <span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">task</span>::{<span class="ident">Context</span>, <span class="ident">Poll</span>};
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">Stream</span>, <span class="ident">StreamExt</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>::{<span class="ident">Debug</span>, <span class="ident">Formatter</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">pin</span>::<span class="ident">Pin</span>;
-<span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">stream</span>;
 
 <span class="doccomment">/// Message type used to communicate between ServiceRunner and ServiceCollection.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ServiceMessage</span><span class="op">&lt;</span><span class="ident">Msg</span><span class="op">&gt;</span> {
@@ -427,19 +436,28 @@
             <span class="kw">let</span> <span class="ident">txmailbox_rx</span> <span class="op">=</span> <span class="ident">service</span>.<span class="ident">txmailbox_rx</span>.<span class="ident">take</span>().<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stream</span> <span class="op">=</span> <span class="ident">stream</span>::<span class="ident">select</span>(
                 <span class="ident">txmailbox_rx</span>.<span class="ident">map</span>(<span class="ident">ServiceRunnerMsg</span>::<span class="ident">Tx</span>),
-                <span class="ident">StreamExt</span>::<span class="ident">map</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">service</span>, <span class="ident">ServiceRunnerMsg</span>::<span class="ident">Msg</span>));
+                <span class="ident">StreamExt</span>::<span class="ident">map</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">service</span>, <span class="ident">ServiceRunnerMsg</span>::<span class="ident">Msg</span>),
+            );
             <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">msg</span>) <span class="op">=</span> <span class="ident">stream</span>.<span class="ident">next</span>().<span class="kw">await</span> {
                 <span class="kw">match</span> <span class="ident">msg</span> {
                     <span class="ident">ServiceRunnerMsg</span>::<span class="ident">Tx</span>(<span class="ident">tx_msg</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="kw">if</span> <span class="ident">runner</span>.<span class="ident">tx</span>.<span class="ident">unbounded_send</span>(<span class="ident">ServiceMessage</span>::<span class="ident">Tx</span>(<span class="ident">id</span>, <span class="ident">tx_msg</span>)).<span class="ident">is_err</span>() {
+                        <span class="kw">if</span> <span class="ident">runner</span>
+                            .<span class="ident">tx</span>
+                            .<span class="ident">unbounded_send</span>(<span class="ident">ServiceMessage</span>::<span class="ident">Tx</span>(<span class="ident">id</span>, <span class="ident">tx_msg</span>))
+                            .<span class="ident">is_err</span>()
+                        {
                             <span class="comment">// runtime closed receiving end. Terminate service.</span>
-                            <span class="kw">break</span>
+                            <span class="kw">break</span>;
                         }
-                    },
+                    }
                     <span class="ident">ServiceRunnerMsg</span>::<span class="ident">Msg</span>(<span class="ident">msg</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="kw">if</span> <span class="ident">runner</span>.<span class="ident">tx</span>.<span class="ident">unbounded_send</span>(<span class="ident">ServiceMessage</span>::<span class="ident">Update</span>(<span class="ident">msg</span>)).<span class="ident">is_err</span>() {
+                        <span class="kw">if</span> <span class="ident">runner</span>
+                            .<span class="ident">tx</span>
+                            .<span class="ident">unbounded_send</span>(<span class="ident">ServiceMessage</span>::<span class="ident">Update</span>(<span class="ident">msg</span>))
+                            .<span class="ident">is_err</span>()
+                        {
                             <span class="comment">// runtime closed receiving end. Terminate service.</span>
-                            <span class="kw">break</span>
+                            <span class="kw">break</span>;
                         }
                     }
                 }
