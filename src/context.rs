@@ -119,7 +119,11 @@ impl<T: Send + 'static> ContextMsg<T> {
                 ContextMsg::Stream(Box::pin(stream.map(move |x| (mapper)(x))))
             }
             ContextMsg::Dialog(d) => ContextMsg::Dialog(d.map(mapper)),
-            _ => panic!(),
+            ContextMsg::Emission(x) => ContextMsg::Emission(x),
+            ContextMsg::LoadCss(x) => ContextMsg::LoadCss(x),
+            ContextMsg::RunJs(x) => ContextMsg::RunJs(x),
+            ContextMsg::Propagate(x) => ContextMsg::Propagate(x),
+            ContextMsg::Quit => ContextMsg::Quit
         }
     }
 }
