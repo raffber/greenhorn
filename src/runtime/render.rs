@@ -135,6 +135,7 @@ pub(crate) struct RenderResult<A: App> {
     components: HashMap<Id, Arc<RenderedComponent<A>>>,
     pub(crate) root_components: Vec<(Id, Path)>,
     pub(crate) root: Arc<VNode>,
+    pub(crate) rendered: HashSet<Id>,
 }
 
 impl<A: App> RenderResult<A> {
@@ -148,6 +149,7 @@ impl<A: App> RenderResult<A> {
             components: Default::default(),
             root_components: Default::default(),
             root: Arc::new(root),
+            rendered: Default::default()
         }
     }
 
@@ -182,6 +184,7 @@ impl<A: App> RenderResult<A> {
             components: HashMap::default(),
             root_components: Default::default(),
             root: Arc::new(vdom),
+            rendered: Default::default()
         };
 
         for item in result.drain(..) {
@@ -225,6 +228,7 @@ impl<A: App> RenderResult<A> {
             components: HashMap::with_capacity(old.components.len() * 2),
             root_components: Default::default(),
             root: old.root.clone(),
+            rendered: Default::default()
         };
 
         let root_components = old.root_components.clone(); // XXX: workaround
@@ -247,6 +251,7 @@ impl<A: App> RenderResult<A> {
         metrics: &mut Metrics,
     ) {
         let id = comp.id();
+        self.rendered.insert(id);
         let (rendered, mut result) = RenderedComponent::new(comp, metrics);
         self.components.insert(id, Arc::new(rendered));
 

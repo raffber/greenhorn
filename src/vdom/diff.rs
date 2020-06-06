@@ -27,12 +27,11 @@ use std::collections::{HashMap, HashSet};
 pub(crate) struct Differ<'a, A: App> {
     old: &'a Frame<A>,
     new: &'a RenderResult<A>,
-    rendered: HashSet<Id>,
 }
 
 impl<'a, A: App> Differ<'a, A> {
-    pub(crate) fn new(old: &'a Frame<A>, new: &'a RenderResult<A>, rendered: HashSet<Id>) -> Self {
-        Self { old, new, rendered }
+    pub(crate) fn new(old: &'a Frame<A>, new: &'a RenderResult<A>) -> Self {
+        Self { old, new }
     }
 
     /// Produce a patch based on the RenderResult
@@ -253,7 +252,7 @@ impl<'a, A: App> Differ<'a, A> {
                 }
             }
             (VNode::Placeholder(id_old, _path_old), VNode::Placeholder(id_new, _path_new)) => {
-                if id_old == id_new && !self.rendered.contains(id_new) {
+                if id_old == id_new && !self.new.rendered.contains(id_new) {
                     let new_comp = self.new.get_rendered_component(*id_new).unwrap();
                     for (child_id, child_path) in new_comp.children() {
                         patch.push_path(child_path);

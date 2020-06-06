@@ -134,7 +134,7 @@ pub struct Runtime<A: 'static + App, P: 'static + Pipe> {
     render_tx: UnboundedSender<()>,
     render_rx: UnboundedReceiver<()>,
     invalidated_components: Option<HashSet<Id>>,
-    invalidate_all: bool,
+    root_invalidated: bool,
     not_applied_counter: i32,
     dirty: bool,
     metrics: Metrics,
@@ -163,7 +163,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             invalidated_components: Some(HashSet::new()),
             next_frame: None,
             dirty: false,
-            invalidate_all: false,
+            root_invalidated: false,
             current_frame: None,
             not_applied_counter: 0,
             metrics: Default::default(),
@@ -344,15 +344,15 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         let (ctx, receiver) = Context::<A::Message>::new();
         let updated = self.app.update(msg, ctx);
         if updated.should_render {
-            self.invalidate_all = true;
+            self.root_invalidated = true;
             self.schedule_render(DEFAULT_RENDER_INTERVAL_MS);
-        } else if let Some(invalidated) = updated.components_render {
+        }
+        if let Some(invalidated) = updated.components_render {
             let invalidated_components = self.invalidated_components.as_mut().unwrap();
             invalidated.iter().for_each(|x| {
                 invalidated_components.insert(*x);
             });
-            self.schedule_render(DEFAULT_RENDER_INTERVAL_MS);
-        };
+        }
         self.handle_context_result(receiver).await;
     }
 
@@ -450,17 +450,17 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         let app = &mut self.app;
         let dom = metrics.root.run(|| app.render());
 
-        let updated = self.invalidated_components.take().unwrap();
+        let mut updated = self.invalidated_components.take().unwrap();
         self.invalidated_components = Some(HashSet::new());
 
-        let result = if self.invalidate_all {
+        let result = if self.root_invalidated {
             RenderResult::new_from_root(dom, &mut self.metrics)
         } else if let Some(old_frame) = &old_frame {
             RenderResult::new_from_frame(old_frame, &updated, &mut self.metrics)
         } else {
             RenderResult::new_from_root(dom, &mut self.metrics)
         };
-        self.invalidate_all = false;
+        self.root_invalidated = false;
         self.dirty = false;
         let tx = self.tx.clone();
         let mut sender = self.sender.clone();
@@ -469,7 +469,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             // create a patch
             let before = Instant::now();
             let patch = if let Some(old_frame) = &old_frame {
-                Differ::new(&old_frame, &result, updated).diff()
+                Differ::new(&old_frame, &result).diff()
             } else {
                 Patch::new_from_dom(&result)
             };
