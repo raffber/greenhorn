@@ -450,15 +450,15 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         let app = &mut self.app;
         let dom = metrics.root.run(|| app.render());
 
-        let mut updated = self.invalidated_components.take().unwrap();
+        let updated = self.invalidated_components.take().unwrap();
         self.invalidated_components = Some(HashSet::new());
 
         let result = if self.root_invalidated {
-            RenderResult::new_from_root(dom, &mut self.metrics)
+            RenderResult::new_from_root(dom, &updated, &mut self.metrics)
         } else if let Some(old_frame) = &old_frame {
             RenderResult::new_from_frame(old_frame, &updated, &mut self.metrics)
         } else {
-            RenderResult::new_from_root(dom, &mut self.metrics)
+            RenderResult::new_from_root(dom, &updated, &mut self.metrics)
         };
         self.root_invalidated = false;
         self.dirty = false;

@@ -9,8 +9,8 @@
 
 use crate::runtime::{Frame, RenderResult};
 use crate::vdom::{Patch, PatchItem, VElement, VNode};
-use crate::{App, Id};
-use std::collections::{HashMap, HashSet};
+use crate::App;
+use std::collections::HashMap;
 
 // Expansion ideas
 // [ ] key based diffing
