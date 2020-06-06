@@ -384,6 +384,8 @@
 <span id="384">384</span>
 <span id="385">385</span>
 <span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module implements facilities to render components to a VDOM.</span>
 <span class="doccomment">//!</span>
@@ -683,6 +685,7 @@
         <span class="ident">changes</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span>,
         <span class="ident">metrics</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Metrics</span>,
     ) {
+        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;!!!! changed {:?}&quot;</span>, <span class="ident">comp</span>.<span class="ident">id</span>());
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">comp</span>.<span class="ident">id</span>();
         <span class="self">self</span>.<span class="ident">rendered</span>.<span class="ident">insert</span>(<span class="ident">id</span>);
         <span class="kw">let</span> (<span class="ident">rendered</span>, <span class="kw-2">mut</span> <span class="ident">result</span>) <span class="op">=</span> <span class="ident">RenderedComponent</span>::<span class="ident">new</span>(<span class="ident">comp</span>, <span class="ident">metrics</span>);
@@ -717,6 +720,7 @@
         <span class="ident">changes</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span>,
         <span class="ident">metrics</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Metrics</span>,
     ) {
+        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;!!!! unchanged {:?}&quot;</span>, <span class="ident">comp</span>.<span class="ident">id</span>());
         <span class="comment">// transfer all child items of this component to the new result.</span>
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">comp</span>.<span class="ident">id</span>();
         <span class="kw">let</span> <span class="ident">old_render</span> <span class="op">=</span> <span class="ident">old</span>.<span class="ident">components</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>).<span class="ident">unwrap</span>();
