@@ -334,6 +334,57 @@
 <span id="334">334</span>
 <span id="335">335</span>
 <span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module implements facilities to render components to a VDOM.</span>
 <span class="doccomment">//!</span>
@@ -471,7 +522,12 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">rpcs</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Id</span>, <span class="ident">Rpc</span><span class="op">&lt;</span><span class="ident">A</span>::<span class="ident">Message</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">components</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Id</span>, <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RenderedComponent</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">root_components</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Id</span>, <span class="ident">Path</span>)<span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">root</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">VNode</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">root_subscriptions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">root_listeners</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ListenerKey</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">root_blobs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">root_rpcs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">vdom</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">VNode</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">rendered</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">App</span><span class="op">&gt;</span> <span class="ident">RenderResult</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span> {
@@ -484,7 +540,12 @@
             <span class="ident">rpcs</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
             <span class="ident">components</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
             <span class="ident">root_components</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
-            <span class="ident">root</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">root</span>),
+            <span class="ident">root_subscriptions</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="ident">root_listeners</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="ident">root_blobs</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="ident">root_rpcs</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="ident">vdom</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">root</span>),
+            <span class="ident">rendered</span>: <span class="ident">Default</span>::<span class="ident">default</span>()
         }
     }
 
@@ -497,13 +558,18 @@
             <span class="ident">rpcs</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
             <span class="ident">components</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
             <span class="ident">root_components</span>: <span class="macro">vec</span><span class="macro">!</span>[],
-            <span class="ident">root</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">VNode</span>::<span class="ident">Text</span>(<span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>())),
+            <span class="ident">root_subscriptions</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="ident">root_listeners</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="ident">root_blobs</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="ident">root_rpcs</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="ident">vdom</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">VNode</span>::<span class="ident">Text</span>(<span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>())),
+            <span class="ident">rendered</span>: <span class="ident">Default</span>::<span class="ident">default</span>()
         }
     }
 
     <span class="doccomment">/// Create a new RenderResult if the root component was re-rendered.</span>
     <span class="doccomment">/// Re-renders the whole component tree.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_from_root</span>(<span class="ident">root_rendered</span>: <span class="ident">Node</span><span class="op">&lt;</span><span class="ident">A</span>::<span class="ident">Message</span><span class="op">&gt;</span>, <span class="ident">metrics</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Metrics</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_from_root</span>(<span class="ident">root_rendered</span>: <span class="ident">Node</span><span class="op">&lt;</span><span class="ident">A</span>::<span class="ident">Message</span><span class="op">&gt;</span>, <span class="ident">changes</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span>, <span class="ident">metrics</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Metrics</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vdom</span> <span class="op">=</span> <span class="ident">render_component</span>::<span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>(<span class="ident">root_rendered</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">result</span>);
         <span class="kw">if</span> <span class="ident">vdom</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">1</span> {
@@ -518,25 +584,35 @@
             <span class="ident">rpcs</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
             <span class="ident">components</span>: <span class="ident">HashMap</span>::<span class="ident">default</span>(),
             <span class="ident">root_components</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
-            <span class="ident">root</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">vdom</span>),
+            <span class="ident">root_subscriptions</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="ident">root_listeners</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="ident">root_blobs</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="ident">root_rpcs</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="ident">vdom</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">vdom</span>),
+            <span class="ident">rendered</span>: <span class="ident">Default</span>::<span class="ident">default</span>()
         };
 
         <span class="kw">for</span> <span class="ident">item</span> <span class="kw">in</span> <span class="ident">result</span>.<span class="ident">drain</span>(..) {
             <span class="kw">match</span> <span class="ident">item</span> {
                 <span class="ident">ResultItem</span>::<span class="ident">Listener</span>(<span class="ident">listener</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">ret</span>.<span class="ident">listeners</span>.<span class="ident">insert</span>(<span class="ident">ListenerKey</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">listener</span>), <span class="ident">listener</span>);
+                    <span class="kw">let</span> <span class="ident">lk</span> <span class="op">=</span> <span class="ident">ListenerKey</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">listener</span>);
+                    <span class="ident">ret</span>.<span class="ident">listeners</span>.<span class="ident">insert</span>(<span class="ident">lk</span>.<span class="ident">clone</span>(), <span class="ident">listener</span>);
+                    <span class="ident">ret</span>.<span class="ident">root_listeners</span>.<span class="ident">push</span>(<span class="ident">lk</span>);
                 }
                 <span class="ident">ResultItem</span>::<span class="ident">Subscription</span>(<span class="ident">id</span>, <span class="ident">subscription</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="ident">ret</span>.<span class="ident">subscriptions</span>.<span class="ident">insert</span>(<span class="ident">id</span>, <span class="ident">subscription</span>);
+                    <span class="ident">ret</span>.<span class="ident">root_subscriptions</span>.<span class="ident">push</span>(<span class="ident">id</span>);
                 }
                 <span class="ident">ResultItem</span>::<span class="ident">Component</span>(<span class="ident">comp</span>, <span class="ident">path</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="ident">ret</span>.<span class="ident">root_components</span>.<span class="ident">push</span>((<span class="ident">comp</span>.<span class="ident">id</span>(), <span class="ident">path</span>));
-                    <span class="ident">ret</span>.<span class="ident">render_component</span>(<span class="prelude-val">None</span>, <span class="ident">comp</span>, <span class="prelude-val">None</span>, <span class="ident">metrics</span>);
+                    <span class="ident">ret</span>.<span class="ident">render_component</span>(<span class="prelude-val">None</span>, <span class="ident">comp</span>, <span class="ident">changes</span>, <span class="ident">metrics</span>);
                 }
                 <span class="ident">ResultItem</span>::<span class="ident">Blob</span>(<span class="ident">blob</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">ret</span>.<span class="ident">root_blobs</span>.<span class="ident">push</span>(<span class="ident">blob</span>.<span class="ident">id</span>());
                     <span class="ident">ret</span>.<span class="ident">blobs</span>.<span class="ident">insert</span>(<span class="ident">blob</span>.<span class="ident">id</span>(), <span class="ident">blob</span>);
                 }
                 <span class="ident">ResultItem</span>::<span class="ident">Rpc</span>(<span class="ident">rpc</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">ret</span>.<span class="ident">root_rpcs</span>.<span class="ident">push</span>(<span class="ident">rpc</span>.<span class="ident">node_id</span>);
                     <span class="ident">ret</span>.<span class="ident">rpcs</span>.<span class="ident">insert</span>(<span class="ident">rpc</span>.<span class="ident">node_id</span>, <span class="ident">rpc</span>);
                 }
             }
@@ -554,24 +630,49 @@
         <span class="ident">metrics</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Metrics</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">old</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">old</span>.<span class="ident">rendered</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ret</span> <span class="op">=</span> <span class="self">Self</span> {
-            <span class="ident">listeners</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
-            <span class="ident">subscriptions</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
-            <span class="ident">blobs</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
-            <span class="ident">rpcs</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
-            <span class="ident">components</span>: <span class="ident">HashMap</span>::<span class="ident">with_capacity</span>(<span class="ident">old</span>.<span class="ident">components</span>.<span class="ident">len</span>() <span class="op">*</span> <span class="number">2</span>),
-            <span class="ident">root_components</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
-            <span class="ident">root</span>: <span class="ident">old</span>.<span class="ident">root</span>.<span class="ident">clone</span>(),
-        };
 
-        <span class="kw">let</span> <span class="ident">root_components</span> <span class="op">=</span> <span class="ident">old</span>.<span class="ident">root_components</span>.<span class="ident">clone</span>(); <span class="comment">// XXX: workaround</span>
-        <span class="kw">for</span> (<span class="ident">id</span>, <span class="kw">_</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">root_components</span> {
-            <span class="kw">let</span> <span class="ident">comp</span> <span class="op">=</span> <span class="ident">old</span>.<span class="ident">components</span>.<span class="ident">get</span>(<span class="ident">id</span>).<span class="ident">unwrap</span>();
-            <span class="ident">ret</span>.<span class="ident">render_component_from_old</span>(<span class="prelude-val">Some</span>(<span class="ident">old</span>), <span class="ident">comp</span>.<span class="ident">component</span>(), <span class="prelude-val">Some</span>(<span class="ident">changes</span>), <span class="ident">metrics</span>);
+        <span class="comment">// copy all old state from root to new state</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_subs</span> <span class="op">=</span> <span class="ident">HashMap</span>::<span class="ident">with_capacity</span>(<span class="ident">old</span>.<span class="ident">subscriptions</span>.<span class="ident">len</span>());
+        <span class="kw">for</span> <span class="ident">subs</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">old</span>.<span class="ident">root_subscriptions</span> {
+            <span class="ident">new_subs</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">subs</span>, <span class="ident">old</span>.<span class="ident">subscriptions</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">subs</span>).<span class="ident">unwrap</span>().<span class="ident">clone</span>());
         }
 
-        <span class="ident">ret</span>.<span class="ident">root_components</span> <span class="op">=</span> <span class="ident">old</span>.<span class="ident">root_components</span>.<span class="ident">clone</span>();
-        <span class="ident">ret</span>.<span class="ident">root</span> <span class="op">=</span> <span class="ident">old</span>.<span class="ident">root</span>.<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_listeners</span> <span class="op">=</span> <span class="ident">HashMap</span>::<span class="ident">with_capacity</span>(<span class="ident">old</span>.<span class="ident">listeners</span>.<span class="ident">len</span>());
+        <span class="kw">for</span> <span class="ident">listener</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">old</span>.<span class="ident">root_listeners</span> {
+            <span class="ident">new_listeners</span>.<span class="ident">insert</span>(<span class="ident">listener</span>.<span class="ident">clone</span>(), <span class="ident">old</span>.<span class="ident">listeners</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">listener</span>).<span class="ident">unwrap</span>().<span class="ident">clone</span>());
+        }
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_rpcs</span> <span class="op">=</span> <span class="ident">HashMap</span>::<span class="ident">with_capacity</span>(<span class="ident">old</span>.<span class="ident">rpcs</span>.<span class="ident">len</span>());
+        <span class="kw">for</span> <span class="ident">rpc</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">old</span>.<span class="ident">root_rpcs</span> {
+            <span class="ident">new_rpcs</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">rpc</span>, <span class="ident">old</span>.<span class="ident">rpcs</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">rpc</span>).<span class="ident">unwrap</span>().<span class="ident">clone</span>());
+        }
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_blobs</span> <span class="op">=</span> <span class="ident">HashMap</span>::<span class="ident">with_capacity</span>(<span class="ident">old</span>.<span class="ident">blobs</span>.<span class="ident">len</span>());
+        <span class="kw">for</span> <span class="ident">blob</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">old</span>.<span class="ident">root_blobs</span> {
+            <span class="ident">new_blobs</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">blob</span>, <span class="ident">old</span>.<span class="ident">blobs</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">blob</span>).<span class="ident">unwrap</span>().<span class="ident">clone</span>());
+        }
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ret</span> <span class="op">=</span> <span class="self">Self</span> {
+            <span class="ident">listeners</span>: <span class="ident">new_listeners</span>,
+            <span class="ident">subscriptions</span>: <span class="ident">new_subs</span>,
+            <span class="ident">blobs</span>: <span class="ident">new_blobs</span>,
+            <span class="ident">rpcs</span>: <span class="ident">new_rpcs</span>,
+            <span class="ident">components</span>: <span class="ident">HashMap</span>::<span class="ident">with_capacity</span>(<span class="ident">old</span>.<span class="ident">components</span>.<span class="ident">len</span>() <span class="op">*</span> <span class="number">2</span>),
+            <span class="ident">root_components</span>: <span class="ident">old</span>.<span class="ident">root_components</span>.<span class="ident">clone</span>(),
+            <span class="ident">root_subscriptions</span>: <span class="ident">old</span>.<span class="ident">root_subscriptions</span>.<span class="ident">clone</span>(),
+            <span class="ident">root_listeners</span>: <span class="ident">old</span>.<span class="ident">root_listeners</span>.<span class="ident">clone</span>(),
+            <span class="ident">root_blobs</span>: <span class="ident">old</span>.<span class="ident">root_blobs</span>.<span class="ident">clone</span>(),
+            <span class="ident">root_rpcs</span>: <span class="ident">old</span>.<span class="ident">root_rpcs</span>.<span class="ident">clone</span>(),
+            <span class="ident">vdom</span>: <span class="ident">old</span>.<span class="ident">vdom</span>.<span class="ident">clone</span>(),
+            <span class="ident">rendered</span>: <span class="ident">Default</span>::<span class="ident">default</span>()
+        };
+
+        <span class="comment">// iterate over all components and check / render them recursively</span>
+        <span class="kw">for</span> (<span class="ident">id</span>, <span class="kw">_</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">old</span>.<span class="ident">root_components</span> {
+            <span class="kw">let</span> <span class="ident">comp</span> <span class="op">=</span> <span class="ident">old</span>.<span class="ident">components</span>.<span class="ident">get</span>(<span class="ident">id</span>).<span class="ident">unwrap</span>();
+            <span class="ident">ret</span>.<span class="ident">render_component_from_old</span>(<span class="prelude-val">Some</span>(<span class="ident">old</span>), <span class="ident">comp</span>.<span class="ident">component</span>(), <span class="ident">changes</span>, <span class="ident">metrics</span>);
+        }
+
         <span class="ident">ret</span>
     }
 
@@ -580,10 +681,12 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">old</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">RenderResult</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">comp</span>: <span class="ident">ComponentContainer</span><span class="op">&lt;</span><span class="ident">A</span>::<span class="ident">Message</span><span class="op">&gt;</span>,
-        <span class="ident">changes</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">changes</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span>,
         <span class="ident">metrics</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Metrics</span>,
     ) {
+        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;Render changed!!!&quot;</span>);
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">comp</span>.<span class="ident">id</span>();
+        <span class="self">self</span>.<span class="ident">rendered</span>.<span class="ident">insert</span>(<span class="ident">id</span>);
         <span class="kw">let</span> (<span class="ident">rendered</span>, <span class="kw-2">mut</span> <span class="ident">result</span>) <span class="op">=</span> <span class="ident">RenderedComponent</span>::<span class="ident">new</span>(<span class="ident">comp</span>, <span class="ident">metrics</span>);
         <span class="self">self</span>.<span class="ident">components</span>.<span class="ident">insert</span>(<span class="ident">id</span>, <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">rendered</span>));
 
@@ -621,7 +724,7 @@
         <span class="kw">let</span> <span class="ident">old_render</span> <span class="op">=</span> <span class="ident">old</span>.<span class="ident">components</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>).<span class="ident">unwrap</span>();
         <span class="kw">for</span> (<span class="ident">child</span>, <span class="kw">_</span>) <span class="kw">in</span> <span class="ident">old_render</span>.<span class="ident">children</span>() {
             <span class="kw">let</span> <span class="ident">old_comp</span> <span class="op">=</span> <span class="ident">old</span>.<span class="ident">components</span>.<span class="ident">get</span>(<span class="ident">child</span>).<span class="ident">unwrap</span>();
-            <span class="self">self</span>.<span class="ident">render_component_from_old</span>(<span class="prelude-val">Some</span>(<span class="ident">old</span>), <span class="ident">old_comp</span>.<span class="ident">component</span>(), <span class="prelude-val">Some</span>(<span class="ident">changes</span>), <span class="ident">metrics</span>)
+            <span class="self">self</span>.<span class="ident">render_component_from_old</span>(<span class="prelude-val">Some</span>(<span class="ident">old</span>), <span class="ident">old_comp</span>.<span class="ident">component</span>(), <span class="ident">changes</span>, <span class="ident">metrics</span>)
         }
         <span class="kw">for</span> <span class="ident">key</span> <span class="kw">in</span> <span class="ident">old_render</span>.<span class="ident">listeners</span>() {
             <span class="kw">let</span> <span class="ident">listener</span> <span class="op">=</span> <span class="ident">old</span>.<span class="ident">listeners</span>.<span class="ident">get</span>(<span class="ident">key</span>).<span class="ident">unwrap</span>();
@@ -647,16 +750,15 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">old</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">RenderResult</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">comp</span>: <span class="ident">ComponentContainer</span><span class="op">&lt;</span><span class="ident">A</span>::<span class="ident">Message</span><span class="op">&gt;</span>,
-        <span class="ident">changes</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">changes</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span>,
         <span class="ident">metrics</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Metrics</span>,
     ) {
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">comp</span>.<span class="ident">id</span>();
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">old</span>) <span class="op">=</span> <span class="ident">old</span> {
-            <span class="kw">let</span> <span class="ident">changes</span> <span class="op">=</span> <span class="ident">changes</span>.<span class="ident">unwrap</span>();
             <span class="kw">if</span> <span class="op">!</span><span class="ident">changes</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>) <span class="kw-2">&amp;</span><span class="op">&amp;</span> <span class="ident">old</span>.<span class="ident">components</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>) {
                 <span class="self">self</span>.<span class="ident">render_unchanged_component</span>(<span class="ident">old</span>, <span class="ident">comp</span>, <span class="ident">changes</span>, <span class="ident">metrics</span>);
             } <span class="kw">else</span> {
-                <span class="self">self</span>.<span class="ident">render_component</span>(<span class="prelude-val">Some</span>(<span class="ident">old</span>), <span class="ident">comp</span>, <span class="prelude-val">Some</span>(<span class="ident">changes</span>), <span class="ident">metrics</span>);
+                <span class="self">self</span>.<span class="ident">render_component</span>(<span class="prelude-val">Some</span>(<span class="ident">old</span>), <span class="ident">comp</span>, <span class="ident">changes</span>, <span class="ident">metrics</span>);
             }
         } <span class="kw">else</span> {
             <span class="self">self</span>.<span class="ident">render_component</span>(<span class="ident">old</span>, <span class="ident">comp</span>, <span class="ident">changes</span>, <span class="ident">metrics</span>);

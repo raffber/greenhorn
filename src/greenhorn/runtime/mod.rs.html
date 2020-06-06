@@ -618,6 +618,7 @@
 <span id="618">618</span>
 <span id="619">619</span>
 <span id="620">620</span>
+<span id="621">621</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">context</span>::{<span class="ident">Context</span>, <span class="ident">ContextMsg</span>, <span class="ident">ContextReceiver</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">dialog</span>::<span class="ident">DialogBinding</span>;
@@ -755,7 +756,7 @@
     <span class="ident">render_tx</span>: <span class="ident">UnboundedSender</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
     <span class="ident">render_rx</span>: <span class="ident">UnboundedReceiver</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
     <span class="ident">invalidated_components</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">invalidate_all</span>: <span class="ident">bool</span>,
+    <span class="ident">root_invalidated</span>: <span class="ident">bool</span>,
     <span class="ident">not_applied_counter</span>: <span class="ident">i32</span>,
     <span class="ident">dirty</span>: <span class="ident">bool</span>,
     <span class="ident">metrics</span>: <span class="ident">Metrics</span>,
@@ -784,7 +785,7 @@
             <span class="ident">invalidated_components</span>: <span class="prelude-val">Some</span>(<span class="ident">HashSet</span>::<span class="ident">new</span>()),
             <span class="ident">next_frame</span>: <span class="prelude-val">None</span>,
             <span class="ident">dirty</span>: <span class="bool-val">false</span>,
-            <span class="ident">invalidate_all</span>: <span class="bool-val">false</span>,
+            <span class="ident">root_invalidated</span>: <span class="bool-val">false</span>,
             <span class="ident">current_frame</span>: <span class="prelude-val">None</span>,
             <span class="ident">not_applied_counter</span>: <span class="number">0</span>,
             <span class="ident">metrics</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
@@ -965,15 +966,16 @@
         <span class="kw">let</span> (<span class="ident">ctx</span>, <span class="ident">receiver</span>) <span class="op">=</span> <span class="ident">Context</span>::<span class="op">&lt;</span><span class="ident">A</span>::<span class="ident">Message</span><span class="op">&gt;</span>::<span class="ident">new</span>();
         <span class="kw">let</span> <span class="ident">updated</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">app</span>.<span class="ident">update</span>(<span class="ident">msg</span>, <span class="ident">ctx</span>);
         <span class="kw">if</span> <span class="ident">updated</span>.<span class="ident">should_render</span> {
-            <span class="self">self</span>.<span class="ident">invalidate_all</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            <span class="self">self</span>.<span class="ident">root_invalidated</span> <span class="op">=</span> <span class="bool-val">true</span>;
             <span class="self">self</span>.<span class="ident">schedule_render</span>(<span class="ident">DEFAULT_RENDER_INTERVAL_MS</span>);
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">invalidated</span>) <span class="op">=</span> <span class="ident">updated</span>.<span class="ident">components_render</span> {
+        }
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">invalidated</span>) <span class="op">=</span> <span class="ident">updated</span>.<span class="ident">components_render</span> {
             <span class="kw">let</span> <span class="ident">invalidated_components</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">invalidated_components</span>.<span class="ident">as_mut</span>().<span class="ident">unwrap</span>();
             <span class="ident">invalidated</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> {
                 <span class="ident">invalidated_components</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">x</span>);
             });
             <span class="self">self</span>.<span class="ident">schedule_render</span>(<span class="ident">DEFAULT_RENDER_INTERVAL_MS</span>);
-        };
+        }
         <span class="self">self</span>.<span class="ident">handle_context_result</span>(<span class="ident">receiver</span>).<span class="kw">await</span>;
     }
 
@@ -1074,14 +1076,14 @@
         <span class="kw">let</span> <span class="ident">updated</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">invalidated_components</span>.<span class="ident">take</span>().<span class="ident">unwrap</span>();
         <span class="self">self</span>.<span class="ident">invalidated_components</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">HashSet</span>::<span class="ident">new</span>());
 
-        <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">invalidate_all</span> {
-            <span class="ident">RenderResult</span>::<span class="ident">new_from_root</span>(<span class="ident">dom</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">metrics</span>)
+        <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">root_invalidated</span> {
+            <span class="ident">RenderResult</span>::<span class="ident">new_from_root</span>(<span class="ident">dom</span>, <span class="kw-2">&amp;</span><span class="ident">updated</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">metrics</span>)
         } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">old_frame</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">old_frame</span> {
             <span class="ident">RenderResult</span>::<span class="ident">new_from_frame</span>(<span class="ident">old_frame</span>, <span class="kw-2">&amp;</span><span class="ident">updated</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">metrics</span>)
         } <span class="kw">else</span> {
-            <span class="ident">RenderResult</span>::<span class="ident">new_from_root</span>(<span class="ident">dom</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">metrics</span>)
+            <span class="ident">RenderResult</span>::<span class="ident">new_from_root</span>(<span class="ident">dom</span>, <span class="kw-2">&amp;</span><span class="ident">updated</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">metrics</span>)
         };
-        <span class="self">self</span>.<span class="ident">invalidate_all</span> <span class="op">=</span> <span class="bool-val">false</span>;
+        <span class="self">self</span>.<span class="ident">root_invalidated</span> <span class="op">=</span> <span class="bool-val">false</span>;
         <span class="self">self</span>.<span class="ident">dirty</span> <span class="op">=</span> <span class="bool-val">false</span>;
         <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tx</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">clone</span>();
@@ -1090,7 +1092,7 @@
             <span class="comment">// create a patch</span>
             <span class="kw">let</span> <span class="ident">before</span> <span class="op">=</span> <span class="ident">Instant</span>::<span class="ident">now</span>();
             <span class="kw">let</span> <span class="ident">patch</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">old_frame</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">old_frame</span> {
-                <span class="ident">Differ</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">old_frame</span>, <span class="kw-2">&amp;</span><span class="ident">result</span>, <span class="ident">updated</span>).<span class="ident">diff</span>()
+                <span class="ident">Differ</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">old_frame</span>, <span class="kw-2">&amp;</span><span class="ident">result</span>).<span class="ident">diff</span>()
             } <span class="kw">else</span> {
                 <span class="ident">Patch</span>::<span class="ident">new_from_dom</span>(<span class="kw-2">&amp;</span><span class="ident">result</span>)
             };

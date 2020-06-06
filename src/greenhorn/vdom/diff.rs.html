@@ -297,7 +297,6 @@
 <span id="297">297</span>
 <span id="298">298</span>
 <span id="299">299</span>
-<span id="300">300</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module implement the DOM diffing algorithm</span>
 <span class="doccomment">//!</span>
@@ -310,8 +309,8 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">runtime</span>::{<span class="ident">Frame</span>, <span class="ident">RenderResult</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">vdom</span>::{<span class="ident">Patch</span>, <span class="ident">PatchItem</span>, <span class="ident">VElement</span>, <span class="ident">VNode</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">App</span>, <span class="ident">Id</span>};
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">App</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
 
 <span class="comment">// Expansion ideas</span>
 <span class="comment">// [ ] key based diffing</span>
@@ -328,18 +327,17 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Differ</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">A</span>: <span class="ident">App</span><span class="op">&gt;</span> {
     <span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Frame</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>,
     <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">RenderResult</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>,
-    <span class="ident">rendered</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">A</span>: <span class="ident">App</span><span class="op">&gt;</span> <span class="ident">Differ</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">A</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Frame</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">RenderResult</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>, <span class="ident">rendered</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Id</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">old</span>, <span class="ident">new</span>, <span class="ident">rendered</span> }
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Frame</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">RenderResult</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> { <span class="ident">old</span>, <span class="ident">new</span> }
     }
 
     <span class="doccomment">/// Produce a patch based on the RenderResult</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">diff</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Patch</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">patch</span> <span class="op">=</span> <span class="ident">Patch</span>::<span class="ident">new</span>();
-        <span class="self">self</span>.<span class="ident">diff_recursive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">old</span>.<span class="ident">rendered</span>.<span class="ident">root</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">new</span>.<span class="ident">root</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">patch</span>);
+        <span class="self">self</span>.<span class="ident">diff_recursive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">old</span>.<span class="ident">rendered</span>.<span class="ident">vdom</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">new</span>.<span class="ident">vdom</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">patch</span>);
         <span class="ident">patch</span>.<span class="ident">optimize</span>();
         <span class="self">self</span>.<span class="ident">diff_blobs</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">patch</span>);
         <span class="ident">patch</span>
@@ -554,7 +552,7 @@
                 }
             }
             (<span class="ident">VNode</span>::<span class="ident">Placeholder</span>(<span class="ident">id_old</span>, <span class="ident">_path_old</span>), <span class="ident">VNode</span>::<span class="ident">Placeholder</span>(<span class="ident">id_new</span>, <span class="ident">_path_new</span>)) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="ident">id_old</span> <span class="op">=</span><span class="op">=</span> <span class="ident">id_new</span> <span class="kw-2">&amp;</span><span class="op">&amp;</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">rendered</span>.<span class="ident">contains</span>(<span class="ident">id_new</span>) {
+                <span class="kw">if</span> <span class="ident">id_old</span> <span class="op">=</span><span class="op">=</span> <span class="ident">id_new</span> <span class="kw-2">&amp;</span><span class="op">&amp;</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">new</span>.<span class="ident">rendered</span>.<span class="ident">contains</span>(<span class="ident">id_new</span>) {
                     <span class="kw">let</span> <span class="ident">new_comp</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">new</span>.<span class="ident">get_rendered_component</span>(<span class="kw-2">*</span><span class="ident">id_new</span>).<span class="ident">unwrap</span>();
                     <span class="kw">for</span> (<span class="ident">child_id</span>, <span class="ident">child_path</span>) <span class="kw">in</span> <span class="ident">new_comp</span>.<span class="ident">children</span>() {
                         <span class="ident">patch</span>.<span class="ident">push_path</span>(<span class="ident">child_path</span>);
