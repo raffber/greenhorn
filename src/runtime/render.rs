@@ -132,7 +132,7 @@ pub(crate) struct RenderResult<A: App> {
     pub(crate) subscriptions: HashMap<Id, Subscription<A::Message>>,
     pub(crate) blobs: HashMap<Id, Blob>,
     pub(crate) rpcs: HashMap<Id, Rpc<A::Message>>,
-    components: HashMap<Id, Arc<RenderedComponent<A>>>,
+    pub(crate) components: HashMap<Id, Arc<RenderedComponent<A>>>,
     pub(crate) root_components: Vec<(Id, Path)>,
     pub(crate) root_subscriptions: Vec<Id>,
     pub(crate) root_listeners: Vec<ListenerKey>,
@@ -217,7 +217,7 @@ impl<A: App> RenderResult<A> {
                 }
                 ResultItem::Component(comp, path) => {
                     ret.root_components.push((comp.id(), path));
-                    ret.render_component(None, comp, changes, metrics);
+                    ret.render_updated_component(None, comp, changes, metrics);
                 }
                 ResultItem::Blob(blob) => {
                     ret.root_blobs.push(blob.id());
@@ -282,21 +282,20 @@ impl<A: App> RenderResult<A> {
         // iterate over all components and check / render them recursively
         for (id, _) in &old.root_components {
             let comp = old.components.get(id).unwrap();
-            ret.render_component_from_old(Some(old), comp.component(), changes, metrics);
+            ret.render_component(Some(old), comp.component(), changes, metrics);
         }
 
         ret
     }
 
     /// Renders a component and registers its results into the current object.
-    fn render_component(
+    fn render_updated_component(
         &mut self,
         old: Option<&RenderResult<A>>,
         comp: ComponentContainer<A::Message>,
         changes: &HashSet<Id>,
         metrics: &mut Metrics,
     ) {
-        println!("Render changed!!!");
         let id = comp.id();
         self.rendered.insert(id);
         let (rendered, mut result) = RenderedComponent::new(comp, metrics);
@@ -311,7 +310,7 @@ impl<A: App> RenderResult<A> {
                     self.subscriptions.insert(id, subscription);
                 }
                 ResultItem::Component(comp, _) => {
-                    self.render_component_from_old(old, comp, changes, metrics);
+                    self.render_component(old, comp, changes, metrics);
                 }
                 ResultItem::Blob(blob) => {
                     self.blobs.insert(blob.id(), blob);
@@ -336,7 +335,7 @@ impl<A: App> RenderResult<A> {
         let old_render = old.components.get(&id).unwrap();
         for (child, _) in old_render.children() {
             let old_comp = old.components.get(child).unwrap();
-            self.render_component_from_old(Some(old), old_comp.component(), changes, metrics)
+            self.render_component(Some(old), old_comp.component(), changes, metrics)
         }
         for key in old_render.listeners() {
             let listener = old.listeners.get(key).unwrap();
@@ -358,7 +357,7 @@ impl<A: App> RenderResult<A> {
     }
 
     /// Renders a component based on an old RenderResult
-    fn render_component_from_old(
+    fn render_component(
         &mut self,
         old: Option<&RenderResult<A>>,
         comp: ComponentContainer<A::Message>,
@@ -370,10 +369,10 @@ impl<A: App> RenderResult<A> {
             if !changes.contains(&id) && old.components.contains_key(&id) {
                 self.render_unchanged_component(old, comp, changes, metrics);
             } else {
-                self.render_component(Some(old), comp, changes, metrics);
+                self.render_updated_component(Some(old), comp, changes, metrics);
             }
         } else {
-            self.render_component(old, comp, changes, metrics);
+            self.render_updated_component(old, comp, changes, metrics);
         }
     }
 
