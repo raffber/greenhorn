@@ -134,7 +134,11 @@ pub(crate) struct RenderResult<A: App> {
     pub(crate) rpcs: HashMap<Id, Rpc<A::Message>>,
     components: HashMap<Id, Arc<RenderedComponent<A>>>,
     pub(crate) root_components: Vec<(Id, Path)>,
-    pub(crate) root: Arc<VNode>,
+    pub(crate) root_subscriptions: Vec<Id>,
+    pub(crate) root_listeners: Vec<ListenerKey>,
+    pub(crate) root_blobs: Vec<Id>,
+    pub(crate) root_rpcs: Vec<Id>,
+    pub(crate) vdom: Arc<VNode>,
     pub(crate) rendered: HashSet<Id>,
 }
 
@@ -148,7 +152,11 @@ impl<A: App> RenderResult<A> {
             rpcs: Default::default(),
             components: Default::default(),
             root_components: Default::default(),
-            root: Arc::new(root),
+            root_subscriptions: vec![],
+            root_listeners: vec![],
+            root_blobs: vec![],
+            root_rpcs: vec![],
+            vdom: Arc::new(root),
             rendered: Default::default()
         }
     }
@@ -162,7 +170,12 @@ impl<A: App> RenderResult<A> {
             rpcs: Default::default(),
             components: Default::default(),
             root_components: vec![],
-            root: Arc::new(VNode::Text("".to_string())),
+            root_subscriptions: vec![],
+            root_listeners: vec![],
+            root_blobs: vec![],
+            root_rpcs: vec![],
+            vdom: Arc::new(VNode::Text("".to_string())),
+            rendered: Default::default()
         }
     }
 
@@ -183,26 +196,35 @@ impl<A: App> RenderResult<A> {
             rpcs: Default::default(),
             components: HashMap::default(),
             root_components: Default::default(),
-            root: Arc::new(vdom),
+            root_subscriptions: vec![],
+            root_listeners: vec![],
+            root_blobs: vec![],
+            root_rpcs: vec![],
+            vdom: Arc::new(vdom),
             rendered: Default::default()
         };
 
         for item in result.drain(..) {
             match item {
                 ResultItem::Listener(listener) => {
-                    ret.listeners.insert(ListenerKey::new(&listener), listener);
+                    let lk = ListenerKey::new(&listener);
+                    ret.listeners.insert(lk.clone(), listener);
+                    ret.root_listeners.push(lk);
                 }
                 ResultItem::Subscription(id, subscription) => {
                     ret.subscriptions.insert(id, subscription);
+                    ret.root_subscriptions.push(id);
                 }
                 ResultItem::Component(comp, path) => {
                     ret.root_components.push((comp.id(), path));
                     ret.render_component(None, comp, changes, metrics);
                 }
                 ResultItem::Blob(blob) => {
+                    ret.root_blobs.push(blob.id());
                     ret.blobs.insert(blob.id(), blob);
                 }
                 ResultItem::Rpc(rpc) => {
+                    ret.root_rpcs.push(rpc.node_id);
                     ret.rpcs.insert(rpc.node_id, rpc);
                 }
             }
@@ -220,28 +242,49 @@ impl<A: App> RenderResult<A> {
         metrics: &mut Metrics,
     ) -> Self {
         let old = &old.rendered;
+
+        // copy all old state from root to new state
+        let mut new_subs = HashMap::with_capacity(old.subscriptions.len());
+        for subs in &old.root_subscriptions {
+            new_subs.insert(*subs, old.subscriptions.get(&subs).unwrap().clone());
+        }
+
+        let mut new_listeners = HashMap::with_capacity(old.listeners.len());
+        for listener in &old.root_listeners {
+            new_listeners.insert(listener.clone(), old.listeners.get(&listener).unwrap().clone());
+        }
+
+        let mut new_rpcs = HashMap::with_capacity(old.rpcs.len());
+        for rpc in &old.root_rpcs {
+            new_rpcs.insert(*rpc, old.rpcs.get(&rpc).unwrap().clone());
+        }
+
+        let mut new_blobs = HashMap::with_capacity(old.blobs.len());
+        for blob in &old.root_blobs {
+            new_blobs.insert(*blob, old.blobs.get(&blob).unwrap().clone());
+        }
+
         let mut ret = Self {
-            listeners: Default::default(),
-            subscriptions: Default::default(),
-            blobs: Default::default(),
-            rpcs: Default::default(),
+            listeners: new_listeners,
+            subscriptions: new_subs,
+            blobs: new_blobs,
+            rpcs: new_rpcs,
             components: HashMap::with_capacity(old.components.len() * 2),
-            root_components: Default::default(),
-            root: old.root.clone(),
+            root_components: old.root_components.clone(),
+            root_subscriptions: old.root_subscriptions.clone(),
+            root_listeners: old.root_listeners.clone(),
+            root_blobs: old.root_blobs.clone(),
+            root_rpcs: old.root_rpcs.clone(),
+            vdom: old.vdom.clone(),
             rendered: Default::default()
         };
 
-        let root_components = old.root_components.clone(); // XXX: workaround
-        let comp_ids :Vec<Id> = root_components.iter().map(|(x,_)| *x).collect();
-        println!("Root Components: {:?}", comp_ids);
-
-        for (id, _) in &root_components {
+        // iterate over all components and check / render them recursively
+        for (id, _) in &old.root_components {
             let comp = old.components.get(id).unwrap();
             ret.render_component_from_old(Some(old), comp.component(), changes, metrics);
         }
 
-        ret.root_components = old.root_components.clone();
-        ret.root = old.root.clone();
         ret
     }
 

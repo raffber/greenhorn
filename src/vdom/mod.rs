@@ -188,7 +188,7 @@ impl<'a> Patch<'a> {
 
     pub(crate) fn new_from_dom<A: App>(rendered: &'a RenderResult<A>) -> Self {
         let mut patch = Patch::new();
-        patch.push(PatchItem::Replace(&rendered.root));
+        patch.push(PatchItem::Replace(&rendered.vdom));
         for v in rendered.blobs.values() {
             patch.push(PatchItem::AddBlob(v.clone()));
         }

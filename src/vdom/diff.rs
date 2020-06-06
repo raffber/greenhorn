@@ -37,7 +37,7 @@ impl<'a, A: App> Differ<'a, A> {
     /// Produce a patch based on the RenderResult
     pub(crate) fn diff(self) -> Patch<'a> {
         let mut patch = Patch::new();
-        self.diff_recursive(&self.old.rendered.root, &self.new.root, &mut patch);
+        self.diff_recursive(&self.old.rendered.vdom, &self.new.vdom, &mut patch);
         patch.optimize();
         self.diff_blobs(&mut patch);
         patch

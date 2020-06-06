@@ -352,6 +352,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
             invalidated.iter().for_each(|x| {
                 invalidated_components.insert(*x);
             });
+            self.schedule_render(DEFAULT_RENDER_INTERVAL_MS);
         }
         self.handle_context_result(receiver).await;
     }

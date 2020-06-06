@@ -4,7 +4,6 @@ use crate::context::Context;
 use crate::node::Node;
 use crate::runtime::{Frame, RenderResult};
 use crate::{App, Render, Updated};
-use std::collections::HashSet;
 use std::fs;
 
 struct DummyApp;
@@ -24,7 +23,7 @@ impl Render for DummyApp {
 }
 
 fn diff<'a, A: App>(old: &'a Frame<A>, new: &'a RenderResult<A>) -> Patch<'a> {
-    let patch = Differ::new(old, new, HashSet::new());
+    let patch = Differ::new(old, new);
     patch.diff()
 }
 
@@ -172,7 +171,7 @@ fn test_change_tag() {
     assert_eq!(patch.translations.len(), 0);
     assert_eq!(patch.items.len(), 1);
     if let PatchItem::Replace(VNode::Element(node)) = &patch.items[0] {
-        assert_eq!(node.id, new.root.id());
+        assert_eq!(node.id, new.vdom.id());
         assert_eq!(node.tag, "bar");
     } else {
         panic!()
