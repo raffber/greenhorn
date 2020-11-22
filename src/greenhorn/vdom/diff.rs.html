@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/vdom/diff.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>diff.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="shortcut icon" href="../../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../../greenhorn/index.html'><div class='logo-container'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/vdom/diff.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>diff.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script src="../../../storage.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="shortcut icon" href="../../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../../greenhorn/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><span class="help-button">?</span>
+                <a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -334,12 +335,12 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">A</span>: <span class="ident">App</span><span class="op">&gt;</span> <span class="ident">Differ</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">A</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Frame</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">RenderResult</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Frame</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">RenderResult</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">old</span>, <span class="ident">new</span> }
     }
 
     <span class="doccomment">/// Produce a patch based on the RenderResult</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">diff</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Patch</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">diff</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Patch</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">patch</span> <span class="op">=</span> <span class="ident">Patch</span>::<span class="ident">new</span>();
         <span class="comment">// TODO: this leaks...</span>
         <span class="ident">patch</span>.<span class="ident">translations</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">old</span>.<span class="ident">translations</span>.<span class="ident">clone</span>();
@@ -359,7 +360,7 @@
         }
         <span class="kw">for</span> (<span class="ident">k</span>, <span class="ident">v</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">new</span>.<span class="ident">blobs</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">blob</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">old</span>.<span class="ident">rendered</span>.<span class="ident">blobs</span>.<span class="ident">get</span>(<span class="ident">k</span>) {
-                <span class="kw">if</span> <span class="ident">blob</span>.<span class="ident">hash</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">v</span>.<span class="ident">hash</span>() {
+                <span class="kw">if</span> <span class="ident">blob</span>.<span class="ident">hash</span>() <span class="op">!=</span> <span class="ident">v</span>.<span class="ident">hash</span>() {
                     <span class="comment">// NOTE: RemoveBlob is not required, blob will</span>
                     <span class="comment">// simply be overwritten</span>
                     <span class="ident">patch</span>.<span class="ident">push</span>(<span class="ident">PatchItem</span>::<span class="ident">AddBlob</span>(<span class="ident">v</span>.<span class="ident">clone</span>()));
@@ -373,7 +374,7 @@
 
     <span class="doccomment">/// Diffs all attributes of the two elements and emits patches accordingly.</span>
     <span class="doccomment">/// Returns true if changes were detected.</span>
-    <span class="kw">fn</span> <span class="ident">diff_attrs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">patch</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Patch</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">diff_attrs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">patch</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Patch</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ret</span> <span class="op">=</span> <span class="bool-val">false</span>;
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">old_kv</span> <span class="op">=</span> <span class="ident">HashMap</span>::<span class="ident">with_capacity</span>(<span class="ident">old</span>.<span class="ident">attr</span>.<span class="ident">len</span>());
@@ -387,7 +388,7 @@
 
         <span class="kw">for</span> <span class="ident">attr</span> <span class="kw">in</span> <span class="ident">new</span>.<span class="ident">attr</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">old_v</span>) <span class="op">=</span> <span class="ident">old_kv</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">attr</span>.<span class="ident">key</span>) {
-                <span class="kw">if</span> <span class="ident">old_v</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">attr</span>.<span class="ident">value</span> {
+                <span class="kw">if</span> <span class="ident">old_v</span> <span class="op">!=</span> <span class="kw-2">&amp;</span><span class="ident">attr</span>.<span class="ident">value</span> {
                     <span class="ident">ret</span> <span class="op">=</span> <span class="bool-val">true</span>;
                     <span class="kw">let</span> <span class="ident">p</span> <span class="op">=</span> <span class="ident">PatchItem</span>::<span class="ident">ReplaceAttribute</span>(<span class="kw-2">&amp;</span><span class="ident">attr</span>.<span class="ident">key</span>, <span class="kw-2">&amp;</span><span class="ident">attr</span>.<span class="ident">value</span>);
                     <span class="ident">patch</span>.<span class="ident">push</span>(<span class="ident">p</span>);
@@ -412,7 +413,7 @@
 
     <span class="doccomment">/// Diffs all js events of the two elements and emits patches accordingly.</span>
     <span class="doccomment">/// Returns true if changes were detected.</span>
-    <span class="kw">fn</span> <span class="ident">diff_js_events</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">patch</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Patch</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">diff_js_events</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">patch</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Patch</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ret</span> <span class="op">=</span> <span class="bool-val">false</span>;
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">old_kv</span> <span class="op">=</span> <span class="ident">HashMap</span>::<span class="ident">with_capacity</span>(<span class="ident">old</span>.<span class="ident">js_events</span>.<span class="ident">len</span>());
@@ -426,7 +427,7 @@
 
         <span class="kw">for</span> <span class="ident">attr</span> <span class="kw">in</span> <span class="ident">new</span>.<span class="ident">js_events</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">old_v</span>) <span class="op">=</span> <span class="ident">old_kv</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">attr</span>.<span class="ident">key</span>) {
-                <span class="kw">if</span> <span class="ident">old_v</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">attr</span>.<span class="ident">value</span> {
+                <span class="kw">if</span> <span class="ident">old_v</span> <span class="op">!=</span> <span class="kw-2">&amp;</span><span class="ident">attr</span>.<span class="ident">value</span> {
                     <span class="ident">ret</span> <span class="op">=</span> <span class="bool-val">true</span>;
                     <span class="kw">let</span> <span class="ident">p</span> <span class="op">=</span> <span class="ident">PatchItem</span>::<span class="ident">ReplaceJsEvent</span>(<span class="kw-2">&amp;</span><span class="ident">attr</span>.<span class="ident">key</span>, <span class="kw-2">&amp;</span><span class="ident">attr</span>.<span class="ident">value</span>);
                     <span class="ident">patch</span>.<span class="ident">push</span>(<span class="ident">p</span>);
@@ -452,17 +453,17 @@
     <span class="doccomment">/// Recursively diffs all children of the elements and emit patches accordingly.</span>
     <span class="doccomment">/// Returns true if changes were detected.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">comparison_chain</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">diff_children</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">patch</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Patch</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="ident">old</span>.<span class="ident">children</span>.<span class="ident">is_empty</span>() <span class="kw-2">&amp;</span><span class="op">&amp;</span> <span class="ident">new</span>.<span class="ident">children</span>.<span class="ident">is_empty</span>() {
+    <span class="kw">fn</span> <span class="ident">diff_children</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">patch</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Patch</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">if</span> <span class="ident">old</span>.<span class="ident">children</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="ident">new</span>.<span class="ident">children</span>.<span class="ident">is_empty</span>() {
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">old</span>.<span class="ident">children</span>.<span class="ident">is_empty</span>() <span class="kw-2">&amp;</span><span class="op">&amp;</span> <span class="ident">new</span>.<span class="ident">children</span>.<span class="ident">is_empty</span>() {
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">old</span>.<span class="ident">children</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="ident">new</span>.<span class="ident">children</span>.<span class="ident">is_empty</span>() {
             <span class="ident">patch</span>.<span class="ident">push</span>(<span class="ident">PatchItem</span>::<span class="ident">RemoveChildren</span>());
             <span class="kw">return</span> <span class="bool-val">true</span>;
         }
 
-        <span class="kw">if</span> <span class="ident">old</span>.<span class="ident">children</span>.<span class="ident">is_empty</span>() <span class="kw-2">&amp;</span><span class="op">&amp;</span> <span class="op">!</span><span class="ident">new</span>.<span class="ident">children</span>.<span class="ident">is_empty</span>() {
+        <span class="kw">if</span> <span class="ident">old</span>.<span class="ident">children</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">new</span>.<span class="ident">children</span>.<span class="ident">is_empty</span>() {
             <span class="ident">patch</span>.<span class="ident">push</span>(<span class="ident">PatchItem</span>::<span class="ident">AddChildren</span>(<span class="kw-2">&amp;</span><span class="ident">new</span>.<span class="ident">children</span>));
             <span class="kw">return</span> <span class="bool-val">true</span>;
         }
@@ -477,18 +478,18 @@
         <span class="kw">let</span> <span class="ident">common_len</span> <span class="op">=</span> <span class="ident">n_old</span>.<span class="ident">min</span>(<span class="ident">n_new</span>);
         <span class="kw">let</span> <span class="ident">range</span> <span class="op">=</span> <span class="number">0</span>..<span class="ident">common_len</span>;
         <span class="kw">for</span> <span class="ident">k</span> <span class="kw">in</span> <span class="ident">range</span> {
-            <span class="kw">if</span> <span class="ident">k</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
+            <span class="kw">if</span> <span class="ident">k</span> <span class="op">!=</span> <span class="number">0</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">PatchItem</span>::<span class="ident">NextNode</span>(<span class="ident">skips</span>)) <span class="op">=</span> <span class="ident">patch</span>.<span class="ident">peek</span>() {
                     <span class="ident">patch</span>.<span class="ident">pop</span>();
                     <span class="ident">patch</span>.<span class="ident">push</span>(<span class="ident">PatchItem</span>::<span class="ident">NextNode</span>(<span class="ident">skips</span> <span class="op">+</span> <span class="number">1</span>))
                 } <span class="kw">else</span> {
-                    <span class="ident">truncates</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                    <span class="ident">truncates</span> <span class="op">+=</span> <span class="number">1</span>;
                     <span class="ident">patch</span>.<span class="ident">push</span>(<span class="ident">PatchItem</span>::<span class="ident">NextNode</span>(<span class="number">1</span>));
                 }
             }
             <span class="kw">let</span> <span class="ident">old_node</span> <span class="op">=</span> <span class="ident">old</span>.<span class="ident">children</span>.<span class="ident">get</span>(<span class="ident">k</span>).<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="ident">new_node</span> <span class="op">=</span> <span class="ident">new</span>.<span class="ident">children</span>.<span class="ident">get</span>(<span class="ident">k</span>).<span class="ident">unwrap</span>();
-            <span class="ident">ret</span> <span class="op">|</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">diff_recursive</span>(<span class="ident">old_node</span>, <span class="ident">new_node</span>, <span class="ident">patch</span>);
+            <span class="ident">ret</span> <span class="op">|=</span> <span class="self">self</span>.<span class="ident">diff_recursive</span>(<span class="ident">old_node</span>, <span class="ident">new_node</span>, <span class="ident">patch</span>);
         }
 
         <span class="kw">if</span> <span class="ident">n_old</span> <span class="op">&gt;</span> <span class="ident">n_new</span> {
@@ -514,12 +515,12 @@
 
     <span class="doccomment">/// Diffs the registered event handlers and returns true in case</span>
     <span class="doccomment">/// the registered handlers have changed.</span>
-    <span class="kw">fn</span> <span class="ident">diff_events</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="ident">new</span>.<span class="ident">events</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">old</span>.<span class="ident">events</span>.<span class="ident">len</span>() {
+    <span class="kw">fn</span> <span class="ident">diff_events</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VElement</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">if</span> <span class="ident">new</span>.<span class="ident">events</span>.<span class="ident">len</span>() <span class="op">!=</span> <span class="ident">old</span>.<span class="ident">events</span>.<span class="ident">len</span>() {
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
         <span class="kw">for</span> <span class="ident">k</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">new</span>.<span class="ident">events</span>.<span class="ident">len</span>() {
-            <span class="kw">if</span> <span class="ident">new</span>.<span class="ident">events</span>[<span class="ident">k</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">old</span>.<span class="ident">events</span>[<span class="ident">k</span>] {
+            <span class="kw">if</span> <span class="ident">new</span>.<span class="ident">events</span>[<span class="ident">k</span>] <span class="op">!=</span> <span class="ident">old</span>.<span class="ident">events</span>[<span class="ident">k</span>] {
                 <span class="kw">return</span> <span class="bool-val">false</span>;
             }
         }
@@ -528,20 +529,20 @@
 
     <span class="doccomment">/// Recursively diff to vdoms and compute a patch to update `old` to `new`.</span>
     <span class="doccomment">/// Returns whether a change was detected</span>
-    <span class="kw">fn</span> <span class="ident">diff_recursive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VNode</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VNode</span>, <span class="ident">patch</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Patch</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">diff_recursive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">old</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VNode</span>, <span class="ident">new</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">VNode</span>, <span class="ident">patch</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Patch</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ret</span> <span class="op">=</span> <span class="bool-val">false</span>;
         <span class="kw">match</span> (<span class="ident">old</span>, <span class="ident">new</span>) {
-            (<span class="ident">VNode</span>::<span class="ident">Element</span>(<span class="ident">elem_old</span>), <span class="ident">VNode</span>::<span class="ident">Element</span>(<span class="ident">elem_new</span>)) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="ident">elem_old</span>.<span class="ident">tag</span> <span class="op">!</span><span class="op">=</span> <span class="ident">elem_new</span>.<span class="ident">tag</span>
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">elem_old</span>.<span class="ident">namespace</span> <span class="op">!</span><span class="op">=</span> <span class="ident">elem_new</span>.<span class="ident">namespace</span>
-                    <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">diff_events</span>(<span class="ident">elem_old</span>, <span class="ident">elem_new</span>)
+            (<span class="ident">VNode</span>::<span class="ident">Element</span>(<span class="ident">elem_old</span>), <span class="ident">VNode</span>::<span class="ident">Element</span>(<span class="ident">elem_new</span>)) <span class="op">=&gt;</span> {
+                <span class="kw">if</span> <span class="ident">elem_old</span>.<span class="ident">tag</span> <span class="op">!=</span> <span class="ident">elem_new</span>.<span class="ident">tag</span>
+                    <span class="op">||</span> <span class="ident">elem_old</span>.<span class="ident">namespace</span> <span class="op">!=</span> <span class="ident">elem_new</span>.<span class="ident">namespace</span>
+                    <span class="op">||</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">diff_events</span>(<span class="ident">elem_old</span>, <span class="ident">elem_new</span>)
                 {
                     <span class="ident">ret</span> <span class="op">=</span> <span class="bool-val">true</span>;
                     <span class="ident">patch</span>.<span class="ident">push</span>(<span class="ident">PatchItem</span>::<span class="ident">Replace</span>(<span class="ident">new</span>))
                 } <span class="kw">else</span> {
-                    <span class="ident">ret</span> <span class="op">|</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">diff_attrs</span>(<span class="ident">elem_old</span>, <span class="ident">elem_new</span>, <span class="ident">patch</span>);
-                    <span class="ident">ret</span> <span class="op">|</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">diff_js_events</span>(<span class="ident">elem_old</span>, <span class="ident">elem_new</span>, <span class="ident">patch</span>);
-                    <span class="ident">ret</span> <span class="op">|</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">diff_children</span>(<span class="ident">elem_old</span>, <span class="ident">elem_new</span>, <span class="ident">patch</span>);
+                    <span class="ident">ret</span> <span class="op">|=</span> <span class="self">self</span>.<span class="ident">diff_attrs</span>(<span class="ident">elem_old</span>, <span class="ident">elem_new</span>, <span class="ident">patch</span>);
+                    <span class="ident">ret</span> <span class="op">|=</span> <span class="self">self</span>.<span class="ident">diff_js_events</span>(<span class="ident">elem_old</span>, <span class="ident">elem_new</span>, <span class="ident">patch</span>);
+                    <span class="ident">ret</span> <span class="op">|=</span> <span class="self">self</span>.<span class="ident">diff_children</span>(<span class="ident">elem_old</span>, <span class="ident">elem_new</span>, <span class="ident">patch</span>);
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">elem_old</span>.<span class="ident">id</span>.<span class="ident">is_empty</span>() {
                         <span class="kw">let</span> <span class="ident">very_old_id</span> <span class="op">=</span> <span class="self">self</span>
                             .<span class="ident">old</span>
@@ -553,14 +554,14 @@
                     }
                 }
             }
-            (<span class="ident">VNode</span>::<span class="ident">Text</span>(<span class="ident">elem_old</span>), <span class="ident">VNode</span>::<span class="ident">Text</span>(<span class="ident">elem_new</span>)) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="ident">elem_old</span> <span class="op">!</span><span class="op">=</span> <span class="ident">elem_new</span> {
+            (<span class="ident">VNode</span>::<span class="ident">Text</span>(<span class="ident">elem_old</span>), <span class="ident">VNode</span>::<span class="ident">Text</span>(<span class="ident">elem_new</span>)) <span class="op">=&gt;</span> {
+                <span class="kw">if</span> <span class="ident">elem_old</span> <span class="op">!=</span> <span class="ident">elem_new</span> {
                     <span class="ident">ret</span> <span class="op">=</span> <span class="bool-val">true</span>;
                     <span class="ident">patch</span>.<span class="ident">push</span>(<span class="ident">PatchItem</span>::<span class="ident">ChangeText</span>(<span class="ident">elem_new</span>))
                 }
             }
-            (<span class="ident">VNode</span>::<span class="ident">Placeholder</span>(<span class="ident">id_old</span>, <span class="ident">_path_old</span>), <span class="ident">VNode</span>::<span class="ident">Placeholder</span>(<span class="ident">id_new</span>, <span class="ident">_path_new</span>)) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="ident">id_old</span> <span class="op">=</span><span class="op">=</span> <span class="ident">id_new</span> <span class="kw-2">&amp;</span><span class="op">&amp;</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">new</span>.<span class="ident">rendered</span>.<span class="ident">contains</span>(<span class="ident">id_new</span>) {
+            (<span class="ident">VNode</span>::<span class="ident">Placeholder</span>(<span class="ident">id_old</span>, <span class="ident">_path_old</span>), <span class="ident">VNode</span>::<span class="ident">Placeholder</span>(<span class="ident">id_new</span>, <span class="ident">_path_new</span>)) <span class="op">=&gt;</span> {
+                <span class="kw">if</span> <span class="ident">id_old</span> <span class="op">==</span> <span class="ident">id_new</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">new</span>.<span class="ident">rendered</span>.<span class="ident">contains</span>(<span class="ident">id_new</span>) {
                     <span class="kw">let</span> <span class="ident">new_comp</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">new</span>.<span class="ident">get_rendered_component</span>(<span class="kw-2">*</span><span class="ident">id_new</span>).<span class="ident">unwrap</span>();
                     <span class="kw">for</span> (<span class="ident">child_id</span>, <span class="ident">child_path</span>) <span class="kw">in</span> <span class="ident">new_comp</span>.<span class="ident">children</span>() {
                         <span class="ident">patch</span>.<span class="ident">push_path</span>(<span class="ident">child_path</span>);
@@ -576,7 +577,7 @@
                         <span class="self">self</span>.<span class="ident">diff_recursive</span>(<span class="ident">old_vdom</span>, <span class="ident">new_vdom</span>, <span class="ident">patch</span>);
 
                         <span class="comment">// check if a patch was actually emitted</span>
-                        <span class="kw">if</span> <span class="ident">patch</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">cur_len</span> {
+                        <span class="kw">if</span> <span class="ident">patch</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="ident">cur_len</span> {
                             <span class="comment">// no patch was emitted, thus, reverse the path again</span>
                             <span class="ident">patch</span>.<span class="ident">pop_path</span>(<span class="ident">child_path</span>);
                             <span class="ident">ret</span> <span class="op">=</span> <span class="bool-val">false</span>;
@@ -586,7 +587,7 @@
                             <span class="ident">ret</span> <span class="op">=</span> <span class="bool-val">true</span>;
                         }
                     }
-                } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">id_old</span> <span class="op">=</span><span class="op">=</span> <span class="ident">id_new</span> {
+                } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">id_old</span> <span class="op">==</span> <span class="ident">id_new</span> {
                     <span class="kw">let</span> <span class="ident">old_vdom</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">old</span>.<span class="ident">rendered</span>.<span class="ident">get_component_vdom</span>(<span class="kw-2">*</span><span class="ident">id_old</span>).<span class="ident">unwrap</span>();
                     <span class="kw">let</span> <span class="ident">new_vdom</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">new</span>.<span class="ident">get_component_vdom</span>(<span class="kw-2">*</span><span class="ident">id_new</span>).<span class="ident">unwrap</span>();
                     <span class="ident">ret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff_recursive</span>(<span class="ident">old_vdom</span>, <span class="ident">new_vdom</span>, <span class="ident">patch</span>);
@@ -597,7 +598,7 @@
                     <span class="ident">ret</span> <span class="op">=</span> <span class="bool-val">true</span>;
                 }
             }
-            (<span class="kw">_</span>, <span class="ident">new</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            (<span class="kw">_</span>, <span class="ident">new</span>) <span class="op">=&gt;</span> {
                 <span class="ident">ret</span> <span class="op">=</span> <span class="bool-val">true</span>;
                 <span class="ident">patch</span>.<span class="ident">push</span>(<span class="ident">PatchItem</span>::<span class="ident">Replace</span>(<span class="ident">new</span>));
             }

@@ -1,3 +1,3 @@
 (function() {var implementors = {};
-implementors["greenhorn"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/fmt/trait.Display.html\" title=\"trait core::fmt::Display\">Display</a> for <a class=\"struct\" href=\"greenhorn/struct.Id.html\" title=\"struct greenhorn::Id\">Id</a>","synthetic":false,"types":["greenhorn::Id"]}];
+implementors["greenhorn"] = [{"text":"impl Display for Id","synthetic":false,"types":[]}];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
