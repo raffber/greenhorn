@@ -110,7 +110,7 @@ impl<'a> ViewBuilder {
             .build(&event_loop)
             .unwrap();
 
-        let _webview = WebViewBuilder::new(window).unwrap()
+        let webview = WebViewBuilder::new(window).unwrap()
             .with_rpc_handler(handler)
             .with_custom_protocol("greenhorn".to_string(), move |_, _| {
                 return Ok(html.as_bytes().into());
@@ -134,11 +134,17 @@ impl<'a> ViewBuilder {
             *control_flow = ControlFlow::Wait;
 
             match event {
-                Event::NewEvents(StartCause::Init) => println!("Wry has started!"),
+                Event::NewEvents(StartCause::Init) => (),
                 Event::WindowEvent {
                     event: WindowEvent::CloseRequested,
                     ..
                 } => *control_flow = ControlFlow::Exit,
+                Event::WindowEvent {
+                    event: WindowEvent::Resized(..),
+                    ..
+                } => {
+                    let _ = webview.resize();
+                },
                 _ => (),
             }
         });
