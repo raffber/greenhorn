@@ -5,12 +5,15 @@ use greenhorn::prelude::Runtime;
 use ::todomvc::{MainApp, CSS};
 
 fn main() {
+
     ViewBuilder::new()
         .css(CSS)
         .title("Greenhorn - TodoMVC")
         .size(1200, 900)
         .run(move |pipe| {
-            let (rt, _control) = Runtime::new(MainApp::new(), pipe);
-            rt.run_blocking();
+            async {
+                let (rt, _control) = Runtime::new(MainApp::new(), pipe);
+                rt.run().await;
+            }
         });
 }

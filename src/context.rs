@@ -98,7 +98,7 @@ pub(crate) enum ContextMsg<T: 'static + Send> {
     RunJs(String),
     Propagate(EventPropagate),
     Subscription(ServiceSubscription<T>),
-    Future(Pin<Box<dyn Send + Future<Output = T>>>, bool), // (future, blocking)
+    Future(Pin<Box<dyn Send + Future<Output = T>>>),
     Stream(Pin<Box<dyn Send + Stream<Item = T>>>),
     Dialog(DialogBinding<T>),
     Quit,
@@ -112,8 +112,8 @@ impl<T: Send + 'static> ContextMsg<T> {
     {
         match self {
             ContextMsg::Subscription(subs) => ContextMsg::Subscription(subs.map(mapper)),
-            ContextMsg::Future(fut, blocking) => {
-                ContextMsg::Future(Box::pin(async move { (mapper)(fut.await) }), blocking)
+            ContextMsg::Future(fut) => {
+                ContextMsg::Future(Box::pin(async move { (mapper)(fut.await) }))
             }
             ContextMsg::Stream(stream) => {
                 ContextMsg::Stream(Box::pin(stream.map(move |x| (mapper)(x))))
@@ -198,13 +198,7 @@ impl<T: Send + 'static> Context<T> {
 
     /// Spawns a future. The result of the future will be used to `update()` the application.
     pub fn spawn<Fut: 'static + Send + Future<Output = T>>(&self, fut: Fut) {
-        self.tx.send(ContextMsg::Future(Box::pin(fut), false));
-    }
-
-    /// Spawns a future which contains blocking operations. This future might be spawned on
-    /// a different thread-pool to avoid stalling non-blocking futures.
-    pub fn spawn_blocking<Fut: 'static + Send + Future<Output = T>>(&self, fut: Fut) {
-        self.tx.send(ContextMsg::Future(Box::pin(fut), true));
+        self.tx.send(ContextMsg::Future(Box::pin(fut)));
     }
 
     /// Subscribe to a stream. Each item the stream issues will be used to `udpate()` the application.

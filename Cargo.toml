@@ -9,7 +9,6 @@ default = []
 native-dialogs = ["tinyfiledialogs"]
 
 [dependencies]
-async-timer = "0.7.3"
 futures = "0.3"
 log = "0.4.8"
 serde = { version = "1.0", features = ["derive"] }
@@ -22,9 +21,8 @@ cfg-if = "0.1.10"
 instant = { version = "0.1", features = ["wasm-bindgen"]}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tungstenite = "0.10.1"
-async-tungstenite = {version = "0.4.2", features=["async-std-runtime"]}
-async-std = {version = "1.5.0", features = ["unstable"]}
+async-tungstenite = {version = "0.13", features = ["tokio-runtime"]}
+tokio = {version = "1", features = ["net", "rt", "time", "rt-multi-thread"]}
 
 [dev-dependencies]
 url = "2.1.0"

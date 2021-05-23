@@ -2,7 +2,7 @@ use crate::context::{Context, ContextMsg, ContextReceiver};
 use crate::dialog::DialogBinding;
 use crate::event::Emission;
 use crate::pipe::{Pipe, RxMsg, TxMsg};
-use crate::platform::{spawn, spawn_blocking};
+use crate::platform::spawn;
 use crate::runtime::metrics::Metrics;
 pub(crate) use crate::runtime::render::RenderResult;
 use crate::runtime::service_runner::{ServiceCollection, ServiceMessage};
@@ -220,7 +220,8 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
     /// Returns the performance metrics collected during exeuction of the application.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn run_blocking(self) -> Metrics {
-        async_std::task::block_on(self.run())
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(self.run())
     }
 
     /// Handle messages as received from services
@@ -379,19 +380,12 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
                 ContextMsg::Subscription(service) => {
                     self.services.spawn(service);
                 }
-                ContextMsg::Future(fut, blocking) => {
+                ContextMsg::Future(fut) => {
                     let tx = self.tx.clone();
-                    if blocking {
-                        spawn_blocking(async move {
-                            let result = fut.await;
-                            let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(result));
-                        });
-                    } else {
-                        spawn(async move {
-                            let result = fut.await;
-                            let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(result));
-                        });
-                    }
+                    spawn(async move {
+                        let result = fut.await;
+                        let _ = tx.unbounded_send(RuntimeMsg::AsyncMsg(result));
+                    });
                 }
                 ContextMsg::Stream(mut stream) => {
                     let tx = self.tx.clone();
@@ -466,7 +460,7 @@ impl<A: 'static + App, P: 'static + Pipe> Runtime<A, P> {
         let tx = self.tx.clone();
         let mut sender = self.sender.clone();
 
-        spawn_blocking(async move {
+        spawn(async move {
             // create a patch
             let before = Instant::now();
             let patch = if let Some(old_frame) = &old_frame {

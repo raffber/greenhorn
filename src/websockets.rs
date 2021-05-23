@@ -2,9 +2,10 @@
 //!
 
 use crate::pipe::{Pipe, RxMsg, TxMsg};
-use async_std::net::{TcpListener, TcpStream};
-use async_std::task;
-use async_tungstenite::{accept_async, WebSocketStream};
+use tokio::net::{TcpListener, TcpStream};
+use tokio::task;
+use async_tungstenite::tokio::{accept_async, TokioAdapter};
+use async_tungstenite::WebSocketStream;
 use futures::channel::mpsc::SendError;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use futures::prelude::*;
@@ -16,7 +17,7 @@ use log::error;
 use std::error::Error;
 use std::net::SocketAddr;
 use std::pin::Pin;
-use tungstenite::protocol::Message;
+use async_tungstenite::tungstenite::protocol::Message;
 
 /// The `WebSocketPipe` type implements a [Pipe](../pipe/trait.Pipe.html) on top of WebSockets.
 ///
@@ -57,8 +58,8 @@ pub struct WebSocketPipe {
 
 impl WebSocketPipe {
     /// Starts listening to a given `SocketAddr`
-    pub fn listen_to_addr(addr: SocketAddr) -> WebSocketPipe {
-        let try_socket = task::block_on(async { TcpListener::bind(&addr).await });
+    pub async fn listen_to_addr(addr: SocketAddr) -> WebSocketPipe {
+        let try_socket = TcpListener::bind(&addr).await;
         let listener = try_socket.expect("Failed to bind");
         Self::listen_to_socket(listener)
     }
@@ -106,7 +107,7 @@ impl WebSocketPipe {
 /// Relays incoming WebSocket messages to the `WebSocketReceiver` and
 /// receives messages from the `WebSocketSender` and sends them to the WebSocket connection.
 struct ConnectionHandler {
-    ws: WebSocketStream<TcpStream>,
+    ws: WebSocketStream<TokioAdapter<TcpStream>>,
     resp_tx: UnboundedSender<Message>,
     req_rx: UnboundedReceiver<Message>,
 }
@@ -150,7 +151,7 @@ impl ConnectionHandler {
     }
 
     /// Handles a message from the websocket connection.
-    async fn rx_msg(&mut self, msg: Option<Result<Message, tungstenite::Error>>) -> bool {
+    async fn rx_msg(&mut self, msg: Option<Result<Message, async_tungstenite::tungstenite::Error>>) -> bool {
         if let Some(msg) = msg {
             match msg {
                 Ok(msg) => {

@@ -40,8 +40,8 @@ mod wasm {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod default {
-    use async_std::task;
-    use async_timer::Interval;
+    use tokio::{task, time};
+    use tokio::time::Duration;
     use futures::Future;
 
     pub fn spawn<F, T>(future: F)
@@ -52,23 +52,9 @@ mod default {
         task::spawn(future);
     }
 
-    pub fn spawn_blocking<F, T>(future: F)
-    where
-        F: Future<Output = T> + Send + 'static,
-        T: Send + 'static,
-    {
-        task::spawn_blocking(|| {
-            task::block_on(async move {
-                let _ = future.await;
-            })
-        });
-    }
-
     pub fn set_timeout<F: 'static + Send + FnOnce()>(fun: F, wait_time_ms: u64) {
         spawn(async move {
-            let mut timer = Interval::platform_new(core::time::Duration::from_millis(wait_time_ms));
-            timer.as_mut().await;
-            timer.cancel();
+            time::sleep(Duration::from_millis(wait_time_ms)).await;
             fun();
         });
     }
@@ -78,6 +64,6 @@ cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
         pub use wasm::{spawn, spawn_blocking, set_timeout};
     } else {
-        pub use default::{spawn, spawn_blocking, set_timeout};
+        pub use default::{spawn, set_timeout};
     }
 }

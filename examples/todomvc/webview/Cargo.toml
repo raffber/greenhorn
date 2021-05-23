@@ -8,3 +8,4 @@ edition = "2018"
 greenhorn = {path = "../../.."}
 greenhorn_web_view = {path = "../../../web_view"}
 todomvc = {path = "../lib"}
+tokio = {version = "1", features = ["rt", "rt-multi-thread"]}

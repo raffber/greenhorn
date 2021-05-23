@@ -1,12 +1,14 @@
-use web_view::*;
-use std::thread;
 use std::net::SocketAddr;
 use std::str::FromStr;
-use greenhorn::prelude::*;
-use async_std::net::TcpListener;
-use async_std::task;
-use greenhorn::pipe::{TxMsg, RxMsg};
+use std::thread;
+
+use web_view::*;
+
 use greenhorn::dialog::native_dialogs;
+use greenhorn::pipe::{RxMsg, TxMsg};
+use greenhorn::prelude::*;
+use tokio::net::TcpListener;
+use std::future::Future;
 
 pub struct ViewBuilder {
     pub css: Vec<String>,
@@ -21,9 +23,9 @@ pub struct ViewBuilder {
 impl<'a> ViewBuilder {
     pub fn new() -> Self {
         #[cfg(debug_assertions)]
-        let debug = true;
+            let debug = true;
         #[cfg(not(debug_assertions))]
-        let debug = false;
+            let debug = false;
         ViewBuilder {
             css: vec![],
             js: vec![],
@@ -31,7 +33,7 @@ impl<'a> ViewBuilder {
             title: "".to_string(),
             width: 400,
             height: 300,
-            debug
+            debug,
         }
     }
 
@@ -96,13 +98,14 @@ impl<'a> ViewBuilder {
         html_content
     }
 
-    pub fn run<T: FnOnce(WebSocketPipe) -> () + Send + 'static>(self, fun: T) {
+    pub fn run<T, Fut>(self, fun: T)
+        where
+            T : FnOnce(WebSocketPipe) -> Fut + Send + 'static,
+            Fut: Future<Output=()> + 'static
+    {
+        let rt = tokio::runtime::Runtime::new().unwrap();
         let addr = SocketAddr::from_str("127.0.0.1:0").unwrap();
-
-        let socket = task::block_on(async {
-            TcpListener::bind(&addr).await
-        }).expect("Failed to bind");
-
+        let socket = rt.block_on(TcpListener::bind(&addr)).expect("Failed to bind");
         let port = socket.local_addr().unwrap().port();
 
         let ret = web_view::builder()
@@ -120,21 +123,25 @@ impl<'a> ViewBuilder {
             .unwrap();
 
 
-        let pipe = WebSocketPipe::listen_to_socket(socket);
-
-        let thread = thread::spawn(move || fun(pipe) );
+        let thread = thread::spawn(move || {
+            let fut = async {
+                let pipe = WebSocketPipe::listen_to_socket(socket);
+                let fut = fun(pipe);
+                fut.await
+            };
+            rt.block_on(fut);
+        });
 
         ret.run().unwrap();
-
         thread.join().unwrap();
     }
 }
 
 fn handler(webview: &mut WebView<()>, arg: &str) {
-     // if this happens it's a mistake somewhere
+    // if this happens it's a mistake somewhere
     let rx: TxMsg = serde_json::from_str(arg).expect("Invalid message received.");
     let ret = match rx {
-        TxMsg::Dialog(dialog) => RxMsg::Dialog(native_dialogs::show_dialog( dialog)),
+        TxMsg::Dialog(dialog) => RxMsg::Dialog(native_dialogs::show_dialog(dialog)),
         _ => panic!()
     };
     // this already produces an escaped js string

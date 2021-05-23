@@ -10,7 +10,4 @@ edition = "2018"
 greenhorn = {path = "..", features = ["native-dialogs"]}
 web-view = "0.6.0"
 serde_json = "1.0"
-
-[dependencies.async-std]
-version = "1.4.0"
-features = ["unstable"]
+tokio = {version = "1", features = ["net"]}
