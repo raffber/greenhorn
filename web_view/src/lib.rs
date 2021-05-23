@@ -76,6 +76,7 @@ impl<'a> ViewBuilder {
             additional.push(format!("<style>{}</style>", x));
         }
         // disable the context menu
+        #[cfg(build = "debug")]
         additional.push("<script>window.oncontextmenu = (e) => { e.preventDefault(); }</script>".into());
         let additional = additional.join("\n");
         let html_content = format!("<!DOCTYPE html>
