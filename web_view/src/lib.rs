@@ -1,14 +1,19 @@
+use std::future::Future;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::thread;
 
-use web_view::*;
+use tokio::net::TcpListener;
+use wry::application::dpi::LogicalSize;
+use wry::application::event::{Event, WindowEvent, StartCause};
+use wry::application::event_loop::{ControlFlow, EventLoop};
+use wry::application::window::{Window, WindowBuilder};
+use wry::webview::{RpcRequest, WebViewBuilder, RpcResponse};
 
+pub use greenhorn;
 use greenhorn::dialog::native_dialogs;
 use greenhorn::pipe::{RxMsg, TxMsg};
-use greenhorn::prelude::*;
-use tokio::net::TcpListener;
-use std::future::Future;
+use greenhorn::WebSocketPipe;
 
 pub struct ViewBuilder {
     pub css: Vec<String>,
@@ -17,15 +22,10 @@ pub struct ViewBuilder {
     pub title: String,
     pub width: i32,
     pub height: i32,
-    pub debug: bool,
 }
 
 impl<'a> ViewBuilder {
     pub fn new() -> Self {
-        #[cfg(debug_assertions)]
-            let debug = true;
-        #[cfg(not(debug_assertions))]
-            let debug = false;
         ViewBuilder {
             css: vec![],
             js: vec![],
@@ -33,7 +33,6 @@ impl<'a> ViewBuilder {
             title: "".to_string(),
             width: 400,
             height: 300,
-            debug,
         }
     }
 
@@ -58,11 +57,6 @@ impl<'a> ViewBuilder {
         self
     }
 
-    pub fn debug(mut self, debug: bool) -> Self {
-        self.debug = debug;
-        self
-    }
-
     pub fn format_html(&self, port: u16) -> String {
         let js_main = format!("window.onload = function() {{ \
             let pipe = new greenhorn.Pipe(\"ws://127.0.0.1:\" + {});
@@ -81,10 +75,8 @@ impl<'a> ViewBuilder {
         for x in &self.css {
             additional.push(format!("<style>{}</style>", x));
         }
-        if !self.debug {
-            // disable the context menu
-            additional.push("<script>window.oncontextmenu = (e) => { e.preventDefault(); }</script>".into());
-        }
+        // disable the context menu
+        additional.push("<script>window.oncontextmenu = (e) => { e.preventDefault(); }</script>".into());
         let additional = additional.join("\n");
         let html_content = format!("<!DOCTYPE html>
         <html>
@@ -100,7 +92,7 @@ impl<'a> ViewBuilder {
 
     pub fn run<T, Fut>(self, fun: T)
         where
-            T : FnOnce(WebSocketPipe) -> Fut + Send + 'static,
+            T: FnOnce(WebSocketPipe) -> Fut + Send + 'static,
             Fut: Future<Output=()> + 'static
     {
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -108,22 +100,27 @@ impl<'a> ViewBuilder {
         let socket = rt.block_on(TcpListener::bind(&addr)).expect("Failed to bind");
         let port = socket.local_addr().unwrap().port();
 
-        let ret = web_view::builder()
-            .title(&self.title)
-            .content(Content::Html(self.format_html(port)))
-            .size(self.width, self.height)
-            .debug(self.debug)
-            .resizable(true)
-            .user_data(())
-            .invoke_handler(|webview, arg| {
-                handler(webview, arg);
-                Ok(())
+        let html = self.format_html(port);
+
+        let event_loop = EventLoop::new();
+        let window = WindowBuilder::new()
+            .with_title(&self.title)
+            .with_inner_size(LogicalSize::new(self.width, self.height))
+            .build(&event_loop)
+            .unwrap();
+
+        let _webview = WebViewBuilder::new(window).unwrap()
+            .with_rpc_handler(handler)
+            .with_custom_protocol("greenhorn".to_string(), move |_, _| {
+                return Ok(html.as_bytes().into());
             })
+            .with_url("greenhorn://")
+            .unwrap()
             .build()
             .unwrap();
 
 
-        let thread = thread::spawn(move || {
+        thread::spawn(move || {
             let fut = async {
                 let pipe = WebSocketPipe::listen_to_socket(socket);
                 let fut = fun(pipe);
@@ -132,21 +129,29 @@ impl<'a> ViewBuilder {
             rt.block_on(fut);
         });
 
-        ret.run().unwrap();
-        thread.join().unwrap();
+        event_loop.run(move |event, _, control_flow| {
+            *control_flow = ControlFlow::Wait;
+
+            match event {
+                Event::NewEvents(StartCause::Init) => println!("Wry has started!"),
+                Event::WindowEvent {
+                    event: WindowEvent::CloseRequested,
+                    ..
+                } => *control_flow = ControlFlow::Exit,
+                _ => (),
+            }
+        });
     }
 }
 
-fn handler(webview: &mut WebView<()>, arg: &str) {
+fn handler(_webview: &Window, request: RpcRequest) -> Option<RpcResponse> {
+    let param = request.params.unwrap();
     // if this happens it's a mistake somewhere
-    let rx: TxMsg = serde_json::from_str(arg).expect("Invalid message received.");
+    let rx: TxMsg = serde_json::from_value(param).expect("Invalid message received.");
     let ret = match rx {
         TxMsg::Dialog(dialog) => RxMsg::Dialog(native_dialogs::show_dialog(dialog)),
         _ => panic!()
     };
-    // this already produces an escaped js string
-    let ret = serde_json::to_string(&ret).unwrap();
-    let arg = format!("window.app.sendReturnMessage({});", ret);
-    println!("{:?}", arg);
-    webview.eval(&arg).unwrap();
+    let result = serde_json::to_value(ret).unwrap();
+    Some(RpcResponse::new_result(request.id, Some(result)))
 }
