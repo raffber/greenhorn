@@ -1,14 +1,14 @@
-//! This module exposes the [DomEvent](struct.DomEvent.html) data type which is used to communicate
+//! This module exposes the [DomEvent](dom/enum.DomEvent.html) data type which is used to communicate
 //! DOM events from the frontend to the backend.
 //!
-//! [DomEvents](struct.DomEvent.html) are the principal data type for frontend
+//! [DomEvents](enum.DomEvent.html) are the principal data type for frontend
 //! to backend communication. When subscribing to a event on the DOM a handler
 //! function is registered in the application runtime, which maps a
-//! [DomEvent](struct.DomEvent.html) to a
-//! the message type of the running [../trait.App.html].
+//! [DomEvent](enum.DomEvent.html) to a
+//! the message type of the running [App](../trait.App.html).
 //!
 //! When the subscribed event is triggered on the frontend,
-//! a [DomEvent](struct.DomEvent.html) is created, mapped with the handler function
+//! a [DomEvent](enum.DomEvent.html) is created, mapped with the handler function
 //! and subsequently passed into the `update()` cycle of the application.
 //!
 use crate::Id;

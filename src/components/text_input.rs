@@ -75,11 +75,11 @@ impl TextInput {
         // the version has been bumped, it copies the value attribute to the actual target
         // value.
         let render_fun = "{
-            let rendered_version = event.target.getAttribute('__rendered_version');
-            let value_version = event.target.getAttribute('__value_version');
+            let rendered_version = $event.target.getAttribute('__rendered_version');
+            let value_version = $event.target.getAttribute('__value_version');
             if (rendered_version != value_version) {
-                event.target.value = event.target.getAttribute('value');
-                event.target.setAttribute('__rendered_version', value_version);
+                $event.target.value = $event.target.getAttribute('value');
+                $event.target.setAttribute('__rendered_version', value_version);
             }
         }";
         let input_node = Node::html()

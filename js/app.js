@@ -237,7 +237,7 @@ export class Patch {
 
     deserializeEventFunction() {
         let code = this.deserializeString();
-        return new Function("event", code);
+        return new Function("$event", code);
     }
 
     deserializeNode() {
@@ -254,7 +254,6 @@ export class Patch {
         this.element.parentNode.appendChild(new_elem);
         this.element = new_elem;
     }
-
 
     replace() {
         let new_elem = this.deserializeNode();
@@ -327,7 +326,7 @@ export class Patch {
     addJsEvent() {
         let key = this.deserializeString();
         let fun = this.deserializeEventFunction();
-        if (key == "render") {
+        if (key === "render") {
             this.element["__has_render_event"] = true;
         }
         this.element['__' + key] = fun;
@@ -367,10 +366,11 @@ export class Patch {
         let tag = this.deserializeString();
         
         let hasNamespace = this.popU8() > 0;
+        let elem;
         if (hasNamespace) {
-            var elem = document.createElementNS(this.deserializeString(), tag);
+            elem = document.createElementNS(this.deserializeString(), tag);
         } else {
-            var elem = document.createElement(tag);
+            elem = document.createElement(tag);
         }
 
         let id = this.deserializeId();
@@ -401,7 +401,7 @@ export class Patch {
         let push_to_rendered = false;
         for (var k = 0; k < js_events_len; ++k) {
             let key = this.deserializeString();
-            if (key == "render") {
+            if (key === "render") {
                 elem["__has_render_event"] = true;
                 push_to_rendered = true;
             }

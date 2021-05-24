@@ -83,7 +83,7 @@ impl Image {
             "{{
             var blob = app.getBlob({});
             var img_url = URL.createObjectURL(blob.blob);
-            event.target.src = img_url;
+            $event.target.src = img_url;
         }}",
             self.blob.id().data()
         );

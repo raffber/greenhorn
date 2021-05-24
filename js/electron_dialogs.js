@@ -15,7 +15,7 @@ function messageBox(value, cb) {
             }).catch(err => console.log(err));
             break;
         case 'OkCancel':
-            if (value.default == "Cancel") {
+            if (value.default === "Cancel") {
                 defaultButton = 1;
             }
             dialog.showMessageBox({
@@ -35,7 +35,7 @@ function messageBox(value, cb) {
             }).catch(err => console.log(err));
             break;
         case 'YesNo':
-            if (value.default == "No") {
+            if (value.default === "No") {
                 defaultButton = 1;
             }
             dialog.showMessageBox({

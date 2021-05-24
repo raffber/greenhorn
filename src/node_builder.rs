@@ -186,6 +186,19 @@ impl<T: 'static + Send> ElementBuilder<T> {
         self
     }
 
+    /// Register an javascript event handler which listens to the event given
+    /// by `key` and executes the function defined in `value`. The function receives a
+    /// single $event argument pointing to the [event](https://developer.mozilla.org/en-US/docs/Web/API/Event):
+    ///
+    /// ```
+    /// # use greenhorn::node::Node;
+    /// fn render() -> Node<()> {
+    ///     Node::html()
+    ///         .elem("div")
+    ///         .js_event("click", "console.log($event.button)")
+    ///         .build()
+    /// }
+    /// ```
     pub fn js_event<R: ToString, S: ToString>(mut self, key: R, value: S) -> Self {
         self.js_events.push(Attr {
             key: key.to_string(),
